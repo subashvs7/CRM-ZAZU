@@ -157,7 +157,7 @@ var CRM = {
             width: '100%',
             dropdownParent: $('body')
         });
-        $('.datepicker', ctx || document).datepicker({format: 'yyyy-mm-dd', autoclose: true, todayHighlight: true});
+        $('.datepicker', ctx || document).datepicker({format: 'yyyy-mm-dd', autoclose: true, todayHighlight: true, container: 'body'});
     },
 
     format_inr: function(paise) {

@@ -118,6 +118,19 @@
                             </p>
                             <?php endif; ?>
                         </div>
+                        <div class="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                            <button class="inline-flex items-center justify-center w-7 h-7 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors btn-edit-contact"
+                                    data-id="<?= $c['id'] ?>" data-customer="<?= $customer['id'] ?>"
+                                    data-name="<?= esc_html($c['name']) ?>" data-designation="<?= esc_html($c['designation']??'') ?>"
+                                    data-phone="<?= esc_html($c['phone']??'') ?>" data-email="<?= esc_html($c['email']??'') ?>"
+                                    data-is_primary="<?= (int)$c['is_primary'] ?>" title="Edit">
+                                <i class="fa fa-pencil" style="font-size:11px"></i>
+                            </button>
+                            <button class="inline-flex items-center justify-center w-7 h-7 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors btn-delete-contact"
+                                    data-id="<?= $c['id'] ?>" title="Delete">
+                                <i class="fa fa-trash" style="font-size:11px"></i>
+                            </button>
+                        </div>
                     </div>
                     <?php endforeach; ?>
                 <?php else: ?>
@@ -200,6 +213,68 @@
                         <tr><td colspan="4" class="py-6 text-center text-gray-300"><i class="fa fa-spinner fa-spin"></i></td></tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contact Person Modal -->
+<div class="modal fade" id="contact-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Add Contact</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="contact-form">
+                    <input type="hidden" name="<?= $csrf_name ?>" value="<?= $csrf_hash ?>">
+                    <input type="hidden" name="id" id="contact-id" value="0">
+                    <input type="hidden" name="customer_id" id="contact-customer-id" value="<?= (int)$customer['id'] ?>">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Name *</label>
+                            <input type="text" name="name" id="contact-name" required
+                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Full name">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Designation</label>
+                            <input type="text" name="designation"
+                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="e.g. Manager, Director">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Phone</label>
+                                <input type="text" name="phone"
+                                       class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                       placeholder="+91 XXXXX XXXXX">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Email</label>
+                                <input type="email" name="email"
+                                       class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                       placeholder="email@example.com">
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2.5 py-1">
+                            <input type="checkbox" name="is_primary" id="contact-is-primary" value="1"
+                                   class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                            <label for="contact-is-primary" class="text-sm font-medium text-gray-700 cursor-pointer">
+                                Mark as Primary Contact
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-medium" data-dismiss="modal">
+                    Cancel
+                </button>
+                <button class="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold" id="btn-save-contact">
+                    <i class="fa fa-save"></i> Save Contact
+                </button>
             </div>
         </div>
     </div>

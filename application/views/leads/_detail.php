@@ -168,7 +168,8 @@
                         'visit' => ['bg' => 'bg-green-100',  'text' => 'text-green-700',  'icon' => 'fa-map-marker'],
                         'note'  => ['bg' => 'bg-amber-100',  'text' => 'text-amber-700',  'icon' => 'fa-sticky-note'],
                     ];
-                    foreach ($activities as $a):
+                    $last_act_i = count($activities) - 1;
+                    foreach ($activities as $act_i => $a):
                         $tc = $type_colors[$a['activity_type']] ?? ['bg' => 'bg-gray-100', 'text' => 'text-gray-700', 'icon' => 'fa-circle'];
                     ?>
                     <div class="flex gap-4">
@@ -176,7 +177,7 @@
                             <div class="w-8 h-8 rounded-xl <?= $tc['bg'] ?> <?= $tc['text'] ?> flex items-center justify-center flex-shrink-0">
                                 <i class="fa <?= $tc['icon'] ?> text-xs"></i>
                             </div>
-                            <?php if(!$loop->last): ?>
+                            <?php if($act_i < $last_act_i): ?>
                             <div class="w-px flex-1 bg-gray-100 mt-2"></div>
                             <?php endif; ?>
                         </div>

@@ -28,7 +28,7 @@ $(function() {
         $('#reg-out-display').text($btn.data('out') || '—');
         $('#reg-corrected-in').val($btn.data('in') || '');
         $('#reg-corrected-out').val($btn.data('out') || '');
-        $('#reg-corrected-date').val('');
+        $('#reg-corrected-date').datepicker('update', '');
         $('#reg-reason').val('');
         CRM.init_plugins($('#regularize-modal'));
         $('#regularize-modal').modal('show');

@@ -34,6 +34,7 @@ $(function() {
             if ($f.find('[name="user_id"]').length) $f.find('[name="user_id"]').val(data.user_id || '').trigger('change');
             $('#visit-modal .modal-title').text('Edit Visit');
         } else {
+            $f.find('[name="planned_date"]').datepicker('setDate', null);
             $('#visit-modal .modal-title').text('Plan Visit');
         }
         $('#visit-modal').modal('show');

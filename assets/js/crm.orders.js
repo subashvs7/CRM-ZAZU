@@ -96,9 +96,10 @@ $(function() {
         $('#order-id').val(data ? data.id : 0);
         $('#order-items-body').empty();
         recalcTotals();
+        CRM.init_plugins($('#order-modal'));
         if (data) {
             $f.find('[name="customer_id"]').val(data.customer_id || '').trigger('change');
-            $f.find('[name="delivery_date"]').val(data.delivery_date || '');
+            $f.find('[name="delivery_date"]').datepicker('update', data.delivery_date || '');
             $f.find('[name="notes"]').val(data.notes || '');
             $('#order-discount').val(data.discount_inr || 0);
             if (data.items && data.items.length) {
@@ -108,11 +109,11 @@ $(function() {
             }
             $('#order-modal .modal-title').text('Edit Order');
         } else {
+            $f.find('[name="delivery_date"]').datepicker('update', '');
             addItemRow();
             $('#order-modal .modal-title').text('New Order');
         }
         $('#order-modal').modal('show');
-        CRM.init_plugins($('#order-modal'));
     }
 
     $('#btn-add-order').click(function() { openOrderModal(null); });

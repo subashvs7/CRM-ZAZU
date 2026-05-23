@@ -63,7 +63,7 @@ class Customers extends MY_Controller {
         $customer = $this->Customer_model->get_with_staff($id);
         if (!$customer) show_404();
         $contacts = $this->Contact_person_model->get_by_customer($id);
-        $this->load_view('customers/_detail', ['page_title'=>$customer['name'],'customer'=>$customer,'contacts'=>$contacts]);
+        $this->load_view('customers/_detail', ['page_title'=>$customer['name'],'page_js'=>'customers','customer'=>$customer,'contacts'=>$contacts]);
     }
 
     public function update_status() {

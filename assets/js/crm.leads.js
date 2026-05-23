@@ -16,21 +16,22 @@ $(function() {
         $f[0].reset();
         CRM.clear_errors($f);
         $('#lead-id').val(data ? data.id : 0);
+        CRM.init_plugins($('#lead-modal'));
         if (data) {
             $f.find('[name="title"]').val(data.title || '');
             $f.find('[name="description"]').val(data.description || '');
             $f.find('[name="source"]').val(data.source || '');
             $f.find('[name="lead_status"]').val(data.lead_status || 'new');
             $f.find('[name="expected_value"]').val(data.expected_value ? (data.expected_value / 100).toFixed(2) : '');
-            $f.find('[name="expected_close_date"]').val(data.expected_close_date || '');
+            $f.find('[name="expected_close_date"]').datepicker('update', data.expected_close_date || '');
             $f.find('[name="customer_id"]').val(data.customer_id || '').trigger('change');
             if ($f.find('[name="assigned_to"]').length) $f.find('[name="assigned_to"]').val(data.assigned_to || '').trigger('change');
             $('#lead-modal .modal-title').text('Edit Lead');
         } else {
+            $f.find('[name="expected_close_date"]').datepicker('update', '');
             $('#lead-modal .modal-title').text('Add Lead');
         }
         $('#lead-modal').modal('show');
-        CRM.init_plugins($('#lead-modal'));
     }
 
     $('#btn-add-lead').click(function() { openLeadModal(null); });
