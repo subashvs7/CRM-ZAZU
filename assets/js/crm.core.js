@@ -153,11 +153,9 @@ var CRM = {
     },
 
     init_plugins: function(ctx) {
-        var $ctx = ctx ? $(ctx) : null;
-        var $modal = $ctx ? ($ctx.hasClass('modal') ? $ctx : $ctx.closest('.modal')) : $();
         $('select.select2', ctx || document).select2({
             width: '100%',
-            dropdownParent: $modal.length ? $modal : $('body')
+            dropdownParent: $('body')
         });
         $('.datepicker', ctx || document).datepicker({format: 'yyyy-mm-dd', autoclose: true, todayHighlight: true});
     },
@@ -186,6 +184,15 @@ var CRM = {
 if ($.fn.modal && $.fn.modal.Constructor) {
     $.fn.modal.Constructor.prototype.enforceFocus = function() {};
 }
+
+// Force-focus the search input every time any Select2 dropdown opens
+// (needed because Bootstrap 3's modal focus trap interferes with Select2 search)
+$(document).on('select2:open', function() {
+    setTimeout(function() {
+        var field = document.querySelector('.select2-container--open .select2-search__field');
+        if (field) field.focus();
+    }, 0);
+});
 
 // CSRF auto-refresh after every POST
 $(document).ajaxComplete(function(e, xhr) {
