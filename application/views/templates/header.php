@@ -194,17 +194,17 @@ var CURRENT_ROLE    = '<?= esc_html($current_role) ?>';
         <!-- Admin submenu -->
         <p class="px-3 pt-3 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest sidebar-text">System</p>
         <button type="button" onclick="toggleSubmenu('admin-sub',this)"
-                class="<?= $seg1==='admin' ? $lnk_on : $lnk ?> sidebar-text">
+                class="<?= $lnk ?> sidebar-text">
             <i class="fa fa-cogs <?= $ic ?>"></i>
             <span class="flex-1 sidebar-text text-left">Admin</span>
             <i class="fa fa-angle-right text-xs sub-arrow sidebar-text transition-transform duration-200 <?= $seg1==='admin'?'rotate-90':'' ?>"></i>
         </button>
         <div id="admin-sub" class="crm-submenu <?= $seg1==='admin'?'open':'' ?>">
-            <a href="<?= base_url('admin/users') ?>"           class="sub-link sidebar-text"><i class="fa fa-users w-4 text-center"></i> Users</a>
-            <a href="<?= base_url('admin/teams') ?>"           class="sub-link sidebar-text"><i class="fa fa-group w-4 text-center"></i> Teams</a>
-            <a href="<?= base_url('admin/products') ?>"        class="sub-link sidebar-text"><i class="fa fa-cubes w-4 text-center"></i> Products</a>
-            <a href="<?= base_url('admin/notif_templates') ?>" class="sub-link sidebar-text"><i class="fa fa-envelope w-4 text-center"></i> Notif Templates</a>
-            <a href="<?= base_url('admin/settings') ?>"        class="sub-link sidebar-text"><i class="fa fa-sliders w-4 text-center"></i> Settings</a>
+            <a href="<?= base_url('admin/users') ?>"           class="sub-link sidebar-text<?= $seg2==='users'?' active':'' ?>"><i class="fa fa-users w-4 text-center"></i> Users</a>
+            <a href="<?= base_url('admin/teams') ?>"           class="sub-link sidebar-text<?= $seg2==='teams'?' active':'' ?>"><i class="fa fa-group w-4 text-center"></i> Teams</a>
+            <a href="<?= base_url('admin/products') ?>"        class="sub-link sidebar-text<?= $seg2==='products'?' active':'' ?>"><i class="fa fa-cubes w-4 text-center"></i> Products</a>
+            <a href="<?= base_url('admin/notif_templates') ?>" class="sub-link sidebar-text<?= $seg2==='notif_templates'?' active':'' ?>"><i class="fa fa-envelope w-4 text-center"></i> Notif Templates</a>
+            <a href="<?= base_url('admin/settings') ?>"        class="sub-link sidebar-text<?= $seg2==='settings'?' active':'' ?>"><i class="fa fa-sliders w-4 text-center"></i> Settings</a>
         </div>
         <?php endif; ?>
     </nav>

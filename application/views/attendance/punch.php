@@ -52,7 +52,7 @@
             <div class="flex items-center gap-2.5 p-3.5 bg-cyan-50 border border-cyan-200 text-cyan-800 rounded-xl text-sm">
                 <i class="fa fa-check-circle flex-shrink-0 text-cyan-500"></i>
                 <div>
-                    <span>Punched in at <strong><?= date('H:i', strtotime($att['punch_in_at'])) ?></strong></span>
+                    <span>Punched in at <strong><?= date('d M Y, H:i', strtotime($att['punch_in_at'])) ?></strong></span>
                     <?php if($att['punch_in_lat']): ?>
                     <p class="text-xs text-gray-400 mt-0.5"><?= round($att['punch_in_lat'], 4) ?>, <?= round($att['punch_in_lng'], 4) ?></p>
                     <?php endif; ?>
@@ -83,10 +83,12 @@
                     <div class="bg-white rounded-xl p-3 text-center border border-green-100">
                         <p class="text-xs text-gray-400 mb-1">Punch In</p>
                         <p class="text-sm font-bold text-green-700"><?= date('H:i', strtotime($att['punch_in_at'])) ?></p>
+                        <p class="text-xs text-gray-400 mt-0.5"><?= date('d M Y', strtotime($att['punch_in_at'])) ?></p>
                     </div>
                     <div class="bg-white rounded-xl p-3 text-center border border-green-100">
                         <p class="text-xs text-gray-400 mb-1">Punch Out</p>
                         <p class="text-sm font-bold text-red-600"><?= date('H:i', strtotime($att['punch_out_at'])) ?></p>
+                        <p class="text-xs text-gray-400 mt-0.5"><?= date('d M Y', strtotime($att['punch_out_at'])) ?></p>
                     </div>
                 </div>
                 <div class="mt-3 text-center">

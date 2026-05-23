@@ -49,7 +49,10 @@ $(function() {
         });
     });
 
-    $('#btn-save-visit').click(function() {
+    var _visitSaving = false;
+    $(document).off('click.visitsave').on('click.visitsave', '#btn-save-visit', function() {
+        if (_visitSaving) return;
+        _visitSaving = true;
         var $btn = $(this); CRM.btn_loading($btn);
         $.ajax({
             url: BASE_URL + 'visits/save', method: 'POST',
@@ -64,7 +67,7 @@ $(function() {
                     CRM.toast('error', res.message);
                 }
             },
-            complete: function() { CRM.btn_reset($btn); }
+            complete: function() { CRM.btn_reset($btn); _visitSaving = false; }
         });
     });
 

@@ -65,7 +65,7 @@
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
-                <form id="visit-form" method="POST" action="<?= base_url('visits/save') ?>">
+                <form id="visit-form" onsubmit="return false;">
                     <input type="hidden" name="<?= $csrf_name ?>" value="<?= $csrf_hash ?>">
                     <input type="hidden" name="id" id="visit-id" value="0">
                     <div class="space-y-4">
@@ -110,7 +110,7 @@
                 <button class="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-medium" data-dismiss="modal">
                     Cancel
                 </button>
-                <button class="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold" id="btn-save-visit">
+                <button type="button" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold" id="btn-save-visit">
                     <i class="fa fa-save"></i> Save Visit
                 </button>
             </div>
