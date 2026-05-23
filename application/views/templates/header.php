@@ -73,6 +73,7 @@ var CURRENT_ROLE    = '<?= esc_html($current_role) ?>';
         : base_url('assets/vendor/adminlte/img/avatar.png');
     $CI   =& get_instance();
     $seg1 = $CI->uri->segment(1);
+    $seg2 = $CI->uri->segment(2);
     ?>
     <div class="flex items-center gap-3 px-4 py-3 mx-3 mt-3 mb-1 rounded-xl bg-slate-800/60 flex-shrink-0">
         <img src="<?= $photo ?>" alt=""
@@ -172,20 +173,20 @@ var CURRENT_ROLE    = '<?= esc_html($current_role) ?>';
         <!-- Reports submenu -->
         <p class="px-3 pt-3 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest sidebar-text">Analytics</p>
         <button type="button" onclick="toggleSubmenu('reports-sub',this)"
-                class="<?= $seg1==='reports' ? $lnk_on : $lnk ?> sidebar-text">
+                class="<?= $lnk ?> sidebar-text">
             <i class="fa fa-bar-chart <?= $ic ?>"></i>
             <span class="flex-1 sidebar-text text-left">Reports</span>
             <i class="fa fa-angle-right text-xs sub-arrow sidebar-text transition-transform duration-200 <?= $seg1==='reports'?'rotate-90':'' ?>"></i>
         </button>
         <div id="reports-sub" class="crm-submenu <?= $seg1==='reports'?'open':'' ?>">
-            <a href="<?= base_url('reports/visits') ?>"          class="sub-link sidebar-text"><i class="fa fa-map w-4 text-center"></i> Visit Reports</a>
-            <a href="<?= base_url('reports/lead_conversion') ?>" class="sub-link sidebar-text"><i class="fa fa-funnel w-4 text-center"></i> Lead Conversion</a>
-            <a href="<?= base_url('reports/orders') ?>"          class="sub-link sidebar-text"><i class="fa fa-shopping-bag w-4 text-center"></i> Orders</a>
-            <a href="<?= base_url('reports/staff_sales') ?>"     class="sub-link sidebar-text"><i class="fa fa-trophy w-4 text-center"></i> Staff Sales</a>
-            <a href="<?= base_url('reports/attendance') ?>"      class="sub-link sidebar-text"><i class="fa fa-clock-o w-4 text-center"></i> Attendance</a>
-            <a href="<?= base_url('reports/punctuality') ?>"     class="sub-link sidebar-text"><i class="fa fa-check-circle w-4 text-center"></i> Punctuality</a>
-            <a href="<?= base_url('reports/leave_util') ?>"      class="sub-link sidebar-text"><i class="fa fa-plane w-4 text-center"></i> Leave Util.</a>
-            <a href="<?= base_url('reports/coverage') ?>"        class="sub-link sidebar-text"><i class="fa fa-map-o w-4 text-center"></i> Coverage Map</a>
+            <a href="<?= base_url('reports/visits') ?>"          class="sub-link sidebar-text<?= $seg2==='visits'?' active':'' ?>"><i class="fa fa-map w-4 text-center"></i> Visit Reports</a>
+            <a href="<?= base_url('reports/lead_conversion') ?>" class="sub-link sidebar-text<?= $seg2==='lead_conversion'?' active':'' ?>"><i class="fa fa-funnel w-4 text-center"></i> Lead Conversion</a>
+            <a href="<?= base_url('reports/orders') ?>"          class="sub-link sidebar-text<?= $seg2==='orders'?' active':'' ?>"><i class="fa fa-shopping-bag w-4 text-center"></i> Orders</a>
+            <a href="<?= base_url('reports/staff_sales') ?>"     class="sub-link sidebar-text<?= $seg2==='staff_sales'?' active':'' ?>"><i class="fa fa-trophy w-4 text-center"></i> Staff Sales</a>
+            <a href="<?= base_url('reports/attendance') ?>"      class="sub-link sidebar-text<?= $seg2==='attendance'?' active':'' ?>"><i class="fa fa-clock-o w-4 text-center"></i> Attendance</a>
+            <a href="<?= base_url('reports/punctuality') ?>"     class="sub-link sidebar-text<?= $seg2==='punctuality'?' active':'' ?>"><i class="fa fa-check-circle w-4 text-center"></i> Punctuality</a>
+            <a href="<?= base_url('reports/leave_util') ?>"      class="sub-link sidebar-text<?= $seg2==='leave_util'?' active':'' ?>"><i class="fa fa-plane w-4 text-center"></i> Leave Util.</a>
+            <a href="<?= base_url('reports/coverage') ?>"        class="sub-link sidebar-text<?= $seg2==='coverage'?' active':'' ?>"><i class="fa fa-map-o w-4 text-center"></i> Coverage Map</a>
         </div>
         <?php endif; ?>
 

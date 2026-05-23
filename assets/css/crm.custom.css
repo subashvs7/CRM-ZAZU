@@ -220,6 +220,7 @@ input.datepicker {
     transition: all .15s;
 }
 .sub-link:hover { color: #fff; background: rgba(100,116,139,.25); }
+.sub-link.active { color: #fff !important; background: rgba(59,130,246,.28); font-weight: 600; }
 
 /* Collapsed sidebar (desktop) */
 body.sidebar-collapsed #sidebar { width: 60px !important; }
