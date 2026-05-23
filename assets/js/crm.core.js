@@ -69,74 +69,74 @@ var CRM = {
     },
 
     show_errors: function($form, errors) {
-        $form.find('.has-error').removeClass('has-error');
-        $form.find('.help-block.err').remove();
+        $form.find('.crm-field-error').remove();
+        $form.find('.crm-has-error').removeClass('crm-has-error');
         $.each(errors, function(field, msg) {
-            $form.find('[name="' + field + '"]').closest('.form-group')
-                .addClass('has-error')
-                .append('<span class="help-block err">' + msg + '</span>');
+            var $field = $form.find('[name="' + field + '"]');
+            $field.closest('.mb-4, .form-group').addClass('crm-has-error')
+                .append('<p class="crm-field-error">' + msg + '</p>');
         });
     },
 
     clear_errors: function($form) {
-        $form.find('.has-error').removeClass('has-error');
-        $form.find('.help-block.err').remove();
+        $form.find('.crm-field-error').remove();
+        $form.find('.crm-has-error').removeClass('crm-has-error');
     },
 
     status_badge: function(s) {
         var m = {
-            active:   '<span class="label label-success">Active</span>',
-            inactive: '<span class="label label-warning">Inactive</span>',
-            deleted:  '<span class="label label-danger">Deleted</span>'
+            active:   '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">Active</span>',
+            inactive: '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-800">Inactive</span>',
+            deleted:  '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800">Deleted</span>'
         };
-        return m[s] || '<span class="label label-default">' + CRM.esc(s) + '</span>';
+        return m[s] || '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">' + CRM.esc(s) + '</span>';
     },
 
     lead_badge: function(s) {
         var m = {
-            new:         '<span class="label label-default">New</span>',
-            contacted:   '<span class="label label-info">Contacted</span>',
-            qualified:   '<span class="label label-primary">Qualified</span>',
-            proposal:    '<span class="label label-warning">Proposal</span>',
-            negotiation: '<span class="label label-warning" style="background:#e67e22">Negotiation</span>',
-            won:         '<span class="label label-success">Won</span>',
-            lost:        '<span class="label label-danger">Lost</span>'
+            new:         '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">New</span>',
+            contacted:   '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-cyan-100 text-cyan-800">Contacted</span>',
+            qualified:   '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Qualified</span>',
+            proposal:    '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-800">Proposal</span>',
+            negotiation: '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800">Negotiation</span>',
+            won:         '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">Won</span>',
+            lost:        '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800">Lost</span>'
         };
-        return m[s] || s;
+        return m[s] || '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">' + CRM.esc(s) + '</span>';
     },
 
     order_badge: function(s) {
         var m = {
-            draft:            '<span class="label label-default">Draft</span>',
-            pending_approval: '<span class="label label-warning">Pending Approval</span>',
-            approved:         '<span class="label label-success">Approved</span>',
-            dispatched:       '<span class="label label-info">Dispatched</span>',
-            delivered:        '<span class="label label-success" style="background:#1abc9c">Delivered</span>',
-            cancelled:        '<span class="label label-danger">Cancelled</span>'
+            draft:            '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">Draft</span>',
+            pending_approval: '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-800">Pending Approval</span>',
+            approved:         '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">Approved</span>',
+            dispatched:       '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-cyan-100 text-cyan-800">Dispatched</span>',
+            delivered:        '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-800">Delivered</span>',
+            cancelled:        '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800">Cancelled</span>'
         };
-        return m[s] || s;
+        return m[s] || '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">' + CRM.esc(s) + '</span>';
     },
 
     att_badge: function(s) {
         var m = {
-            present:   '<span class="label label-success">Present</span>',
-            absent:    '<span class="label label-danger">Absent</span>',
-            half_day:  '<span class="label label-warning">Half Day</span>',
-            on_leave:  '<span class="label label-info">On Leave</span>',
-            holiday:   '<span class="label label-primary">Holiday</span>',
-            week_off:  '<span class="label label-default">Week Off</span>'
+            present:   '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">Present</span>',
+            absent:    '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800">Absent</span>',
+            half_day:  '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-800">Half Day</span>',
+            on_leave:  '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-cyan-100 text-cyan-800">On Leave</span>',
+            holiday:   '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800">Holiday</span>',
+            week_off:  '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">Week Off</span>'
         };
-        return m[s] || '<span class="label label-default">' + s + '</span>';
+        return m[s] || '<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">' + CRM.esc(s) + '</span>';
     },
 
     action_btns: function(id, resource, status, opts) {
         opts = opts || {};
-        var b = '<div class="btn-group">';
-        if (opts.view)  b += '<a href="' + BASE_URL + resource + '/detail/' + id + '" class="btn btn-xs btn-info"><i class="fa fa-eye"></i></a> ';
-        if (opts.edit && status !== 'deleted') b += '<button class="btn btn-xs btn-primary btn-edit" data-id="' + id + '"><i class="fa fa-pencil"></i></button> ';
-        if (status === 'active')   b += '<button class="btn btn-xs btn-warning btn-deactivate" data-id="' + id + '"><i class="fa fa-ban"></i></button> <button class="btn btn-xs btn-danger btn-delete" data-id="' + id + '"><i class="fa fa-trash"></i></button>';
-        if (status === 'inactive') b += '<button class="btn btn-xs btn-success btn-activate" data-id="' + id + '"><i class="fa fa-check"></i></button> <button class="btn btn-xs btn-danger btn-delete" data-id="' + id + '"><i class="fa fa-trash"></i></button>';
-        if (status === 'deleted')  b += '<button class="btn btn-xs btn-success btn-restore" data-id="' + id + '"><i class="fa fa-undo"></i></button>';
+        var b = '<div class="flex items-center gap-1">';
+        if (opts.view)  b += '<a href="' + BASE_URL + resource + '/detail/' + id + '" class="inline-flex items-center px-2 py-1 text-xs bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors"><i class="fa fa-eye"></i></a>';
+        if (opts.edit && status !== 'deleted') b += '<button class="inline-flex items-center px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors btn-edit" data-id="' + id + '"><i class="fa fa-pencil"></i></button>';
+        if (status === 'active')   b += '<button class="inline-flex items-center px-2 py-1 text-xs bg-amber-500 text-white rounded hover:bg-amber-600 transition-colors btn-deactivate" data-id="' + id + '"><i class="fa fa-ban"></i></button> <button class="inline-flex items-center px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors btn-delete" data-id="' + id + '"><i class="fa fa-trash"></i></button>';
+        if (status === 'inactive') b += '<button class="inline-flex items-center px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors btn-activate" data-id="' + id + '"><i class="fa fa-check"></i></button> <button class="inline-flex items-center px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors btn-delete" data-id="' + id + '"><i class="fa fa-trash"></i></button>';
+        if (status === 'deleted')  b += '<button class="inline-flex items-center px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors btn-restore" data-id="' + id + '"><i class="fa fa-undo"></i></button>';
         return b + '</div>';
     },
 
@@ -294,10 +294,10 @@ $(document).on('click', '.btn-detect-location', function(e) {
 });
 
 // Global status tab handler (used by all list pages)
-$(document).on('click', '#status-tabs a', function(e) {
+$(document).on('click', '#status-tabs a[data-status]', function(e) {
     e.preventDefault();
-    $('#status-tabs li').removeClass('active');
-    $(this).parent().addClass('active');
+    $('#status-tabs a[data-status]').removeClass('border-blue-600 text-blue-600').addClass('border-transparent text-gray-500');
+    $(this).removeClass('border-transparent text-gray-500').addClass('border-blue-600 text-blue-600');
     window.currentStatusFilter = $(this).data('status');
     $('#deleted-banner').toggle(window.currentStatusFilter === 'deleted');
     if (window.mainTable && window.mainTable.ajax) {

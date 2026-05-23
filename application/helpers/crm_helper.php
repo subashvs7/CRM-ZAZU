@@ -28,66 +28,66 @@ if (!function_exists('time_ago')) {
 if (!function_exists('status_badge')) {
     function status_badge($s) {
         $map = [
-            'active'   => '<span class="label label-success">Active</span>',
-            'inactive' => '<span class="label label-warning">Inactive</span>',
-            'deleted'  => '<span class="label label-danger">Deleted</span>',
+            'active'   => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-green-100 text-green-700">Active</span>',
+            'inactive' => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-amber-100 text-amber-700">Inactive</span>',
+            'deleted'  => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700">Deleted</span>',
         ];
-        return $map[$s] ?? '<span class="label label-default">' . esc_html($s) . '</span>';
+        return $map[$s] ?? '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-600">' . esc_html($s) . '</span>';
     }
 }
 
 if (!function_exists('lead_status_badge')) {
     function lead_status_badge($s) {
         $map = [
-            'new'         => '<span class="label label-default">New</span>',
-            'contacted'   => '<span class="label label-info">Contacted</span>',
-            'qualified'   => '<span class="label label-primary">Qualified</span>',
-            'proposal'    => '<span class="label label-warning">Proposal</span>',
-            'negotiation' => '<span class="label label-warning" style="background:#e67e22">Negotiation</span>',
-            'won'         => '<span class="label label-success">Won</span>',
-            'lost'        => '<span class="label label-danger">Lost</span>',
+            'new'         => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600">New</span>',
+            'contacted'   => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-cyan-100 text-cyan-700">Contacted</span>',
+            'qualified'   => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-blue-100 text-blue-700">Qualified</span>',
+            'proposal'    => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-amber-100 text-amber-700">Proposal</span>',
+            'negotiation' => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-orange-100 text-orange-700">Negotiation</span>',
+            'won'         => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-green-100 text-green-700">Won</span>',
+            'lost'        => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700">Lost</span>',
         ];
-        return $map[$s] ?? esc_html($s);
+        return $map[$s] ?? '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-600">' . esc_html($s) . '</span>';
     }
 }
 
 if (!function_exists('order_status_badge')) {
     function order_status_badge($s) {
         $map = [
-            'draft'            => '<span class="label label-default">Draft</span>',
-            'pending_approval' => '<span class="label label-warning">Pending Approval</span>',
-            'approved'         => '<span class="label label-success">Approved</span>',
-            'dispatched'       => '<span class="label label-info">Dispatched</span>',
-            'delivered'        => '<span class="label label-success" style="background:#1abc9c">Delivered</span>',
-            'cancelled'        => '<span class="label label-danger">Cancelled</span>',
+            'draft'            => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-600">Draft</span>',
+            'pending_approval' => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-amber-100 text-amber-700">Pending Approval</span>',
+            'approved'         => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-green-100 text-green-700">Approved</span>',
+            'dispatched'       => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-blue-100 text-blue-700">Dispatched</span>',
+            'delivered'        => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-emerald-100 text-emerald-700">Delivered</span>',
+            'cancelled'        => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700">Cancelled</span>',
         ];
-        return $map[$s] ?? esc_html($s);
+        return $map[$s] ?? '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-600">' . esc_html($s) . '</span>';
     }
 }
 
 if (!function_exists('visit_status_badge')) {
     function visit_status_badge($s) {
         $map = [
-            'planned'     => '<span class="label label-info">Planned</span>',
-            'completed'   => '<span class="label label-success">Completed</span>',
-            'missed'      => '<span class="label label-danger">Missed</span>',
-            'rescheduled' => '<span class="label label-warning">Rescheduled</span>',
+            'planned'     => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-cyan-100 text-cyan-700">Planned</span>',
+            'completed'   => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-green-100 text-green-700">Completed</span>',
+            'missed'      => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700">Missed</span>',
+            'rescheduled' => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-amber-100 text-amber-700">Rescheduled</span>',
         ];
-        return $map[$s] ?? esc_html($s);
+        return $map[$s] ?? '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-600">' . esc_html($s) . '</span>';
     }
 }
 
 if (!function_exists('att_status_badge')) {
     function att_status_badge($s) {
         $map = [
-            'present'   => '<span class="label label-success">Present</span>',
-            'absent'    => '<span class="label label-danger">Absent</span>',
-            'half_day'  => '<span class="label label-warning">Half Day</span>',
-            'on_leave'  => '<span class="label label-info">On Leave</span>',
-            'holiday'   => '<span class="label label-primary">Holiday</span>',
-            'week_off'  => '<span class="label label-default">Week Off</span>',
+            'present'   => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-green-100 text-green-700">Present</span>',
+            'absent'    => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700">Absent</span>',
+            'half_day'  => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-amber-100 text-amber-700">Half Day</span>',
+            'on_leave'  => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-blue-100 text-blue-700">On Leave</span>',
+            'holiday'   => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-purple-100 text-purple-700">Holiday</span>',
+            'week_off'  => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-500">Week Off</span>',
         ];
-        return $map[$s] ?? esc_html($s);
+        return $map[$s] ?? '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-600">' . esc_html($s) . '</span>';
     }
 }
 
@@ -133,13 +133,27 @@ if (!function_exists('get_setting')) {
 
 if (!function_exists('crm_action_btns')) {
     function crm_action_btns($id, $resource, $status, $opts = []) {
-        $b = '<div class="btn-group">';
-        if (!empty($opts['view']))  $b .= '<a href="'.base_url($resource.'/detail/'.$id).'" class="btn btn-xs btn-info"><i class="fa fa-eye"></i></a> ';
-        if (!empty($opts['edit']) && $status !== 'deleted') $b .= '<button class="btn btn-xs btn-primary btn-edit" data-id="'.$id.'"><i class="fa fa-pencil"></i></button> ';
-        if ($status === 'active')   $b .= '<button class="btn btn-xs btn-warning btn-deactivate" data-id="'.$id.'"><i class="fa fa-ban"></i></button> <button class="btn btn-xs btn-danger btn-delete" data-id="'.$id.'"><i class="fa fa-trash"></i></button>';
-        if ($status === 'inactive') $b .= '<button class="btn btn-xs btn-success btn-activate" data-id="'.$id.'"><i class="fa fa-check"></i></button> <button class="btn btn-xs btn-danger btn-delete" data-id="'.$id.'"><i class="fa fa-trash"></i></button>';
-        if ($status === 'deleted')  $b .= '<button class="btn btn-xs btn-success btn-restore" data-id="'.$id.'"><i class="fa fa-undo"></i></button>';
+        $mod = rtrim($resource, 's'); // 'customers'→'customer', 'leads'→'lead', etc.
+        $b = '<div class="flex items-center gap-1">';
+        if (!empty($opts['view']))
+            $b .= '<a href="'.base_url($resource.'/detail/'.$id).'" class="inline-flex items-center justify-center w-7 h-7 bg-cyan-100 text-cyan-700 rounded-lg hover:bg-cyan-200 transition-colors" title="View"><i class="fa fa-eye" style="font-size:11px"></i></a>';
+        if (!empty($opts['edit']) && $status !== 'deleted')
+            $b .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors btn-edit-'.$mod.'" data-id="'.$id.'" title="Edit"><i class="fa fa-pencil" style="font-size:11px"></i></button>';
+        if ($status === 'active')
+            $b .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors btn-'.$mod.'-status" data-id="'.$id.'" data-action="deactivate" title="Deactivate"><i class="fa fa-ban" style="font-size:11px"></i></button>'
+                . '<button class="inline-flex items-center justify-center w-7 h-7 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors btn-'.$mod.'-status" data-id="'.$id.'" data-action="delete" title="Delete"><i class="fa fa-trash" style="font-size:11px"></i></button>';
+        if ($status === 'inactive')
+            $b .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors btn-'.$mod.'-status" data-id="'.$id.'" data-action="activate" title="Activate"><i class="fa fa-check" style="font-size:11px"></i></button>'
+                . '<button class="inline-flex items-center justify-center w-7 h-7 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors btn-'.$mod.'-status" data-id="'.$id.'" data-action="delete" title="Delete"><i class="fa fa-trash" style="font-size:11px"></i></button>';
+        if ($status === 'deleted')
+            $b .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors btn-'.$mod.'-status" data-id="'.$id.'" data-action="restore" title="Restore"><i class="fa fa-undo" style="font-size:11px"></i></button>';
         return $b . '</div>';
+    }
+}
+
+if (!function_exists('crm_btn')) {
+    function crm_btn($class, $title, $icon, $attrs = '') {
+        return '<button class="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors '.$class.'" title="'.$title.'" '.$attrs.'><i class="fa fa-'.$icon.'" style="font-size:11px"></i></button>';
     }
 }
 

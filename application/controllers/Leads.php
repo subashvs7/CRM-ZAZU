@@ -26,12 +26,12 @@ class Leads extends MY_Controller {
         [$rows, $total] = $this->Lead_model->datatable($params, $sf, $this->get_user_id(), $this->get_role());
         $data = [];
         foreach ($rows as $r) {
-            $actions = '<div class="btn-group">';
-            $actions .= '<a href="'.base_url('leads/detail/'.$r['id']).'" class="btn btn-xs btn-info"><i class="fa fa-eye"></i></a> ';
-            if ($r['status']!=='deleted') $actions .= '<button class="btn btn-xs btn-primary btn-edit-lead" data-id="'.$r['id'].'"><i class="fa fa-pencil"></i></button> ';
-            if ($r['status']==='active')   $actions .= '<button class="btn btn-xs btn-warning btn-lead-status" data-id="'.$r['id'].'" data-action="deactivate"><i class="fa fa-ban"></i></button> <button class="btn btn-xs btn-danger btn-lead-status" data-id="'.$r['id'].'" data-action="delete"><i class="fa fa-trash"></i></button>';
-            if ($r['status']==='inactive') $actions .= '<button class="btn btn-xs btn-success btn-lead-status" data-id="'.$r['id'].'" data-action="activate"><i class="fa fa-check"></i></button>';
-            if ($r['status']==='deleted')  $actions .= '<button class="btn btn-xs btn-success btn-lead-status" data-id="'.$r['id'].'" data-action="restore"><i class="fa fa-undo"></i></button>';
+            $actions = '<div class="flex items-center gap-1">';
+            $actions .= '<a href="'.base_url('leads/detail/'.$r['id']).'" class="inline-flex items-center justify-center w-7 h-7 bg-cyan-100 text-cyan-700 rounded-lg hover:bg-cyan-200 transition-colors" title="View"><i class="fa fa-eye" style="font-size:11px"></i></a>';
+            if ($r['status']!=='deleted') $actions .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors btn-edit-lead" data-id="'.$r['id'].'" title="Edit"><i class="fa fa-pencil" style="font-size:11px"></i></button>';
+            if ($r['status']==='active')   $actions .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors btn-lead-status" data-id="'.$r['id'].'" data-action="deactivate" title="Deactivate"><i class="fa fa-ban" style="font-size:11px"></i></button><button class="inline-flex items-center justify-center w-7 h-7 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors btn-lead-status" data-id="'.$r['id'].'" data-action="delete" title="Delete"><i class="fa fa-trash" style="font-size:11px"></i></button>';
+            if ($r['status']==='inactive') $actions .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors btn-lead-status" data-id="'.$r['id'].'" data-action="activate" title="Activate"><i class="fa fa-check" style="font-size:11px"></i></button>';
+            if ($r['status']==='deleted')  $actions .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors btn-lead-status" data-id="'.$r['id'].'" data-action="restore" title="Restore"><i class="fa fa-undo" style="font-size:11px"></i></button>';
             $actions .= '</div>';
             $data[] = [
                 $r['id'], esc_html($r['title']), esc_html($r['customer_name']),

@@ -1,22 +1,49 @@
-<section class="content-header">
-    <h1>Face Mismatches</h1>
-    <ol class="breadcrumb"><li><a href="<?= base_url('selfie/log') ?>">Selfie</a></li><li class="active">Mismatches</li></ol>
-</section>
-<section class="content">
-<div class="box box-danger">
-    <div class="box-header with-border"><h3 class="box-title"><i class="fa fa-exclamation-triangle"></i> Face Verification Failures</h3></div>
-    <div class="box-body">
-        <table id="mismatch-table" class="table table-bordered table-striped">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <i class="fa fa-exclamation-triangle text-red-600 text-lg"></i>
+        </div>
+        <div>
+            <h1 class="text-xl font-bold text-gray-800">Face Mismatches</h1>
+            <nav class="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                <a href="<?= base_url('selfie/log') ?>" class="hover:text-blue-600 transition-colors">Selfie</a>
+                <i class="fa fa-angle-right text-[10px]"></i>
+                <span class="text-gray-600">Mismatches</span>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+        <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+            <i class="fa fa-exclamation-triangle text-red-600 text-sm"></i>
+        </div>
+        <div>
+            <h3 class="text-sm font-bold text-gray-800">Face Verification Failures</h3>
+            <p class="text-xs text-gray-400 mt-0.5">Attendance punches that failed face recognition</p>
+        </div>
+    </div>
+    <div class="p-4 overflow-x-auto">
+        <table id="mismatch-table" class="w-full">
             <thead><tr><th>#</th><th>Staff</th><th>Date</th><th>Punch Time</th><th>Confidence</th><th>Actions</th></tr></thead>
             <tbody></tbody>
         </table>
     </div>
 </div>
-</section>
+
 <script>
-var mismatchTable=$('#mismatch-table').DataTable({processing:true,serverSide:true,ajax:{url:BASE_URL+'selfie/mismatches_dt'},columns:[{data:0},{data:1},{data:2},{data:3},{data:4},{data:5,orderable:false}],order:[[2,'desc']]});
-$(document).on('click','.btn-override-selfie',function(){
+var mismatchTable = $('#mismatch-table').DataTable({
+    processing: true, serverSide: true,
+    ajax: { url: BASE_URL+'selfie/mismatches_dt' },
+    columns: [{data:0},{data:1},{data:2},{data:3},{data:4},{data:5,orderable:false}],
+    order: [[2,'desc']]
+});
+
+$(document).on('click', '.btn-override-selfie', function(){
     if(!confirm('Override face verification for this record?')) return;
-    $.post(BASE_URL+'selfie/override',{id:$(this).data('id'),[CI3_CSRF_NAME]:CI3_CSRF_HASH},function(res){if(res.status==='success'){CRM.toast('success',res.message);mismatchTable.ajax.reload(null,false);}});
+    $.post(BASE_URL+'selfie/override', {id:$(this).data('id'), [CI3_CSRF_NAME]:CI3_CSRF_HASH}, function(res){
+        if(res.status==='success'){ CRM.toast('success',res.message); mismatchTable.ajax.reload(null,false); }
+    });
 });
 </script>

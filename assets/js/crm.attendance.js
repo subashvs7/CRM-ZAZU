@@ -1,7 +1,5 @@
 /**
  * Attendance module JS
- * Single source of truth for #att-table DataTable init.
- * Loaded via page_js='attendance' in footer — runs AFTER all plugins are ready.
  */
 $(function() {
     // Attendance index page — init only if NOT already initialised
@@ -19,6 +17,42 @@ $(function() {
             ],
             order: [[1, 'desc']]
         });
-        // Status-tab reload is handled globally by crm.core.js using window.mainTable
     }
+
+    // ---- Regularize button ----
+    $(document).on('click', '.btn-regularize', function() {
+        var $btn = $(this);
+        $('#reg-att-id').val($btn.data('id'));
+        $('#reg-att-date').text($btn.data('date') || '—');
+        $('#reg-in-display').text($btn.data('in') || '—');
+        $('#reg-out-display').text($btn.data('out') || '—');
+        $('#reg-corrected-in').val($btn.data('in') || '');
+        $('#reg-corrected-out').val($btn.data('out') || '');
+        $('#reg-corrected-date').val('');
+        $('#reg-reason').val('');
+        CRM.init_plugins($('#regularize-modal'));
+        $('#regularize-modal').modal('show');
+    });
+
+    $('#btn-save-regularize').click(function() {
+        var reason = $.trim($('#reg-reason').val());
+        if (!reason) { CRM.toast('error', 'Please enter a reason.'); return; }
+        var $btn = $(this); CRM.btn_loading($btn);
+        $.post(BASE_URL + 'attendance/request_correction', {
+            id:             $('#reg-att-id').val(),
+            corrected_date: $('#reg-corrected-date').val(),
+            corrected_in:   $('#reg-corrected-in').val(),
+            corrected_out:  $('#reg-corrected-out').val(),
+            reason:         reason,
+            [CI3_CSRF_NAME]: CI3_CSRF_HASH
+        }, function(res) {
+            if (res.status === 'success') {
+                CRM.toast('success', res.message);
+                $('#regularize-modal').modal('hide');
+                if (window.mainTable) window.mainTable.ajax.reload(null, false);
+            } else {
+                CRM.toast('error', res.message || 'Failed.');
+            }
+        }).always(function() { CRM.btn_reset($btn); });
+    });
 });

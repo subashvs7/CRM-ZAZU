@@ -59,16 +59,26 @@ class Attendance extends MY_Controller {
         $data = [];
         foreach ($rows as $r) {
             $acts = '';
-            if ($this->is_manager()) $acts = '<button class="btn btn-xs btn-warning btn-regularize" data-id="'.$r['id'].'"><i class="fa fa-edit"></i> Regularize</button>';
+            if ($this->is_manager()) {
+                $in  = $r['punch_in_at']  ? date('H:i', strtotime($r['punch_in_at']))  : '';
+                $out = $r['punch_out_at'] ? date('H:i', strtotime($r['punch_out_at'])) : '';
+                $acts = '<button class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors btn-regularize"'
+                      . ' data-id="'.$r['id'].'" data-date="'.$r['date'].'" data-in="'.$in.'" data-out="'.$out.'">'
+                      . '<i class="fa fa-edit" style="font-size:11px"></i> Regularize</button>';
+            }
+            $face = $r['face_verified']
+                ? '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-green-100 text-green-700">Verified</span>'
+                : '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-500">No</span>';
+            $reg = $r['is_regularized']
+                ? '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-amber-100 text-amber-700">Yes</span>'
+                : '';
             $data[] = [
                 $r['id'], $r['date'], esc_html($r['user_name']),
                 $r['punch_in_at'] ? date('H:i',strtotime($r['punch_in_at'])) : '-',
                 $r['punch_out_at'] ? date('H:i',strtotime($r['punch_out_at'])) : '-',
                 att_status_badge($r['attendance_status']),
                 $r['working_hours'].'h',
-                $r['face_verified'] ? '<span class="label label-success">Verified</span>' : '<span class="label label-default">No</span>',
-                $r['is_regularized'] ? '<span class="label label-warning">Yes</span>' : '',
-                $acts,
+                $face, $reg, $acts,
             ];
         }
         $this->json_list($data, $total, $total);
@@ -91,17 +101,38 @@ class Attendance extends MY_Controller {
         $rows = $this->db->get()->result_array();
         $data = [];
         foreach ($rows as $r) {
-            $data[] = [$r['id'],esc_html($r['user_name']),$r['date'],$r['punch_in_at']??'-',$r['punch_out_at']??'-',att_status_badge($r['attendance_status']),'<button class="btn btn-xs btn-success btn-approve-corr" data-id="'.$r['id'].'"><i class="fa fa-check"></i> Approve</button>'];
+            $data[] = [$r['id'],esc_html($r['user_name']),$r['date'],$r['punch_in_at']??'-',$r['punch_out_at']??'-',att_status_badge($r['attendance_status']),'<button class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors btn-approve-corr" data-id="'.$r['id'].'"><i class="fa fa-check" style="font-size:11px"></i> Approve</button>'];
         }
         $this->json_list($data,$total,$total);
     }
 
     public function request_correction() {
-        $id     = (int)$this->input->post('id');
-        $reason = $this->input->post('reason');
-        if (!$id || !$reason) $this->json_error('ID and reason required.');
-        $this->Attendance_model->update($id, ['regularized_reason'=>$reason]);
-        $this->json_success([],'Correction requested.');
+        $id        = (int)$this->input->post('id');
+        $reason    = $this->input->post('reason');
+        $corr_date = $this->input->post('corrected_date');
+        $corr_in   = $this->input->post('corrected_in');
+        $corr_out  = $this->input->post('corrected_out');
+
+        if (!$id || !$reason) $this->json_error('Attendance ID and reason are required.');
+
+        $record = $this->Attendance_model->get_by_id($id);
+        if (!$record) $this->json_error('Attendance record not found.', 404);
+
+        $upd = ['regularized_reason' => $reason];
+
+        if ($this->is_manager()) {
+            $base_date = ($corr_date && preg_match('/^\d{4}-\d{2}-\d{2}$/', $corr_date)) ? $corr_date : $record['date'];
+            if ($corr_in)  $upd['punch_in_at']  = $base_date . ' ' . $corr_in  . ':00';
+            if ($corr_out) $upd['punch_out_at'] = $base_date . ' ' . $corr_out . ':00';
+            $upd['is_regularized'] = 1;
+            $upd['regularized_by'] = $this->get_user_id();
+            $msg = 'Attendance regularized successfully.';
+        } else {
+            $msg = 'Correction requested. Awaiting manager review.';
+        }
+
+        $this->Attendance_model->update($id, $upd);
+        $this->json_success([], $msg);
     }
 
     public function approve_correction() {

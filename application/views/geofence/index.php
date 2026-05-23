@@ -1,84 +1,157 @@
-<section class="content-header">
-    <h1>Geofence Zones</h1>
-    <ol class="breadcrumb"><li><a href="<?= base_url('dashboard') ?>">Home</a></li><li class="active">Geofence</li></ol>
-</section>
-<section class="content">
-<?php $this->load->view('partials/_status_tabs', get_defined_vars()); ?>
-<div class="box box-primary">
-    <div class="box-header with-border">
-        <h3 class="box-title"><i class="fa fa-circle-o"></i> Geofence Zones</h3>
-        <div class="box-tools">
-            <a href="<?= base_url('geofence/violations') ?>" class="btn btn-danger btn-sm"><i class="fa fa-exclamation-triangle"></i> Violations</a>
-            <a href="<?= base_url('geofence/alert_rules') ?>" class="btn btn-warning btn-sm"><i class="fa fa-bell"></i> Alert Rules</a>
-            <button class="btn btn-success btn-sm" id="btn-add-zone"><i class="fa fa-plus"></i> Add Zone</button>
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <i class="fa fa-circle-o text-emerald-600 text-lg"></i>
+        </div>
+        <div>
+            <h1 class="text-xl font-bold text-gray-800">Geofence Zones</h1>
+            <nav class="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                <a href="<?= base_url('dashboard') ?>" class="hover:text-blue-600 transition-colors">Home</a>
+                <i class="fa fa-angle-right text-[10px]"></i>
+                <span class="text-gray-600">Geofence</span>
+            </nav>
         </div>
     </div>
-    <div class="box-body">
-        <table id="zones-table" class="table table-bordered table-striped">
+    <div class="flex items-center gap-2 self-start sm:self-auto">
+        <a href="<?= base_url('geofence/violations') ?>" class="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors">
+            <i class="fa fa-exclamation-triangle text-red-500"></i> Violations
+        </a>
+        <a href="<?= base_url('geofence/alert_rules') ?>" class="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors">
+            <i class="fa fa-bell text-amber-500"></i> Alert Rules
+        </a>
+        <button id="btn-add-zone" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors shadow-sm">
+            <i class="fa fa-plus"></i> Add Zone
+        </button>
+    </div>
+</div>
+
+<?php $this->load->view('partials/_status_tabs', get_defined_vars()); ?>
+
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+        <div class="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+            <i class="fa fa-circle-o text-emerald-600 text-sm"></i>
+        </div>
+        <div>
+            <h3 class="text-sm font-bold text-gray-800">Geofence Zones</h3>
+            <p class="text-xs text-gray-400 mt-0.5">Customer, office, and territory boundaries</p>
+        </div>
+    </div>
+    <div class="p-4 overflow-x-auto">
+        <table id="zones-table" class="w-full">
             <thead><tr><th>#</th><th>Name</th><th>Type</th><th>Radius</th><th>Auto Checkin</th><th>On Enter</th><th>On Exit</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody></tbody>
         </table>
     </div>
 </div>
 
+<!-- Zone Modal -->
 <div class="modal fade" id="zone-modal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button><h4 class="modal-title">Geofence Zone</h4></div>
+            <div class="modal-header">
+                <h4 class="modal-title">Geofence Zone</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
             <div class="modal-body">
                 <form id="zone-form">
                     <input type="hidden" name="<?= $csrf_name ?>" value="<?= $csrf_hash ?>">
                     <input type="hidden" name="id" id="zone-id" value="0">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group"><label>Name *</label><input type="text" name="name" class="form-control" required></div>
-                            <div class="form-group"><label>Zone Type</label>
-                                <select name="zone_type" class="form-control"><option value="customer">Customer</option><option value="office">Office</option><option value="restricted">Restricted</option><option value="territory">Territory</option></select>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Name *</label>
+                                <input type="text" name="name" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" required>
                             </div>
-                            <div class="form-group"><label>Customer</label>
-                                <select name="customer_id" class="form-control select2">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Zone Type</label>
+                                <select name="zone_type" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                    <option value="customer">Customer</option>
+                                    <option value="office">Office</option>
+                                    <option value="restricted">Restricted</option>
+                                    <option value="territory">Territory</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Customer</label>
+                                <select name="customer_id" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 select2">
                                     <option value="">-- None --</option>
                                     <?php foreach($customers as $c): ?><option value="<?= $c['id'] ?>"><?= esc_html($c['name']) ?></option><?php endforeach; ?>
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <!-- Location Picker for zone center -->
-                            <div class="form-group location-picker-group">
-                                <label>Zone Center <small class="text-muted">(GPS coordinates)</small></label>
-                                <div class="row">
-                                    <div class="col-xs-6">
-                                        <input type="text" name="center_lat" class="form-control" placeholder="Latitude">
-                                    </div>
-                                    <div class="col-xs-6">
-                                        <input type="text" name="center_lng" class="form-control" placeholder="Longitude">
-                                    </div>
+                        <div class="space-y-4">
+                            <div class="location-picker-group">
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Zone Center <span class="normal-case font-normal text-gray-400">(GPS coordinates)</span></label>
+                                <div class="grid grid-cols-2 gap-2 mb-2">
+                                    <input type="text" name="center_lat" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Latitude">
+                                    <input type="text" name="center_lng" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Longitude">
                                 </div>
-                                <button type="button"
-                                        class="btn btn-sm btn-primary btn-detect-location"
-                                        style="margin-top:6px;width:100%"
-                                        data-lat="[name='center_lat']"
-                                        data-lng="[name='center_lng']"
-                                        data-feedback="#geo-location-feedback"
-                                        data-map="#geo-map-preview">
+                                <button type="button" class="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-blue-600 text-white rounded-xl hover:bg-blue-700 btn-detect-location"
+                                        data-lat="[name='center_lat']" data-lng="[name='center_lng']"
+                                        data-feedback="#geo-location-feedback" data-map="#geo-map-preview">
                                     <i class="fa fa-crosshairs"></i> Detect My Location
                                 </button>
-                                <div id="geo-location-feedback" style="margin-top:5px;font-size:12px"></div>
-                                <div id="geo-map-preview" style="display:none;margin-top:8px;border-radius:4px;overflow:hidden"></div>
+                                <div id="geo-location-feedback" class="text-xs text-gray-500 mt-1"></div>
+                                <div id="geo-map-preview" style="display:none" class="mt-2 rounded-xl overflow-hidden"></div>
                             </div>
-                            <div class="form-group"><label>Radius (meters)</label><input type="number" name="radius_meters" class="form-control" placeholder="e.g. 200"></div>
-                            <div class="checkbox"><label><input type="checkbox" name="auto_checkin" value="1"> Auto Check-in</label></div>
-                            <div class="checkbox"><label><input type="checkbox" name="alert_on_enter" value="1"> Alert on Enter</label></div>
-                            <div class="checkbox"><label><input type="checkbox" name="alert_on_exit" value="1"> Alert on Exit</label></div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Radius (meters)</label>
+                                <input type="number" name="radius_meters" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="e.g. 200">
+                            </div>
+                            <div class="space-y-2 pt-1">
+                                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                                    <input type="checkbox" name="auto_checkin" value="1" class="rounded"> Auto Check-in
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                                    <input type="checkbox" name="alert_on_enter" value="1" class="rounded"> Alert on Enter
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                                    <input type="checkbox" name="alert_on_exit" value="1" class="rounded"> Alert on Exit
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-default" data-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary" id="btn-save-zone">Save</button>
+                <button class="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50" data-dismiss="modal">Cancel</button>
+                <button class="px-4 py-2 text-sm bg-emerald-600 text-white rounded-xl hover:bg-emerald-700" id="btn-save-zone"><i class="fa fa-save mr-1"></i> Save</button>
             </div>
         </div>
     </div>
 </div>
-</section>
+
+<script>
+var zonesTable = $('#zones-table').DataTable({
+    processing: true, serverSide: true,
+    ajax: { url: BASE_URL+'geofence/datatable', data: function(d){ d.status_filter = window.currentStatusFilter||''; } },
+    columns: [{data:0},{data:1},{data:2},{data:3},{data:4},{data:5},{data:6},{data:7},{data:8,orderable:false}],
+    order: [[0,'desc']]
+});
+window.mainTable = zonesTable;
+
+$('#btn-add-zone').click(function(){
+    $('#zone-form')[0].reset();
+    $('#zone-id').val(0);
+    CRM.init_plugins();
+    $('#zone-modal').modal('show');
+});
+
+$('#btn-save-zone').click(function(){
+    $.ajax({
+        url: BASE_URL+'geofence/save', method: 'POST',
+        data: new FormData($('#zone-form')[0]), processData: false, contentType: false,
+        success: function(res){
+            if(res.status==='success'){ CRM.toast('success',res.message); $('#zone-modal').modal('hide'); zonesTable.ajax.reload(null,false); }
+            else CRM.toast('error', res.message);
+        }
+    });
+});
+
+$(document).on('click', '.btn-zone-status', function(){
+    $.post(BASE_URL+'geofence/status', {id:$(this).data('id'), action:$(this).data('action'), [CI3_CSRF_NAME]:CI3_CSRF_HASH}, function(res){
+        if(res.status==='success'){ CRM.toast('success',res.message); zonesTable.ajax.reload(null,false); }
+    });
+});
+</script>

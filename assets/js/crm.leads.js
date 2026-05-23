@@ -11,28 +11,34 @@ $(function() {
         });
     }
 
-    $('#btn-add-lead').click(function() {
-        $('#lead-form')[0].reset();
-        $('#lead-id').val(0);
-        CRM.clear_errors($('#lead-form'));
+    function openLeadModal(data) {
+        var $f = $('#lead-form');
+        $f[0].reset();
+        CRM.clear_errors($f);
+        $('#lead-id').val(data ? data.id : 0);
+        if (data) {
+            $f.find('[name="title"]').val(data.title || '');
+            $f.find('[name="description"]').val(data.description || '');
+            $f.find('[name="source"]').val(data.source || '');
+            $f.find('[name="lead_status"]').val(data.lead_status || 'new');
+            $f.find('[name="expected_value"]').val(data.expected_value ? (data.expected_value / 100).toFixed(2) : '');
+            $f.find('[name="expected_close_date"]').val(data.expected_close_date || '');
+            $f.find('[name="customer_id"]').val(data.customer_id || '').trigger('change');
+            if ($f.find('[name="assigned_to"]').length) $f.find('[name="assigned_to"]').val(data.assigned_to || '').trigger('change');
+            $('#lead-modal .modal-title').text('Edit Lead');
+        } else {
+            $('#lead-modal .modal-title').text('Add Lead');
+        }
         $('#lead-modal').modal('show');
         CRM.init_plugins($('#lead-modal'));
-    });
+    }
+
+    $('#btn-add-lead').click(function() { openLeadModal(null); });
 
     $(document).on('click', '.btn-edit-lead', function() {
-        var id = $(this).data('id');
-        $.getJSON(BASE_URL + 'leads/get/' + id, function(res) {
-            var l = res.data;
-            $('#lead-id').val(l.id);
-            $.each(['title','description','source','lead_status','expected_close_date'], function(i,f) {
-                $('[name="'+f+'"]').val(l[f]||'');
-            });
-            $('[name="expected_value"]').val(l.expected_value ? (l.expected_value / 100).toFixed(2) : '');
-            $('[name="customer_id"]').val(l.customer_id).trigger('change');
-            if (l.assigned_to) $('[name="assigned_to"]').val(l.assigned_to).trigger('change');
-            CRM.clear_errors($('#lead-form'));
-            $('#lead-modal').modal('show');
-            CRM.init_plugins($('#lead-modal'));
+        $.getJSON(BASE_URL + 'leads/get/' + $(this).data('id'), function(res) {
+            if (res.status === 'success') openLeadModal(res.data);
+            else CRM.toast('error', res.message || 'Failed to load.');
         });
     });
 
@@ -58,6 +64,6 @@ $(function() {
     $(document).on('click', '.btn-lead-status', function() {
         var action = $(this).data('action'), id = $(this).data('id');
         CRM.handle_status(action, id, BASE_URL + 'leads/status', window.mainTable,
-            (action === 'delete' ? 'Delete this lead?' : 'Are you sure?'));
+            action === 'delete' ? 'Delete this lead?' : 'Are you sure?');
     });
 });

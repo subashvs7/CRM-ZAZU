@@ -37,11 +37,11 @@ class Orders extends MY_Controller {
         [$rows, $total] = $this->Order_model->datatable($params, $sf, $this->get_user_id(), $this->get_role());
         $data = [];
         foreach ($rows as $r) {
-            $actions = '<div class="btn-group">';
-            $actions .= '<a href="'.base_url('orders/detail/'.$r['id']).'" class="btn btn-xs btn-info"><i class="fa fa-eye"></i></a> ';
-            if ($r['status']!=='deleted') $actions .= '<button class="btn btn-xs btn-primary btn-edit-order" data-id="'.$r['id'].'"><i class="fa fa-pencil"></i></button> ';
-            if ($r['status']==='active')   $actions .= '<button class="btn btn-xs btn-danger btn-order-status" data-id="'.$r['id'].'" data-action="delete"><i class="fa fa-trash"></i></button>';
-            if ($r['status']==='deleted')  $actions .= '<button class="btn btn-xs btn-success btn-order-status" data-id="'.$r['id'].'" data-action="restore"><i class="fa fa-undo"></i></button>';
+            $actions = '<div class="flex items-center gap-1">';
+            $actions .= '<a href="'.base_url('orders/detail/'.$r['id']).'" class="inline-flex items-center justify-center w-7 h-7 bg-cyan-100 text-cyan-700 rounded-lg hover:bg-cyan-200 transition-colors" title="View"><i class="fa fa-eye" style="font-size:11px"></i></a>';
+            if ($r['status']!=='deleted') $actions .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors btn-edit-order" data-id="'.$r['id'].'" title="Edit"><i class="fa fa-pencil" style="font-size:11px"></i></button>';
+            if ($r['status']==='active')   $actions .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors btn-order-status" data-id="'.$r['id'].'" data-action="delete" title="Delete"><i class="fa fa-trash" style="font-size:11px"></i></button>';
+            if ($r['status']==='deleted')  $actions .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors btn-order-status" data-id="'.$r['id'].'" data-action="restore" title="Restore"><i class="fa fa-undo" style="font-size:11px"></i></button>';
             $actions .= '</div>';
             $data[] = [
                 $r['id'], esc_html($r['order_number']), esc_html($r['customer_name']),

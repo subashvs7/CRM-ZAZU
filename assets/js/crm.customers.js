@@ -2,7 +2,6 @@
  * Customers module JS
  */
 $(function() {
-    // Guard prevents double-init if somehow loaded twice
     if ($('#customers-table').length && !$.fn.DataTable.isDataTable('#customers-table')) {
         window.mainTable = $('#customers-table').DataTable({
             processing: true, serverSide: true,
@@ -12,27 +11,30 @@ $(function() {
         });
     }
 
-    $('#btn-add-customer').click(function() {
-        $('#customer-form')[0].reset();
-        $('#customer-id').val(0);
-        $('#customer-modal-title').text('Add Customer');
-        CRM.clear_errors($('#customer-form'));
+    function openCustomerModal(data) {
+        var $f = $('#customer-form');
+        $f[0].reset();
+        CRM.clear_errors($f);
+        $('#customer-id').val(data ? data.id : 0);
+        if (data) {
+            $.each(['name','phone','email','gst_number','address','city','state','pincode','latitude','longitude','notes'], function(i, f) {
+                $f.find('[name="'+f+'"]').val(data[f] || '');
+            });
+            if (data.assigned_to) $f.find('[name="assigned_to"]').val(data.assigned_to).trigger('change');
+            $('#customer-modal .modal-title').text('Edit Customer');
+        } else {
+            $('#customer-modal .modal-title').text('Add Customer');
+        }
         $('#customer-modal').modal('show');
         CRM.init_plugins($('#customer-modal'));
-    });
+    }
 
-    $(document).on('click', '.btn-edit', function() {
-        var id = $(this).data('id');
-        $.getJSON(BASE_URL + 'customers/get/' + id, function(res) {
-            var c = res.data;
-            $('#customer-id').val(c.id);
-            $.each(['name','phone','email','address','city','state','pincode','gst_number','notes','latitude','longitude'], function(i, f) {
-                $('[name="'+f+'"]').val(c[f] || '');
-            });
-            if (c.assigned_to) $('[name="assigned_to"]').val(c.assigned_to).trigger('change');
-            $('#customer-modal-title').text('Edit Customer');
-            $('#customer-modal').modal('show');
-            CRM.init_plugins($('#customer-modal'));
+    $('#btn-add-customer').click(function() { openCustomerModal(null); });
+
+    $(document).on('click', '.btn-edit-customer', function() {
+        $.getJSON(BASE_URL + 'customers/get/' + $(this).data('id'), function(res) {
+            if (res.status === 'success') openCustomerModal(res.data);
+            else CRM.toast('error', res.message || 'Failed to load.');
         });
     });
 
@@ -55,16 +57,9 @@ $(function() {
         });
     });
 
-    $(document).on('click', '.btn-deactivate', function() {
-        CRM.handle_status('deactivate', $(this).data('id'), BASE_URL + 'customers/status', window.mainTable, 'Deactivate this customer?');
-    });
-    $(document).on('click', '.btn-activate', function() {
-        CRM.handle_status('activate', $(this).data('id'), BASE_URL + 'customers/status', window.mainTable);
-    });
-    $(document).on('click', '.btn-delete', function() {
-        CRM.handle_status('delete', $(this).data('id'), BASE_URL + 'customers/status', window.mainTable, 'Delete this customer?');
-    });
-    $(document).on('click', '.btn-restore', function() {
-        CRM.handle_status('restore', $(this).data('id'), BASE_URL + 'customers/status', window.mainTable);
+    $(document).on('click', '.btn-customer-status', function() {
+        var action = $(this).data('action'), id = $(this).data('id');
+        CRM.handle_status(action, id, BASE_URL + 'customers/status', window.mainTable,
+            action === 'delete' ? 'Delete this customer?' : 'Are you sure?');
     });
 });

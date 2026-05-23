@@ -11,6 +11,10 @@ class Admin extends MY_Controller {
         $this->load->library('Crm_auth');
     }
 
+    private function _btn($cls, $icon, $title, $extra = '') {
+        return '<button class="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors '.$cls.'" title="'.$title.'" '.$extra.'><i class="fa fa-'.$icon.'" style="font-size:11px"></i></button>';
+    }
+
     // ── USERS ──────────────────────────────────────────────────────────
     public function users() {
         $teams = $this->Team_model->get_active();
@@ -23,18 +27,19 @@ class Admin extends MY_Controller {
         [$rows, $total] = $this->User_model->datatable($params, $sf);
         $data = [];
         foreach ($rows as $r) {
-            $actions = '<div class="btn-group">';
-            $actions .= '<button class="btn btn-xs btn-primary btn-edit-user" data-id="'.$r['id'].'"><i class="fa fa-pencil"></i></button> ';
-            if ($r['status']==='active')   $actions .= '<button class="btn btn-xs btn-warning btn-user-status" data-id="'.$r['id'].'" data-action="deactivate"><i class="fa fa-ban"></i></button> <button class="btn btn-xs btn-danger btn-user-status" data-id="'.$r['id'].'" data-action="delete"><i class="fa fa-trash"></i></button>';
-            if ($r['status']==='inactive') $actions .= '<button class="btn btn-xs btn-success btn-user-status" data-id="'.$r['id'].'" data-action="activate"><i class="fa fa-check"></i></button> <button class="btn btn-xs btn-danger btn-user-status" data-id="'.$r['id'].'" data-action="delete"><i class="fa fa-trash"></i></button>';
-            if ($r['status']==='deleted')  $actions .= '<button class="btn btn-xs btn-success btn-user-status" data-id="'.$r['id'].'" data-action="restore"><i class="fa fa-undo"></i></button>';
-            $actions .= '</div>';
+            $acts = '<div class="flex items-center gap-1">';
+            $acts .= $this->_btn('bg-blue-100 text-blue-700 hover:bg-blue-200 btn-edit-user', 'pencil', 'Edit', 'data-id="'.$r['id'].'"');
+            if ($r['status']==='active')   $acts .= $this->_btn('bg-amber-100 text-amber-700 hover:bg-amber-200 btn-user-status','ban','Deactivate','data-id="'.$r['id'].'" data-action="deactivate"') . $this->_btn('bg-red-100 text-red-700 hover:bg-red-200 btn-user-status','trash','Delete','data-id="'.$r['id'].'" data-action="delete"');
+            if ($r['status']==='inactive') $acts .= $this->_btn('bg-green-100 text-green-700 hover:bg-green-200 btn-user-status','check','Activate','data-id="'.$r['id'].'" data-action="activate"') . $this->_btn('bg-red-100 text-red-700 hover:bg-red-200 btn-user-status','trash','Delete','data-id="'.$r['id'].'" data-action="delete"');
+            if ($r['status']==='deleted')  $acts .= $this->_btn('bg-green-100 text-green-700 hover:bg-green-200 btn-user-status','undo','Restore','data-id="'.$r['id'].'" data-action="restore"');
+            $acts .= '</div>';
+            $roleColor = $r['role']==='admin' ? 'bg-red-100 text-red-700' : ($r['role']==='manager' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700');
             $data[] = [
                 $r['id'], esc_html($r['name']), esc_html($r['email']),
-                '<span class="label label-'.($r['role']==='admin'?'danger':($r['role']==='manager'?'warning':'primary')).'">'.esc_html(str_replace('_',' ',$r['role'])).'</span>',
+                '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg '.$roleColor.'">'.esc_html(str_replace('_',' ',$r['role'])).'</span>',
                 esc_html($r['team_name'] ?? '-'), status_badge($r['status']),
                 $r['last_login_at'] ? date('d M Y H:i', strtotime($r['last_login_at'])) : 'Never',
-                $actions,
+                $acts,
             ];
         }
         $this->json_list($data, $total, $total);
@@ -132,15 +137,21 @@ class Admin extends MY_Controller {
         $data = [];
         foreach ($rows as $r) {
             $cnt  = $this->Team_model->get_member_count($r['id']);
-            $acts = '<div class="btn-group">';
-            $acts .= '<button class="btn btn-xs btn-primary btn-edit-team" data-id="'.$r['id'].'"><i class="fa fa-pencil"></i></button> ';
-            if ($r['status']==='active')   $acts .= '<button class="btn btn-xs btn-warning btn-team-status" data-id="'.$r['id'].'" data-action="deactivate"><i class="fa fa-ban"></i></button> <button class="btn btn-xs btn-danger btn-team-status" data-id="'.$r['id'].'" data-action="delete"><i class="fa fa-trash"></i></button>';
-            if ($r['status']==='inactive') $acts .= '<button class="btn btn-xs btn-success btn-team-status" data-id="'.$r['id'].'" data-action="activate"><i class="fa fa-check"></i></button>';
-            if ($r['status']==='deleted')  $acts .= '<button class="btn btn-xs btn-success btn-team-status" data-id="'.$r['id'].'" data-action="restore"><i class="fa fa-undo"></i></button>';
+            $acts = '<div class="flex items-center gap-1">';
+            $acts .= $this->_btn('bg-blue-100 text-blue-700 hover:bg-blue-200 btn-edit-team', 'pencil', 'Edit', 'data-id="'.$r['id'].'"');
+            if ($r['status']==='active')   $acts .= $this->_btn('bg-amber-100 text-amber-700 hover:bg-amber-200 btn-team-status','ban','Deactivate','data-id="'.$r['id'].'" data-action="deactivate"') . $this->_btn('bg-red-100 text-red-700 hover:bg-red-200 btn-team-status','trash','Delete','data-id="'.$r['id'].'" data-action="delete"');
+            if ($r['status']==='inactive') $acts .= $this->_btn('bg-green-100 text-green-700 hover:bg-green-200 btn-team-status','check','Activate','data-id="'.$r['id'].'" data-action="activate"');
+            if ($r['status']==='deleted')  $acts .= $this->_btn('bg-green-100 text-green-700 hover:bg-green-200 btn-team-status','undo','Restore','data-id="'.$r['id'].'" data-action="restore"');
             $acts .= '</div>';
             $data[] = [$r['id'], esc_html($r['name']), esc_html($r['manager_name']??'-'), esc_html($r['territory']??'-'), $cnt, status_badge($r['status']), $acts];
         }
         $this->json_list($data, $total, $total);
+    }
+
+    public function fetch_team($id) {
+        $team = $this->Team_model->get_by_id($id);
+        if (!$team) $this->json_error('Team not found.', 404);
+        $this->json_success($team);
     }
 
     public function save_team() {
@@ -169,14 +180,23 @@ class Admin extends MY_Controller {
         [$rows, $total] = $this->Product_model->datatable($params, $sf);
         $data = [];
         foreach ($rows as $r) {
-            $acts = '<div class="btn-group"><button class="btn btn-xs btn-primary btn-edit-product" data-id="'.$r['id'].'"><i class="fa fa-pencil"></i></button> ';
-            if ($r['status']==='active')   $acts .= '<button class="btn btn-xs btn-warning btn-product-status" data-id="'.$r['id'].'" data-action="deactivate"><i class="fa fa-ban"></i></button> <button class="btn btn-xs btn-danger btn-product-status" data-id="'.$r['id'].'" data-action="delete"><i class="fa fa-trash"></i></button>';
-            if ($r['status']==='inactive') $acts .= '<button class="btn btn-xs btn-success btn-product-status" data-id="'.$r['id'].'" data-action="activate"><i class="fa fa-check"></i></button>';
-            if ($r['status']==='deleted')  $acts .= '<button class="btn btn-xs btn-success btn-product-status" data-id="'.$r['id'].'" data-action="restore"><i class="fa fa-undo"></i></button>';
+            $acts = '<div class="flex items-center gap-1">';
+            $acts .= $this->_btn('bg-blue-100 text-blue-700 hover:bg-blue-200 btn-edit-product', 'pencil', 'Edit', 'data-id="'.$r['id'].'"');
+            if ($r['status']==='active')   $acts .= $this->_btn('bg-amber-100 text-amber-700 hover:bg-amber-200 btn-product-status','ban','Deactivate','data-id="'.$r['id'].'" data-action="deactivate"') . $this->_btn('bg-red-100 text-red-700 hover:bg-red-200 btn-product-status','trash','Delete','data-id="'.$r['id'].'" data-action="delete"');
+            if ($r['status']==='inactive') $acts .= $this->_btn('bg-green-100 text-green-700 hover:bg-green-200 btn-product-status','check','Activate','data-id="'.$r['id'].'" data-action="activate"');
+            if ($r['status']==='deleted')  $acts .= $this->_btn('bg-green-100 text-green-700 hover:bg-green-200 btn-product-status','undo','Restore','data-id="'.$r['id'].'" data-action="restore"');
             $acts .= '</div>';
             $data[] = [$r['id'], esc_html($r['name']), esc_html($r['sku']), esc_html($r['category_name']??'-'), esc_html($r['unit']), format_inr($r['price']), $r['stock'], status_badge($r['status']), $acts];
         }
         $this->json_list($data, $total, $total);
+    }
+
+    public function fetch_product($id) {
+        $p = $this->Product_model->get_by_id($id);
+        if (!$p) $this->json_error('Product not found.', 404);
+        $p['price']     = paise_to_inr($p['price']);
+        $p['min_price'] = paise_to_inr($p['min_price']);
+        $this->json_success($p);
     }
 
     public function save_product() {
@@ -209,10 +229,16 @@ class Admin extends MY_Controller {
         [$rows, $total] = $this->Product_category_model->datatable($params);
         $data = [];
         foreach ($rows as $r) {
-            $acts = '<button class="btn btn-xs btn-primary btn-edit-cat" data-id="'.$r['id'].'"><i class="fa fa-pencil"></i></button>';
+            $acts = '<div class="flex items-center gap-1">' . $this->_btn('bg-blue-100 text-blue-700 hover:bg-blue-200 btn-edit-cat','pencil','Edit','data-id="'.$r['id'].'"') . '</div>';
             $data[] = [$r['id'], esc_html($r['name']), esc_html($r['parent_name']??'-'), status_badge($r['status']), $acts];
         }
         $this->json_list($data, $total, $total);
+    }
+
+    public function fetch_category($id) {
+        $c = $this->Product_category_model->get_by_id($id);
+        if (!$c) $this->json_error('Category not found.', 404);
+        $this->json_success($c);
     }
 
     public function save_category() {
@@ -234,10 +260,16 @@ class Admin extends MY_Controller {
         [$rows, $total] = $this->Notification_template_model->datatable($params);
         $data = [];
         foreach ($rows as $r) {
-            $acts = '<button class="btn btn-xs btn-primary btn-edit-tpl" data-id="'.$r['id'].'"><i class="fa fa-pencil"></i></button>';
+            $acts = '<div class="flex items-center gap-1">' . $this->_btn('bg-blue-100 text-blue-700 hover:bg-blue-200 btn-edit-tpl','pencil','Edit','data-id="'.$r['id'].'"') . '</div>';
             $data[] = [$r['id'], esc_html($r['name']), esc_html($r['channel']), esc_html(substr($r['body'],0,60)).'...', status_badge($r['status']), $acts];
         }
         $this->json_list($data, $total, $total);
+    }
+
+    public function fetch_template($id) {
+        $t = $this->Notification_template_model->get_by_id($id);
+        if (!$t) $this->json_error('Template not found.', 404);
+        $this->json_success($t);
     }
 
     public function save_template() {

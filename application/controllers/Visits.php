@@ -99,8 +99,8 @@ class Visits extends MY_Controller {
         [$rows, $total] = $this->Visit_plan_model->datatable($params, $sf, $this->get_user_id(), $this->get_role());
         $data = [];
         foreach ($rows as $r) {
-            $acts = '<div class="btn-group"><button class="btn btn-xs btn-primary btn-edit-visit" data-id="'.$r['id'].'"><i class="fa fa-pencil"></i></button> ';
-            if ($r['status']==='active') $acts .= '<button class="btn btn-xs btn-danger btn-visit-status" data-id="'.$r['id'].'" data-action="delete"><i class="fa fa-trash"></i></button>';
+            $acts = '<div class="flex items-center gap-1"><button class="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors btn-edit-visit" data-id="'.$r['id'].'" title="Edit"><i class="fa fa-pencil" style="font-size:11px"></i></button>';
+            if ($r['status']==='active') $acts .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors btn-visit-status" data-id="'.$r['id'].'" data-action="delete" title="Delete"><i class="fa fa-trash" style="font-size:11px"></i></button>';
             $acts .= '</div>';
             $data[] = [$r['id'], $r['planned_date'], $r['planned_time']??'-', esc_html($r['customer_name']), esc_html($r['user_name']), visit_status_badge($r['visit_status']), esc_html(substr($r['purpose']??'',0,50)), status_badge($r['status']), $acts];
         }
@@ -116,6 +116,12 @@ class Visits extends MY_Controller {
         $data = ['user_id'=>$uid,'customer_id'=>$cid,'planned_date'=>$dt,'planned_time'=>$this->input->post('planned_time'),'purpose'=>$this->input->post('purpose'),'lead_id'=>(int)$this->input->post('lead_id')?:null,'created_by'=>$this->get_user_id()];
         if ($id) { $this->Visit_plan_model->update($id,$data); $this->json_success([],'Visit updated.'); }
         else     { $new=$this->Visit_plan_model->insert($data); $this->json_success(['id'=>$new],'Visit planned.'); }
+    }
+
+    public function get($id) {
+        $plan = $this->Visit_plan_model->get_with_details($id);
+        if (!$plan) $this->json_error('Not found.', 404);
+        $this->json_success($plan);
     }
 
     public function detail($id) {

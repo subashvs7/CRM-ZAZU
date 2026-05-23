@@ -10,9 +10,7 @@ class Dashboard extends MY_Controller {
     }
 
     public function index() {
-        $role    = $this->get_role();
-        $user_id = $this->get_user_id();
-
+        $role = $this->get_role();
         $view = 'dashboard/' . ($role === 'admin' ? 'admin' : ($role === 'manager' ? 'manager' : 'staff'));
         $this->load_view($view, ['page_title' => 'Dashboard', 'page_js' => 'dashboard']);
     }
@@ -28,8 +26,6 @@ class Dashboard extends MY_Controller {
         $data = [];
 
         if (in_array($role, ['admin','manager'])) {
-            $staff_filter = $role === 'manager' ? ['team_id' => $this->db->where(['manager_id'=>$uid,'is_deleted'=>0])->get('teams')->result_array()] : null;
-
             $data['total_customers']  = $this->Customer_model->count_all(['status'=>'active']);
             $data['total_leads']      = $this->Lead_model->count_all(['status'=>'active']);
             $data['total_orders']     = $this->Order_model->count_all(['status'=>'active']);
@@ -47,9 +43,10 @@ class Dashboard extends MY_Controller {
                 ->group_by('DATE(created_at)')->order_by('d','asc')->get()->result_array();
             $data['monthly_orders'] = $monthly_orders;
 
-            $data['top_staff'] = $this->db->select('u.id, u.name, COUNT(vl.id) AS visit_count')
+            $data['top_staff'] = $this->db->select('u.id, u.name, COUNT(DISTINCT vl.id) AS visit_count, COUNT(DISTINCT l.id) AS lead_count')
                 ->from('visit_logs vl')
                 ->join('users u','u.id = vl.user_id','left')
+                ->join('leads l','l.assigned_to = u.id AND l.is_deleted = 0','left')
                 ->where(['vl.is_deleted'=>0])->where('DATE(vl.check_in_at)>=',$month_s)->where('DATE(vl.check_in_at)<=',$month_e)
                 ->group_by('u.id')->order_by('visit_count','desc')->limit(5)->get()->result_array();
         } else {
@@ -60,7 +57,8 @@ class Dashboard extends MY_Controller {
 
             $att = $this->Attendance_model->get_by_user_date($uid, $today);
             $data['today_attendance'] = $att ? $att['attendance_status'] : 'not_punched';
-            $data['punch_in_at']      = $att['punch_in_at'] ?? null;
+            $data['punch_in_at']      = ($att && $att['punch_in_at'])  ? date('H:i', strtotime($att['punch_in_at']))  : null;
+            $data['punch_out_at']     = ($att && $att['punch_out_at']) ? date('H:i', strtotime($att['punch_out_at'])) : null;
 
             $plan = $this->db->select('vp.id, vp.planned_time, c.name AS customer_name')
                 ->from('visit_plans vp')
