@@ -49,7 +49,7 @@
 
 <script>
 function loadReport() {
-    $.getJSON(BASE_URL + 'reports/punctuality_data', {from: $('#from-date').val(), to: $('#to-date').val()}, function(res) {
+    $.getJSON(BASE_URL + 'reports/punctuality_data', {from: $('#from-date').val(), to: $('#to-date').val(), user_id: $('#staff-filter').val() || ''}, function(res) {
         var html = '';
         $.each(res.data || [], function(i, r) {
             var pct = r.total_days > 0 ? (r.present_days / r.total_days * 100).toFixed(0) : 0;

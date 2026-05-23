@@ -66,13 +66,15 @@ class Reports extends MY_Controller {
     public function staff_data() {
         $from = $this->input->get('from') ?: date('Y-m-01');
         $to   = $this->input->get('to')   ?: date('Y-m-t');
+        $uid  = (int)$this->input->get('user_id') ?: null;
         $this->db->select('u.name, COUNT(DISTINCT o.id) AS orders, SUM(o.final_amount) AS revenue, COUNT(DISTINCT vl.id) AS visits, COUNT(DISTINCT l.id) AS leads')
             ->from('users u')
             ->join('orders o','o.created_by=u.id AND o.is_deleted=0 AND DATE(o.created_at)>="'.$from.'" AND DATE(o.created_at)<="'.$to.'"','left')
             ->join('visit_logs vl','vl.user_id=u.id AND vl.is_deleted=0 AND DATE(vl.check_in_at)>="'.$from.'" AND DATE(vl.check_in_at)<="'.$to.'"','left')
             ->join('leads l','l.assigned_to=u.id AND l.is_deleted=0','left')
-            ->where(['u.role'=>'field_staff','u.is_deleted'=>0])
-            ->group_by('u.id')->order_by('revenue','desc');
+            ->where(['u.role'=>'field_staff','u.is_deleted'=>0]);
+        if ($uid) $this->db->where('u.id', $uid);
+        $this->db->group_by('u.id')->order_by('revenue','desc');
         $rows = $this->db->get()->result_array();
         $this->json_success($rows);
     }
@@ -108,16 +110,19 @@ class Reports extends MY_Controller {
     }
 
     public function punctuality() {
-        $this->load_view('reports/punctuality', ['page_title'=>'Punctuality','page_js'=>'reports']);
+        $staff = $this->User_model->get_field_staff();
+        $this->load_view('reports/punctuality', ['page_title'=>'Punctuality','page_js'=>'reports','staff'=>$staff]);
     }
 
     public function punctuality_data() {
         $from = $this->input->get('from') ?: date('Y-m-01');
         $to   = $this->input->get('to')   ?: date('Y-m-t');
+        $uid  = (int)$this->input->get('user_id') ?: null;
         $this->db->select('u.name AS staff_name, COUNT(*) AS total_days, SUM(CASE WHEN a.attendance_status="present" THEN 1 ELSE 0 END) AS present_days, AVG(a.working_hours) AS avg_hours')
             ->from('attendance a')->join('users u','u.id=a.user_id','left')
-            ->where('a.is_deleted',0)->where('a.date>=',$from)->where('a.date<=',$to)
-            ->group_by('a.user_id')->order_by('present_days','desc');
+            ->where('a.is_deleted',0)->where('a.date>=',$from)->where('a.date<=',$to);
+        if ($uid) $this->db->where('a.user_id', $uid);
+        $this->db->group_by('a.user_id')->order_by('present_days','desc');
         $rows = $this->db->get()->result_array();
         $this->json_success($rows);
     }

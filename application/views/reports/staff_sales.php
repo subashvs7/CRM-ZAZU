@@ -51,7 +51,8 @@
 <script>
 function loadReport() {
     var from = $('#from-date').val(), to = $('#to-date').val();
-    $.getJSON(BASE_URL + 'reports/staff_data', {from: from, to: to}, function(res) {
+    var uid = $('#staff-filter').val() || '';
+    $.getJSON(BASE_URL + 'reports/staff_data', {from: from, to: to, user_id: uid}, function(res) {
         var html = '';
         var medals = ['🥇', '🥈', '🥉'];
         $.each(res.data || [], function(i, r) {
