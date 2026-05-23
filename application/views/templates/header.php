@@ -39,7 +39,7 @@ tailwind.config = {
 var BASE_URL        = '<?= base_url() ?>';
 var CI3_CSRF_NAME   = '<?= $csrf_name ?>';
 var CI3_CSRF_HASH   = '<?= $csrf_hash ?>';
-var CURRENT_USER_ID = <?= (int)($current_user_id) ?>;
+var CURRENT_USER_ID = <?= (int) $current_user_id ?>;
 var CURRENT_ROLE    = '<?= esc_html($current_role) ?>';
 </script>
 <script src="<?= base_url('assets/js/crm.core.js') ?>"></script>

@@ -194,6 +194,13 @@ $(document).on('select2:open', function() {
     }, 0);
 });
 
+// Bootstrap Datepicker only binds to 'focus' for standalone inputs.
+// When the input is already focused, clicking it does not retrigger focus and the
+// picker stays closed. This delegated click handler forces the picker open on every click.
+$(document).on('click', 'input.datepicker', function() {
+    $(this).datepicker('show');
+});
+
 // CSRF auto-refresh after every POST
 $(document).ajaxComplete(function(e, xhr) {
     var t = xhr.getResponseHeader('X-CSRF-Token');
