@@ -1,0 +1,9 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Order <?= esc_html($order['order_number']) ?></title>
+<style>body{font-family:Arial,sans-serif;font-size:13px}.header{text-align:center;border-bottom:2px solid #333;padding-bottom:10px;margin-bottom:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:6px 8px}th{background:#f0f0f0}.totals td{border:0}strong{font-weight:bold}</style>
+</head><body>
+<div class="header"><h2>INVOICE</h2><p>Order: <?= esc_html($order['order_number']) ?> | Date: <?= date('d M Y',strtotime($order['created_at'])) ?></p></div>
+<table style="margin-bottom:20px;border:0"><tr><td style="border:0;width:50%"><strong>Customer:</strong><br><?= esc_html($order['customer_name']) ?><br><?= esc_html($order['customer_address']??'') ?></td><td style="border:0"><strong>Status:</strong> <?= esc_html($order['order_status']) ?><br><strong>Created by:</strong> <?= esc_html($order['created_by_name']) ?></td></tr></table>
+<table><thead><tr><th>Product</th><th>Qty</th><th>Unit Price</th><th>Discount</th><th>Total</th></tr></thead><tbody>
+<?php foreach($items as $i): ?><tr><td><?= esc_html($i['product_name']) ?></td><td><?= $i['qty'] ?></td><td><?= format_inr($i['unit_price']) ?></td><td><?= $i['discount_pct'] ?>%</td><td><?= format_inr($i['line_total']) ?></td></tr><?php endforeach; ?>
+</tbody><tfoot><tr><td colspan="4" style="text-align:right">Subtotal:</td><td><?= format_inr($order['total_amount']) ?></td></tr><tr><td colspan="4" style="text-align:right">Discount:</td><td>-<?= format_inr($order['discount_amount']) ?></td></tr><tr><td colspan="4" style="text-align:right"><strong>Total:</strong></td><td><strong><?= format_inr($order['final_amount']) ?></strong></td></tr></tfoot></table>
+<script>window.print();</script></body></html>

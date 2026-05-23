@@ -1,0 +1,36 @@
+# ── Runtime & Generated ──────────────────────────────────────────────
+application/logs/*.php
+application/cache/*
+!application/cache/.htaccess
+writable/gps_live/*.json
+
+# ── User Uploads (keep directory, ignore content) ────────────────────
+uploads/selfies/*
+uploads/products/*
+uploads/attachments/*
+!uploads/selfies/.gitkeep
+!uploads/products/.gitkeep
+!uploads/attachments/.gitkeep
+
+# ── Database config (sensitive) — committed with placeholder values ───
+# application/config/database.php  ← intentionally NOT ignored (has no real password)
+
+# ── OS & IDE ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.user
+
+# ── Claude Code internal ──────────────────────────────────────────────
+.sixth/
+.claude/
+
+# ── Archives & temp ───────────────────────────────────────────────────
+*.zip
+*.tar.gz
+*.log
+
+# ── PHP vendor (CI3 system is committed; PHP composer vendor not needed)
+# vendor/ is small (16MB) — keeping it since no composer.json

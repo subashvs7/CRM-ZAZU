@@ -1,0 +1,6 @@
+<section class="content-header"><h1>Punctuality Report</h1><ol class="breadcrumb"><li>Reports</li><li class="active">Punctuality</li></ol></section>
+<section class="content">
+<?php include(APPPATH.'views/reports/_filter_bar.php'); ?>
+<div class="box box-warning"><div class="box-header with-border"><h3 class="box-title">Punctuality Summary</h3></div><div class="box-body"><table class="table table-bordered"><thead><tr><th>Staff</th><th>Total Days</th><th>Present</th><th>Avg Hours</th><th>Punctuality %</th></tr></thead><tbody id="punct-body"><tr><td colspan="5" class="text-center text-muted">Apply filter</td></tr></tbody></table></div></div>
+</section>
+<script>function loadReport(){$.getJSON(BASE_URL+'reports/punctuality_data',{from:$('#from-date').val(),to:$('#to-date').val()},function(res){var html='';$.each(res.data||[],function(i,r){var pct=r.total_days>0?(r.present_days/r.total_days*100).toFixed(0):0;html+='<tr><td>'+CRM.esc(r.staff_name)+'</td><td>'+r.total_days+'</td><td>'+r.present_days+'</td><td>'+parseFloat(r.avg_hours||0).toFixed(2)+'h</td><td><div class="progress xs" style="margin-bottom:0"><div class="progress-bar" style="width:'+pct+'%"></div></div>'+pct+'%</td></tr>';});$('#punct-body').html(html||'<tr><td colspan="5" class="text-center text-muted">No data</td></tr>');});}$('#btn-filter').click(loadReport);</script>

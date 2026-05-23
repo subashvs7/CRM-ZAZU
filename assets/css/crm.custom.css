@@ -1,0 +1,147 @@
+/* Field CRM — Custom Styles */
+
+/* ── Layout ─────────────────────────────────────────────────────── */
+body { font-size: 13px; }
+.content-wrapper { min-height: calc(100vh - 50px); }
+
+/* ── Cards / Boxes ───────────────────────────────────────────────── */
+.box { border-radius: 6px; }
+.box .box-header { border-radius: 6px 6px 0 0; }
+.small-box { border-radius: 6px; }
+.small-box:hover { transform: translateY(-2px); transition: transform 0.2s; }
+
+/* ── Tables ──────────────────────────────────────────────────────── */
+.dataTables_wrapper .dataTables_filter input { border-radius: 4px; }
+.table-hover tbody tr:hover { background-color: #f5f9ff; }
+.table > thead > tr > th { background: #f8f9fa; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ── Labels / Badges ─────────────────────────────────────────────── */
+.label { font-size: 11px; font-weight: 600; padding: 3px 7px; border-radius: 3px; }
+
+/* ── Status tabs ─────────────────────────────────────────────────── */
+#status-tabs { border-bottom: 2px solid #ddd; margin-bottom: 0 !important; }
+#status-tabs > li > a { border-radius: 4px 4px 0 0; font-size: 12px; padding: 6px 14px; }
+#status-tabs > li.active > a { border-bottom: 2px solid #3c8dbc; font-weight: 600; }
+
+/* ── Deleted banner ──────────────────────────────────────────────── */
+#deleted-banner { font-size: 13px; }
+
+/* ── Pipeline Kanban ─────────────────────────────────────────────── */
+.pipeline-board { padding: 0 5px; }
+.pipeline-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); transform: translateY(-1px); transition: all 0.15s; }
+
+/* ── Forms ───────────────────────────────────────────────────────── */
+.form-control { border-radius: 4px; font-size: 13px; }
+.select2-container--default .select2-selection--single { height: 34px; border-radius: 4px; }
+.select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 34px; }
+.select2-container--default .select2-selection--single .select2-selection__arrow { height: 34px; }
+
+/* ── Modals ──────────────────────────────────────────────────────── */
+.modal-header { background: #3c8dbc; color: #fff; border-radius: 6px 6px 0 0; }
+.modal-header .close { color: #fff; opacity: 0.8; }
+.modal-header .close:hover { opacity: 1; }
+.modal-title { font-weight: 600; }
+
+/* ── Timeline ────────────────────────────────────────────────────── */
+.timeline-item { border-left: 3px solid #3c8dbc; padding: 10px 15px; margin-bottom: 12px; background: #f9f9f9; border-radius: 0 4px 4px 0; }
+.timeline-item:last-child { margin-bottom: 0; }
+
+/* ── Punch Page ──────────────────────────────────────────────────── */
+#current-time { font-family: 'Courier New', monospace; font-weight: bold; }
+
+/* ── Activity Log ────────────────────────────────────────────────── */
+.contact-card { padding-bottom: 8px; }
+
+/* ── Map containers ──────────────────────────────────────────────── */
+#live-map, #trail-map, #coverage-map { border-radius: 0 0 6px 6px; }
+
+/* ── Sidebar user-panel ──────────────────────────────────────────── */
+.user-panel { padding: 10px 15px; overflow: hidden; }
+.user-panel .image img {
+    width: 45px;
+    height: 45px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+}
+.user-panel .info {
+    padding: 5px 5px 5px 15px;
+    line-height: 1;
+    position: absolute;
+}
+.user-panel .info p {
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #fff;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+.user-panel .info a {
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+}
+.user-panel .info a:hover { color: #fff; }
+
+/* sidebar-mini collapsed — only show avatar, no text */
+.sidebar-mini.sidebar-collapse .user-panel .info { display: none; }
+.sidebar-mini.sidebar-collapse .user-panel { padding: 8px; text-align: center; }
+.sidebar-mini.sidebar-collapse .user-panel .image { float: none; display: inline-block; }
+.sidebar-mini.sidebar-collapse .user-panel .image img { width: 35px; height: 35px; }
+
+/* ── Navigation ──────────────────────────────────────────────────── */
+.sidebar-menu > li.active > a { border-left: 3px solid #fff; font-weight: 600; }
+.sidebar-menu > li > a:hover { background: rgba(255,255,255,0.08); }
+
+/* ── Notifications ───────────────────────────────────────────────── */
+.notifications-menu .dropdown-menu { min-width: 320px; }
+.notifications-menu .menu > li > a { white-space: normal; font-size: 13px; padding: 8px 12px; }
+
+/* ── Print / PDF ─────────────────────────────────────────────────── */
+@media print {
+    .sidebar, .main-header, .content-header, .box-tools { display: none !important; }
+    .content-wrapper { margin-left: 0 !important; padding: 0 !important; }
+    .box { border: none !important; box-shadow: none !important; }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+    .pipeline-board { flex-direction: column; }
+    .pipeline-column { min-width: 100% !important; flex: 1 !important; }
+    .small-box { margin-bottom: 10px; }
+}
+
+/* ── Utility ─────────────────────────────────────────────────────── */
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.ml-1 { margin-left: 4px; }
+.ml-2 { margin-left: 8px; }
+.mb-0 { margin-bottom: 0; }
+.mb-2 { margin-bottom: 8px; }
+.p-0 { padding: 0; }
+.p-4 { padding: 16px; }
+.border-bottom { border-bottom: 1px solid #eee; }
+.pb-2 { padding-bottom: 8px; }
+
+/* ── Location Picker ─────────────────────────────────────────────── */
+.location-picker-group .btn-detect-location {
+    background: #3c8dbc;
+    color: #fff;
+    border: none;
+    letter-spacing: 0.3px;
+    font-weight: 500;
+}
+.location-picker-group .btn-detect-location:hover { background: #367fa9; }
+.location-picker-group .btn-detect-location i { margin-right: 5px; }
+#cust-map-preview iframe,
+#geo-map-preview iframe,
+#checkin-map-preview iframe,
+#punch-map-preview iframe {
+    display: block;
+    border: 2px solid #3c8dbc;
+    border-radius: 4px;
+}
+/* Pulsing crosshair animation while detecting */
+.btn-detect-location .fa-spinner { animation: fa-spin 1s infinite linear; }
+.cursor-pointer { cursor: pointer; }
