@@ -208,26 +208,30 @@
 <script>
 var cid = <?= (int)$customer['id'] ?>;
 
+// Orders columns: 0=id, 1=order_number, 2=customer_name, 3=order_status badge(HTML),
+//                 4=final_amount(HTML), 5=created_by, 6=date, 7=status badge, 8=actions
 $.getJSON(BASE_URL+'orders/datatable?customer_id='+cid+'&length=5&start=0&draw=1', function(res) {
     var html = '';
     $.each(res.data||[], function(i,r) {
         html += '<tr class="border-b border-gray-50 hover:bg-gray-50">' +
             '<td class="px-5 py-3 font-medium text-gray-800">'+CRM.esc(r[1])+'</td>' +
-            '<td class="px-5 py-3 font-semibold text-gray-700">'+CRM.esc(r[4]||'—')+'</td>' +
-            '<td class="px-5 py-3">'+CRM.esc(r[2]||'—')+'</td>' +
-            '<td class="px-5 py-3 text-xs text-gray-400">'+CRM.esc(r[7]||'—')+'</td>' +
+            '<td class="px-5 py-3 font-semibold text-gray-700">'+(r[4]||'—')+'</td>' +
+            '<td class="px-5 py-3">'+(r[3]||'—')+'</td>' +
+            '<td class="px-5 py-3 text-xs text-gray-400">'+CRM.esc(r[6]||'—')+'</td>' +
             '</tr>';
     });
     $('#customer-orders-body').html(html||'<tr><td colspan="4" class="py-8 text-center text-gray-400 text-sm">No orders found</td></tr>');
 });
 
+// Leads columns: 0=id, 1=title, 2=customer_name, 3=lead_status badge(HTML), 4=source,
+//                5=assigned_name, 6=expected_value(HTML), 7=close_date, 8=status badge, 9=date, 10=actions
 $.getJSON(BASE_URL+'leads/datatable?customer_id='+cid+'&length=5&start=0&draw=1', function(res) {
     var html = '';
     $.each(res.data||[], function(i,r) {
         html += '<tr class="border-b border-gray-50 hover:bg-gray-50">' +
             '<td class="px-5 py-3 font-medium text-gray-800">'+CRM.esc(r[1])+'</td>' +
-            '<td class="px-5 py-3">'+CRM.esc(r[3]||'—')+'</td>' +
-            '<td class="px-5 py-3 text-gray-700">'+CRM.esc(r[6]||'—')+'</td>' +
+            '<td class="px-5 py-3">'+(r[3]||'—')+'</td>' +
+            '<td class="px-5 py-3 text-gray-700">'+(r[6]||'—')+'</td>' +
             '<td class="px-5 py-3 text-xs text-gray-400">'+CRM.esc(r[9]||'—')+'</td>' +
             '</tr>';
     });

@@ -27,6 +27,8 @@ class Order_model extends MY_Model {
 
         if ($role === 'field_staff') $this->db->where('o.created_by', $user_id);
 
+        if (!empty($params['customer_id'])) $this->db->where('o.customer_id', (int)$params['customer_id']);
+
         $search = $params['search']['value'] ?? '';
         if ($search) {
             $this->db->group_start()

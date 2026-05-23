@@ -26,6 +26,8 @@ class Lead_model extends MY_Model {
 
         if ($role === 'field_staff') $this->db->where('l.assigned_to', $user_id);
 
+        if (!empty($params['customer_id'])) $this->db->where('l.customer_id', (int)$params['customer_id']);
+
         $search = $params['search']['value'] ?? '';
         if ($search) {
             $this->db->group_start()
