@@ -153,7 +153,12 @@ var CRM = {
     },
 
     init_plugins: function(ctx) {
-        $('select.select2', ctx || document).select2({width: '100%'});
+        var $ctx = ctx ? $(ctx) : null;
+        var $modal = $ctx ? ($ctx.hasClass('modal') ? $ctx : $ctx.closest('.modal')) : $();
+        $('select.select2', ctx || document).select2({
+            width: '100%',
+            dropdownParent: $modal.length ? $modal : $('body')
+        });
         $('.datepicker', ctx || document).datepicker({format: 'yyyy-mm-dd', autoclose: true, todayHighlight: true});
     },
 
@@ -176,6 +181,11 @@ var CRM = {
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 };
+
+// Fix Select2 search inside Bootstrap 3 modals — enforceFocus steals keyboard focus from Select2's dropdown input
+if ($.fn.modal && $.fn.modal.Constructor) {
+    $.fn.modal.Constructor.prototype.enforceFocus = function() {};
+}
 
 // CSRF auto-refresh after every POST
 $(document).ajaxComplete(function(e, xhr) {
