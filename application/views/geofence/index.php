@@ -116,42 +116,8 @@
             </div>
             <div class="modal-footer">
                 <button class="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50" data-dismiss="modal">Cancel</button>
-                <button class="px-4 py-2 text-sm bg-emerald-600 text-white rounded-xl hover:bg-emerald-700" id="btn-save-zone"><i class="fa fa-save mr-1"></i> Save</button>
+                <button type="button" class="px-4 py-2 text-sm bg-emerald-600 text-white rounded-xl hover:bg-emerald-700" id="btn-save-zone"><i class="fa fa-save mr-1"></i> Save</button>
             </div>
         </div>
     </div>
 </div>
-
-<script>
-var zonesTable = $('#zones-table').DataTable({
-    processing: true, serverSide: true,
-    ajax: { url: BASE_URL+'geofence/datatable', data: function(d){ d.status_filter = window.currentStatusFilter||''; } },
-    columns: [{data:0},{data:1},{data:2},{data:3},{data:4},{data:5},{data:6},{data:7},{data:8,orderable:false}],
-    order: [[0,'desc']]
-});
-window.mainTable = zonesTable;
-
-$('#btn-add-zone').click(function(){
-    $('#zone-form')[0].reset();
-    $('#zone-id').val(0);
-    CRM.init_plugins();
-    $('#zone-modal').modal('show');
-});
-
-$('#btn-save-zone').click(function(){
-    $.ajax({
-        url: BASE_URL+'geofence/save', method: 'POST',
-        data: new FormData($('#zone-form')[0]), processData: false, contentType: false,
-        success: function(res){
-            if(res.status==='success'){ CRM.toast('success',res.message); $('#zone-modal').modal('hide'); zonesTable.ajax.reload(null,false); }
-            else CRM.toast('error', res.message);
-        }
-    });
-});
-
-$(document).on('click', '.btn-zone-status', function(){
-    $.post(BASE_URL+'geofence/status', {id:$(this).data('id'), action:$(this).data('action'), [CI3_CSRF_NAME]:CI3_CSRF_HASH}, function(res){
-        if(res.status==='success'){ CRM.toast('success',res.message); zonesTable.ajax.reload(null,false); }
-    });
-});
-</script>

@@ -37,7 +37,10 @@ $(function() {
         });
     });
 
-    $('#btn-save-zone').click(function() {
+    var _zoneSaving = false;
+    $(document).off('click.zonesave').on('click.zonesave', '#btn-save-zone', function() {
+        if (_zoneSaving) return;
+        _zoneSaving = true;
         var $btn = $(this); CRM.btn_loading($btn);
         $.ajax({
             url: BASE_URL + 'geofence/save', method: 'POST',
@@ -52,7 +55,7 @@ $(function() {
                     CRM.toast('error', res.message);
                 }
             },
-            complete: function() { CRM.btn_reset($btn); }
+            complete: function() { CRM.btn_reset($btn); _zoneSaving = false; }
         });
     });
 
