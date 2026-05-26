@@ -184,6 +184,9 @@ $route['admin/templates_dt']       = 'Admin/templates_datatable';
 $route['admin/save_template']      = 'Admin/save_template';
 $route['admin/settings']           = 'Admin/settings';
 $route['admin/save_settings']      = 'Admin/save_settings';
+$route['admin/role_permissions']      = 'Admin/role_permissions';
+$route['admin/role_permissions/get']  = 'Admin/fetch_role_permissions';
+$route['admin/role_permissions/save'] = 'Admin/save_role_permissions';
 $route['admin/users_credentials']  = 'Admin/users_credentials';
 $route['admin/reset_password']     = 'Admin/reset_password';
 

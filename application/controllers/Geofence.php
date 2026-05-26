@@ -6,7 +6,6 @@ class Geofence extends MY_Controller {
     public function __construct() {
         parent::__construct();
         $this->require_login();
-        $this->require_role(['admin','manager']);
         $this->load->model(['Geofence_zone_model','Geo_alert_model','Alert_rule_model','Customer_model']);
     }
 

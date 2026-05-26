@@ -6,7 +6,6 @@ class Shifts extends MY_Controller {
     public function __construct() {
         parent::__construct();
         $this->require_login();
-        $this->require_role(['admin','manager']);
         $this->load->model(['Shift_model','Shift_assignment_model','User_model']);
     }
 

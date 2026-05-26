@@ -201,6 +201,35 @@ input.datepicker {
 }
 
 /* ═══════════════════════ SIDEBAR ══════════════════════════════════ */
+/* Sidebar custom scrollbar */
+.sidebar-nav::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+    background: transparent;
+}
+.sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 9999px;
+}
+.sidebar-nav:hover::-webkit-scrollbar-thumb {
+    background: rgba(37, 99, 235, 0.6); /* #2563EB blue with opacity */
+}
+.sidebar-nav:hover::-webkit-scrollbar-thumb:hover {
+    background: rgba(37, 99, 235, 0.9); /* #2563EB blue hovered */
+}
+
+/* Firefox compatibility */
+.sidebar-nav {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+.sidebar-nav:hover {
+    scrollbar-color: rgba(37, 99, 235, 0.6) transparent;
+}
+
 /* Submenu accordion */
 .crm-submenu {
     overflow: hidden;

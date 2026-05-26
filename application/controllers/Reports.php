@@ -6,7 +6,6 @@ class Reports extends MY_Controller {
     public function __construct() {
         parent::__construct();
         $this->require_login();
-        $this->require_role(['admin','manager']);
         $this->load->model(['Visit_log_model','Lead_model','Order_model','Attendance_model','Leave_request_model','User_model']);
     }
 

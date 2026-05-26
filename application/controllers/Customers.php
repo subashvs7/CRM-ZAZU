@@ -45,10 +45,14 @@ class Customers extends MY_Controller {
             'pincode'     => $this->input->post('pincode'),
             'gst_number'  => $this->input->post('gst_number'),
             'notes'       => $this->input->post('notes'),
-            'assigned_to' => (int)$this->input->post('assigned_to') ?: null,
             'latitude'    => $this->input->post('latitude') ?: null,
             'longitude'   => $this->input->post('longitude') ?: null,
         ];
+        if ($this->is_manager()) {
+            $data['assigned_to'] = (int)$this->input->post('assigned_to') ?: null;
+        } else if (!$id) {
+            $data['assigned_to'] = $this->get_user_id();
+        }
         if ($id) { $this->Customer_model->update($id, $data); $this->json_success([], 'Customer updated.'); }
         else     { $new = $this->Customer_model->insert($data); $this->json_success(['id'=>$new], 'Customer created.'); }
     }

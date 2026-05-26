@@ -6,7 +6,6 @@ class Admin extends MY_Controller {
     public function __construct() {
         parent::__construct();
         $this->require_login();
-        $this->require_role('admin');
         $this->load->model(['User_model','Team_model','Product_model','Product_category_model','Notification_template_model','App_setting_model']);
         $this->load->library('Crm_auth');
     }
@@ -290,5 +289,50 @@ class Admin extends MY_Controller {
         unset($post[$this->security->get_csrf_token_name()]);
         $this->App_setting_model->set_bulk($post);
         $this->json_success([], 'Settings saved.');
+    }
+
+    // ── ROLE PERMISSIONS ──────────────────────────────────────────────
+    public function role_permissions() {
+        $this->load_view('admin/role_permissions', ['page_title'=>'Role Permissions','page_js'=>'admin']);
+    }
+
+    public function fetch_role_permissions() {
+        $rows = $this->db->get('role_permissions')->result_array();
+        $perms = [
+            'admin' => [],
+            'manager' => [],
+            'field_staff' => []
+        ];
+        foreach ($rows as $r) {
+            $modules = json_decode($r['module'], true);
+            $perms[$r['role']] = is_array($modules) ? $modules : [];
+        }
+        $this->json_success($perms);
+    }
+
+    public function save_role_permissions() {
+        $role = $this->input->post('role');
+        $modules = $this->input->post('modules') ?: [];
+        if (!in_array($role, ['admin', 'manager', 'field_staff'])) {
+            $this->json_error('Invalid role.');
+        }
+
+        $json_modules = json_encode($modules);
+
+        $exists = $this->db->where('role', $role)->count_all_results('role_permissions');
+        if ($exists) {
+            $status = $this->db->where('role', $role)->update('role_permissions', ['module' => $json_modules]);
+        } else {
+            $status = $this->db->insert('role_permissions', [
+                'role' => $role,
+                'module' => $json_modules
+            ]);
+        }
+
+        if (!$status) {
+            $this->json_error('Failed to save role permissions.');
+        }
+
+        $this->json_success([], 'Role permissions saved.');
     }
 }

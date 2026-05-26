@@ -6,7 +6,6 @@ class Tracking extends MY_Controller {
     public function __construct() {
         parent::__construct();
         $this->require_login();
-        $this->require_role(['admin', 'manager']); // field_staff cannot view other staff locations
         $this->load->model(['Gps_track_model','User_model']);
     }
 

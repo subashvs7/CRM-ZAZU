@@ -21,6 +21,36 @@ class MY_Controller extends CI_Controller {
             if ($this->input->is_ajax_request()) $this->json_error('Session expired.', 401);
             else redirect('auth/login');
         }
+        $this->check_module_access();
+    }
+
+    protected function check_module_access() {
+        $controller = strtolower($this->router->fetch_class());
+        $map = [
+            'dashboard'  => 'dashboard',
+            'customers'  => 'customers',
+            'leads'      => 'leads',
+            'orders'     => 'orders',
+            'visits'     => 'visits',
+            'tracking'   => 'tracking/live',
+            'geofence'   => 'geofence',
+            'attendance' => 'attendance',
+            'shifts'     => 'shifts',
+            'leave'      => 'leave',
+            'selfie'     => 'selfie/log',
+            'reports'    => 'reports',
+            'admin'      => 'admin',
+        ];
+        if (isset($map[$controller])) {
+            $module = $map[$controller];
+            if (!has_module_access($module)) {
+                if ($this->input->is_ajax_request()) {
+                    $this->json_error('Access denied. You do not have permission for this module.', 403);
+                } else {
+                    show_error('Access denied. You do not have permission for this module.', 403);
+                }
+            }
+        }
     }
 
     protected function require_role($roles) {

@@ -176,3 +176,21 @@ if (!function_exists('working_days_between')) {
         return $count;
     }
 }
+
+if (!function_exists('has_module_access')) {
+    function has_module_access($module) {
+        $CI =& get_instance();
+        $user = $CI->session->userdata('crm_user');
+        if (!$user) return false;
+
+        $role = $user['role'] ?? null;
+        if (!$role) return false;
+
+        $row = $CI->db->where('role', $role)->get('role_permissions')->row_array();
+        if ($row && !empty($row['module'])) {
+            $allowed = json_decode($row['module'], true);
+            return is_array($allowed) && in_array($module, $allowed);
+        }
+        return false;
+    }
+}

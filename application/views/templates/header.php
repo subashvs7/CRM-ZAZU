@@ -100,25 +100,29 @@ var CURRENT_ROLE    = '<?= esc_html($current_role) ?>';
         $ic = 'w-5 text-center flex-shrink-0 text-[14px]';
         ?>
 
+        <?php if (has_module_access('dashboard')): ?>
         <p class="px-3 pt-2 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest sidebar-text">Main</p>
-
         <a href="<?= base_url('dashboard') ?>" class="<?= tw_active('dashboard') ? $lnk_on : $lnk ?>">
             <i class="fa fa-home <?= $ic ?>"></i>
             <span class="sidebar-text">Dashboard</span>
         </a>
+        <?php endif; ?>
 
+        <?php if (has_module_access('customers') || has_module_access('leads') || has_module_access('orders')): ?>
         <p class="px-3 pt-3 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest sidebar-text">CRM</p>
-
+        <?php if (has_module_access('customers')): ?>
         <a href="<?= base_url('customers') ?>" class="<?= tw_active('customers') ? $lnk_on : $lnk ?>">
             <i class="fa fa-building-o <?= $ic ?>"></i>
             <span class="sidebar-text">Customers</span>
         </a>
-
+        <?php endif; ?>
+        <?php if (has_module_access('leads')): ?>
         <a href="<?= base_url('leads') ?>" class="<?= tw_active('leads') ? $lnk_on : $lnk ?>">
             <i class="fa fa-filter <?= $ic ?>"></i>
             <span class="sidebar-text">Leads</span>
         </a>
-
+        <?php endif; ?>
+        <?php if (has_module_access('orders')): ?>
         <a href="<?= base_url('orders') ?>" class="<?= tw_active('orders') ? $lnk_on : $lnk ?>">
             <i class="fa fa-shopping-cart <?= $ic ?>"></i>
             <span class="sidebar-text flex-1">Orders</span>
@@ -126,50 +130,60 @@ var CURRENT_ROLE    = '<?= esc_html($current_role) ?>';
             <span id="pending-orders-badge" class="hidden text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full font-bold sidebar-text">!</span>
             <?php endif; ?>
         </a>
+        <?php endif; ?>
+        <?php endif; ?>
 
+        <?php if (has_module_access('visits') || has_module_access('tracking/live') || has_module_access('geofence')): ?>
         <p class="px-3 pt-3 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest sidebar-text">Field Ops</p>
-
+        <?php if (has_module_access('visits')): ?>
         <a href="<?= base_url('visits') ?>" class="<?= tw_active('visits') ? $lnk_on : $lnk ?>">
             <i class="fa fa-map-signs <?= $ic ?>"></i>
             <span class="sidebar-text">Visits</span>
         </a>
-
-        <?php if ($is_manager): ?>
+        <?php endif; ?>
+        <?php if (has_module_access('tracking/live')): ?>
         <a href="<?= base_url('tracking/live') ?>" class="<?= tw_active('tracking') ? $lnk_on : $lnk ?>">
             <i class="fa fa-map-marker <?= $ic ?>"></i>
             <span class="sidebar-text">Live Tracking</span>
         </a>
+        <?php endif; ?>
+        <?php if (has_module_access('geofence')): ?>
         <a href="<?= base_url('geofence') ?>" class="<?= tw_active('geofence') ? $lnk_on : $lnk ?>">
             <i class="fa fa-circle-o <?= $ic ?>"></i>
             <span class="sidebar-text">Geofence</span>
         </a>
         <?php endif; ?>
+        <?php endif; ?>
 
+        <?php if (has_module_access('attendance') || has_module_access('shifts') || has_module_access('leave') || has_module_access('selfie/log')): ?>
         <p class="px-3 pt-3 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest sidebar-text">HR</p>
-
+        <?php if (has_module_access('attendance')): ?>
         <a href="<?= base_url('attendance') ?>" class="<?= tw_active('attendance') ? $lnk_on : $lnk ?>">
             <i class="fa fa-clock-o <?= $ic ?>"></i>
             <span class="sidebar-text">Attendance</span>
         </a>
-
-        <?php if ($is_manager): ?>
+        <?php endif; ?>
+        <?php if (has_module_access('shifts')): ?>
         <a href="<?= base_url('shifts') ?>" class="<?= tw_active('shifts') ? $lnk_on : $lnk ?>">
             <i class="fa fa-calendar <?= $ic ?>"></i>
             <span class="sidebar-text">Shifts</span>
         </a>
         <?php endif; ?>
-
+        <?php if (has_module_access('leave')): ?>
         <a href="<?= base_url('leave') ?>" class="<?= tw_active('leave') ? $lnk_on : $lnk ?>">
             <i class="fa fa-plane <?= $ic ?>"></i>
             <span class="sidebar-text">Leave</span>
         </a>
-
-        <?php if ($is_manager): ?>
+        <?php endif; ?>
+        <?php if (has_module_access('selfie/log')): ?>
         <a href="<?= base_url('selfie/log') ?>" class="<?= tw_active('selfie') ? $lnk_on : $lnk ?>">
             <i class="fa fa-camera <?= $ic ?>"></i>
             <span class="sidebar-text">Selfie Verify</span>
         </a>
+        <?php endif; ?>
+        <?php endif; ?>
 
+        <?php if (has_module_access('reports')): ?>
         <!-- Reports submenu -->
         <p class="px-3 pt-3 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest sidebar-text">Analytics</p>
         <button type="button" onclick="toggleSubmenu('reports-sub',this)"
@@ -190,7 +204,7 @@ var CURRENT_ROLE    = '<?= esc_html($current_role) ?>';
         </div>
         <?php endif; ?>
 
-        <?php if ($is_admin): ?>
+        <?php if (has_module_access('admin')): ?>
         <!-- Admin submenu -->
         <p class="px-3 pt-3 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest sidebar-text">System</p>
         <button type="button" onclick="toggleSubmenu('admin-sub',this)"
@@ -205,6 +219,7 @@ var CURRENT_ROLE    = '<?= esc_html($current_role) ?>';
             <a href="<?= base_url('admin/products') ?>"        class="sub-link sidebar-text<?= $seg2==='products'?' active':'' ?>"><i class="fa fa-cubes w-4 text-center"></i> Products</a>
             <a href="<?= base_url('admin/notif_templates') ?>" class="sub-link sidebar-text<?= $seg2==='notif_templates'?' active':'' ?>"><i class="fa fa-envelope w-4 text-center"></i> Notif Templates</a>
             <a href="<?= base_url('admin/settings') ?>"        class="sub-link sidebar-text<?= $seg2==='settings'?' active':'' ?>"><i class="fa fa-sliders w-4 text-center"></i> Settings</a>
+            <a href="<?= base_url('admin/role_permissions') ?>" class="sub-link sidebar-text<?= $seg2==='role_permissions'?' active':'' ?>"><i class="fa fa-key w-4 text-center"></i> Role Permissions</a>
         </div>
         <?php endif; ?>
     </nav>
