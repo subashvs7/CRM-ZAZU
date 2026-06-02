@@ -37,8 +37,8 @@
         <table id="customers-table" class="w-full">
             <thead>
                 <tr>
-                    <th>#</th><th>Name</th><th>Phone</th><th>Email</th>
-                    <th>City</th><th>State</th><th>Assigned To</th>
+                    <th>#</th><th>Name</th><th>Phone / Email</th>
+                    <th>City / State</th><th>Assigned To</th><th>Notes</th>
                     <th>Status</th><th>Created</th><th>Actions</th>
                 </tr>
             </thead>

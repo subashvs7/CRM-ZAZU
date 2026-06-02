@@ -6,10 +6,36 @@ $(function() {
         window.mainTable = $('#customers-table').DataTable({
             processing: true, serverSide: true,
             ajax: { url: BASE_URL + 'customers/datatable', data: function(d) { d.status_filter = window.currentStatusFilter || ''; } },
-            columns: [{data:0},{data:1},{data:2},{data:3},{data:4},{data:5},{data:6},{data:7},{data:8},{data:9,orderable:false}],
-            order: [[0, 'desc']]
+            columns: [
+                {data:0},
+                {data:1},
+                {data:2},
+                {data:3},
+                {data:4},
+                {data:5, orderable:false},
+                {data:6},
+                {data:7},
+                {data:8, orderable:false}
+            ],
+            order: [[0, 'desc']],
+            drawCallback: function() {
+                // Initialize tooltips with click trigger
+                $('[data-toggle="tooltip"]').tooltip({
+                    trigger: 'click',
+                    container: 'body'
+                });
+            }
         });
     }
+
+    // Dismiss tooltips when clicking outside of them
+    $(document).on('click', function(e) {
+        $('[data-toggle="tooltip"]').each(function() {
+            if (!$(this).is(e.target) && $(this).has(e.target).length === 0 && $('.tooltip').has(e.target).length === 0) {
+                $(this).tooltip('hide');
+            }
+        });
+    });
 
     function openCustomerModal(data) {
         var $f = $('#customer-form');

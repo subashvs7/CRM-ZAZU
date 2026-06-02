@@ -13,7 +13,7 @@ class Customer_model extends MY_Model {
     }
 
     public function datatable($params, $status_filter = null, $user_id = null, $role = null) {
-        $this->db->select('c.id, c.name, c.phone, c.email, c.city, c.state, u.name AS assigned_name, c.status, c.created_at')
+        $this->db->select('c.id, c.name, c.phone, c.email, c.city, c.state, c.notes, u.name AS assigned_name, c.status, c.created_at')
             ->from('customers c')
             ->join('users u', 'u.id = c.assigned_to', 'left');
 
@@ -27,13 +27,18 @@ class Customer_model extends MY_Model {
         $search = $params['search']['value'] ?? '';
         if ($search) {
             $this->db->group_start()
-                ->like('c.name', $search)->or_like('c.phone', $search)->or_like('c.email', $search)->or_like('c.city', $search)
+                ->like('c.name', $search)
+                ->or_like('c.phone', $search)
+                ->or_like('c.email', $search)
+                ->or_like('c.city', $search)
+                ->or_like('c.state', $search)
+                ->or_like('c.notes', $search)
                 ->group_end();
         }
 
         $total = $this->db->count_all_results('', false);
 
-        $order_cols = ['c.id','c.name','c.phone','c.email','c.city','u.name','c.status','c.created_at'];
+        $order_cols = ['c.id', 'c.name', 'c.phone', 'c.city', 'u.name', 'c.id', 'c.status', 'c.created_at'];
         $oi = $params['order'][0]['column'] ?? 0;
         $od = $params['order'][0]['dir']    ?? 'desc';
         $this->db->order_by($order_cols[$oi] ?? 'c.id', $od);

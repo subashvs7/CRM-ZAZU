@@ -18,17 +18,40 @@ class Tracking extends MY_Controller {
         $staff = $this->User_model->get_field_staff();
         $uids  = array_column($staff, 'id');
         $pos   = $this->Gps_track_model->get_live_positions($uids);
+
+        // Today's visit counts per user
+        $today = date('Y-m-d');
+        $visit_rows = $this->db
+            ->select('vl.user_id, COUNT(*) AS visit_count, MAX(c.name) AS last_customer')
+            ->from('visit_logs vl')
+            ->join('customers c', 'c.id = vl.customer_id', 'left')
+            ->where(['vl.is_deleted' => 0])
+            ->where('DATE(vl.check_in_at)', $today)
+            ->where_in('vl.user_id', $uids ?: [0])
+            ->group_by('vl.user_id')
+            ->get()->result_array();
+        $visit_map = [];
+        foreach ($visit_rows as $vr) {
+            $visit_map[$vr['user_id']] = $vr;
+        }
+
+        // Speed from last two GPS pings
         $result = [];
         foreach ($staff as $s) {
             $p = $pos[$s['id']] ?? null;
+            $vm = $visit_map[$s['id']] ?? null;
             $result[] = [
-                'user_id'   => $s['id'],
-                'name'      => $s['name'],
-                'lat'       => $p['lat']    ?? null,
-                'lng'       => $p['lng']    ?? null,
-                'battery'   => $p['battery']?? null,
-                'ts'        => $p['ts']     ?? null,
-                'online'    => $p ? (time() - ($p['ts']??0)) < 300 : false,
+                'user_id'       => $s['id'],
+                'name'          => $s['name'],
+                'phone'         => $s['phone'] ?? null,
+                'lat'           => $p['lat']     ?? null,
+                'lng'           => $p['lng']     ?? null,
+                'battery'       => $p['battery'] ?? null,
+                'accuracy'      => $p['accuracy'] ?? null,
+                'ts'            => $p['ts']      ?? null,
+                'online'        => $p ? (time() - ($p['ts'] ?? 0)) < 300 : false,
+                'visits_today'  => $vm ? (int)$vm['visit_count'] : 0,
+                'last_customer' => $vm ? $vm['last_customer'] : null,
             ];
         }
         $this->json_success($result);
@@ -44,7 +67,60 @@ class Tracking extends MY_Controller {
         $uid  = (int)$this->input->get('user_id');
         $date = $this->input->get('date') ?: date('Y-m-d');
         $data = $this->Gps_track_model->get_trail($uid, $date);
-        $this->json_success($data);
+
+        // Fetch customer visits for this user on this date
+        $visits = $this->db->select('vl.id, vl.customer_id, vl.check_in_at, vl.check_out_at, vl.check_in_lat, vl.check_in_lng, vl.check_out_lat, vl.check_out_lng, vl.notes, c.name AS customer_name, c.latitude AS customer_lat, c.longitude AS customer_lng')
+            ->from('visit_logs vl')
+            ->join('customers c', 'c.id = vl.customer_id', 'left')
+            ->where(['vl.user_id' => $uid, 'vl.is_deleted' => 0])
+            ->where('DATE(vl.check_in_at)', $date)
+            ->order_by('vl.check_in_at', 'asc')
+            ->get()->result_array();
+
+        // Fetch all customer IDs created, planned, or visited on this date
+        $c_created = $this->db->select('id')->from('customers')->where('DATE(created_at)', $date)->where('is_deleted', 0)->get()->result_array();
+        $c_planned = $this->db->select('customer_id AS id')->from('visit_plans')->where('planned_date', $date)->where('is_deleted', 0)->get()->result_array();
+        $c_visited = $this->db->select('customer_id AS id')->from('visit_logs')->where('DATE(check_in_at)', $date)->where('is_deleted', 0)->get()->result_array();
+
+        $cust_ids = array_unique(array_filter(array_merge(
+            array_column($c_created, 'id'),
+            array_column($c_planned, 'id'),
+            array_column($c_visited, 'id')
+        )));
+
+        $day_customers = [];
+        if (!empty($cust_ids)) {
+            $day_customers = $this->db->select('c.id, c.name, c.phone, c.city, c.latitude, c.longitude, u.name AS assigned_staff')
+                ->from('customers c')
+                ->join('users u', 'u.id = c.assigned_to', 'left')
+                ->where_in('c.id', $cust_ids)
+                ->where('c.is_deleted', 0)
+                ->get()->result_array();
+            
+            $day_visits = $this->db->select('vl.customer_id, vl.check_in_at, vl.check_out_at, vl.notes, u.name AS visited_by_staff')
+                ->from('visit_logs vl')
+                ->join('users u', 'u.id = vl.user_id', 'left')
+                ->where_in('vl.customer_id', $cust_ids)
+                ->where('DATE(vl.check_in_at)', $date)
+                ->where('vl.is_deleted', 0)
+                ->order_by('vl.check_in_at', 'asc')
+                ->get()->result_array();
+            
+            $visit_map = [];
+            foreach ($day_visits as $dv) {
+                $visit_map[$dv['customer_id']][] = $dv;
+            }
+
+            foreach ($day_customers as &$c) {
+                $c['visits'] = $visit_map[$c['id']] ?? [];
+            }
+        }
+
+        $this->json_success([
+            'trail'         => $data,
+            'visits'        => $visits,
+            'day_customers' => $day_customers
+        ]);
     }
 
     public function ping_status() {

@@ -21,7 +21,49 @@ class Customers extends MY_Controller {
         $data = [];
         foreach ($rows as $r) {
             $actions = crm_action_btns($r['id'], 'customers', $r['status'], ['view'=>true,'edit'=>true]);
-            $data[] = [$r['id'], esc_html($r['name']), esc_html($r['phone']), esc_html($r['email']??'-'), esc_html($r['city']??'-'), esc_html($r['state']??'-'), esc_html($r['assigned_name']??'-'), status_badge($r['status']), date('d M Y', strtotime($r['created_at'])), $actions];
+            
+            // Format contact: phone & email
+            $phone = esc_html($r['phone']);
+            $email = !empty($r['email']) ? esc_html($r['email']) : '-';
+            $contact = '<div class="font-medium text-gray-900">' . $phone . '</div>';
+            if ($email !== '-') {
+                $contact .= '<div class="text-xs text-gray-500">' . $email . '</div>';
+            } else {
+                $contact .= '<div class="text-xs text-gray-400">-</div>';
+            }
+
+            // Format location: city & state
+            $city = !empty($r['city']) ? esc_html($r['city']) : '-';
+            $state = !empty($r['state']) ? esc_html($r['state']) : '';
+            $location = '<div class="font-medium text-gray-900">' . $city . '</div>';
+            if ($state !== '') {
+                $location .= '<div class="text-xs text-gray-500">' . $state . '</div>';
+            }
+
+            // Format notes: truncate and set tooltip if > 50 chars
+            $notes = !empty($r['notes']) ? trim($r['notes']) : '';
+            $notes_html = '<span class="text-gray-400">-</span>';
+            if ($notes !== '') {
+                if (mb_strlen($notes) > 50) {
+                    $truncated = esc_html(mb_substr($notes, 0, 50));
+                    $full = esc_html($notes);
+                    $notes_html = '<span class="cursor-pointer text-blue-600 hover:text-blue-800 hover:underline note-tooltip" data-toggle="tooltip" data-placement="top" title="' . $full . '">' . $truncated . '... <span class="text-[10px] text-gray-400 font-semibold">[read more]</span></span>';
+                } else {
+                    $notes_html = esc_html($notes);
+                }
+            }
+
+            $data[] = [
+                $r['id'],
+                esc_html($r['name']),
+                $contact,
+                $location,
+                esc_html($r['assigned_name'] ?? '-'),
+                $notes_html,
+                status_badge($r['status']),
+                date('d M Y', strtotime($r['created_at'])),
+                $actions
+            ];
         }
         $this->json_list($data, $total, $total);
     }

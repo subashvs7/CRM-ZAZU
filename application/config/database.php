@@ -7,9 +7,15 @@ $query_builder = TRUE;
 $db['default'] = array(
     'dsn'      => '',
     'hostname' => 'localhost',
-    'username' => 'root',
-    'password' => '',
-    'database' => 'field_crm',
+
+    'username' => 'root',      //test
+    'password' => '',          //test
+    'database' => 'field_crm', //test
+
+    // 'username' => 'u1138516290_zazu_user',
+    // 'password' => 'ZAZU@123456789',
+    // 'database' => 'u1138516290_zazu_db',
+
     'dbdriver' => 'mysqli',
     'dbprefix' => '',
     'pconnect' => FALSE,

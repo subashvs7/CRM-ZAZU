@@ -22,7 +22,10 @@
 .leaflet-legend span { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
 </style>
 
-<?php include(APPPATH.'views/reports/_filter_bar.php'); ?>
+<?php 
+$show_reset = true;
+include(APPPATH.'views/reports/_filter_bar.php'); 
+?>
 
 <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
     <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -69,30 +72,48 @@ var coverageLayers = [];
 
 function loadCoverage() {
     var from = $('#from-date').val(), to = $('#to-date').val();
+    var userId = $('#staff-filter').val() || '';
     coverageLayers.forEach(function(l) { coverageMap.removeLayer(l); });
     coverageLayers = [];
 
-    $.getJSON(BASE_URL + 'reports/coverage_data', {from: from, to: to}, function(res) {
+    $.getJSON(BASE_URL + 'reports/coverage_data', {from: from, to: to, user_id: userId}, function(res) {
         var visited = 0, notVisited = 0, bounds = [];
         $.each(res.data || [], function(i, r) {
             if (!r.latitude || !r.longitude) return;
             var lat = parseFloat(r.latitude), lng = parseFloat(r.longitude);
             var cnt = parseInt(r.visit_count) || 0;
             var color = cnt > 0 ? '#22c55e' : '#ef4444';
+
+            var popupHtml = '<div style="min-width:220px;font-family:inherit;color:#334155;padding:2px">';
+            popupHtml += '<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:8px;border-bottom:1px solid #f1f5f9;padding-bottom:6px;">' + CRM.esc(r.name) + '</div>';
+            if (cnt > 0 && r.visits && r.visits.length > 0) {
+                popupHtml += '<div style="display:flex;flex-direction:column;gap:8px;max-height:160px;overflow-y:auto;padding-right:4px;">';
+                $.each(r.visits, function(j, v) {
+                    popupHtml += '<div style="display:flex;align-items:center;gap:8px;padding:6px;background:#f8fafc;border-radius:8px;border:1px solid #f1f5f9;">' +
+                        '<img src="' + v.profile_photo + '" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid #cbd5e1;flex-shrink:0;">' +
+                        '<div style="min-width:0;flex:1;">' +
+                            '<div style="font-size:11px;font-weight:600;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;">' + CRM.esc(v.staff_name) + '</div>' +
+                            '<div style="font-size:9px;color:#64748b;margin-top:2px;display:flex;align-items:center;gap:3px;line-height:1;">' +
+                                '<i class="fa fa-calendar" style="font-size:9px;"></i> ' + v.check_in_at +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+                });
+                popupHtml += '</div>';
+            } else {
+                popupHtml += '<div style="display:flex;align-items:center;gap:6px;color:#ef4444;font-size:11px;font-weight:500;padding:4px 0;">' +
+                    '<i class="fa fa-times-circle" style="font-size:13px;"></i> No visits recorded' +
+                '</div>';
+            }
+            popupHtml += '</div>';
+
             var circle = L.circle([lat, lng], {
                 color: color,
                 fillColor: color,
                 fillOpacity: cnt > 0 ? 0.45 : 0.25,
                 weight: cnt > 0 ? 2 : 1,
                 radius: cnt > 0 ? (300 + cnt * 60) : 200
-            }).bindPopup(
-                '<div style="min-width:160px;padding:4px">' +
-                '<strong style="font-size:13px">' + CRM.esc(r.name) + '</strong><br>' +
-                (cnt > 0
-                    ? '<span style="color:#16a34a;font-size:12px"><i class="fa fa-check-circle"></i> ' + cnt + ' visit' + (cnt > 1 ? 's' : '') + '</span>'
-                    : '<span style="color:#dc2626;font-size:12px"><i class="fa fa-times-circle"></i> No visits</span>') +
-                '</div>'
-            );
+            }).bindPopup(popupHtml);
             circle.addTo(coverageMap);
             coverageLayers.push(circle);
             bounds.push([lat, lng]);
@@ -106,5 +127,14 @@ function loadCoverage() {
 }
 
 $('#btn-filter').on('click', loadCoverage);
+$(document).on('click', '#btn-reset', function() {
+    var $from = $('#from-date');
+    var $to = $('#to-date');
+    var $staff = $('#staff-filter');
+    if ($from.length)  $from.datepicker('update', $from.attr('data-default'));
+    if ($to.length)    $to.datepicker('update', $to.attr('data-default'));
+    if ($staff.length) $staff.val($staff.attr('data-default')).trigger('change');
+    loadCoverage();
+});
 loadCoverage();
 </script>

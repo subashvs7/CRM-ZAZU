@@ -1,7 +1,9 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-$config['base_url']             = 'http://localhost/crm-zazu/';
+$base  = "http://".$_SERVER['HTTP_HOST'];
+$base .= str_replace(basename($_SERVER['SCRIPT_NAME']),"",$_SERVER['SCRIPT_NAME']);
+$config['base_url'] = $base;
 $config['index_page']           = '';
 $config['uri_protocol']         = 'REQUEST_URI';
 $config['url_suffix']           = '';

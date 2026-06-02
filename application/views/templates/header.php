@@ -23,7 +23,11 @@ tailwind.config = {
 <!-- Bootstrap Datepicker CSS -->
 <link rel="stylesheet" href="<?= base_url('assets/vendor/bower_components/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css') ?>">
 <!-- Custom CRM Styles -->
-<link rel="stylesheet" href="<?= base_url('assets/css/crm.custom.css') ?>">
+<?php
+$css_path = FCPATH . 'assets/css/crm.custom.css';
+$css_version = file_exists($css_path) ? filemtime($css_path) : time();
+?>
+<link rel="stylesheet" href="<?= base_url('assets/css/crm.custom.css?v=' . $css_version) ?>">
 
 <!-- jQuery + Bootstrap JS (modals only) -->
 <script src="<?= base_url('assets/vendor/bower_components/jquery/dist/jquery.min.js') ?>"></script>

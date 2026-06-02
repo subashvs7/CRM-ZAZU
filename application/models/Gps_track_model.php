@@ -50,7 +50,9 @@ class Gps_track_model extends MY_Model {
             $path = GPS_LIVE_PATH . $uid . '.json';
             if (file_exists($path)) {
                 $data = json_decode(file_get_contents($path), true);
-                if ($data && (time() - $data['ts']) < 300) {
+                if ($data) {
+                    // Return ALL positions (including stale ones) so JS can show "last seen X ago"
+                    // JS side computes real online status from the 'ts' field
                     $positions[$uid] = $data;
                 }
             }

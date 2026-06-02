@@ -313,3 +313,44 @@ body.sidebar-collapsed .crm-submenu { display: none !important; }
 /* ── Smooth card hover (shared) ─────────────────────────────────── */
 .crm-card { transition: box-shadow .15s, transform .15s; }
 .crm-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+
+/* ── Custom Tooltip Styling ─────────────────────────────────────── */
+.tooltip {
+    z-index: 10800 !important;
+}
+.tooltip-inner {
+    max-width: 280px;
+    padding: 0.625rem 0.875rem;
+    color: #fff;
+    text-align: left;
+    background-color: #0f172a; /* Slate 900 */
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.tooltip.top .tooltip-arrow {
+    border-top-color: #0f172a;
+}
+.tooltip.bottom .tooltip-arrow {
+    border-bottom-color: #0f172a;
+}
+.tooltip.left .tooltip-arrow {
+    border-left-color: #0f172a;
+}
+.tooltip.right .tooltip-arrow {
+    border-right-color: #0f172a;
+}
+
+/* ── Customers Table Custom Layout & Borders ────────────────────── */
+#customers-table thead th:not(:last-child) {
+    border-right: 1px solid #cbd5e1 !important;
+}
+#customers-table tbody td:not(:last-child) {
+    border-right: 1px solid #e2e8f0 !important;
+}
+#customers-table thead th:nth-child(6),
+#customers-table tbody td:nth-child(6) {
+    text-align: center !important;
+}

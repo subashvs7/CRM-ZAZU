@@ -92,8 +92,11 @@ $(function(){
 });
 </script>
 
-<?php if(isset($page_js)): ?>
-<script src="<?= base_url('assets/js/crm.'.$page_js.'.js') ?>"></script>
+<?php if(isset($page_js)): 
+    $js_path = FCPATH . 'assets/js/crm.'.$page_js.'.js';
+    $version = file_exists($js_path) ? filemtime($js_path) : time();
+?>
+<script src="<?= base_url('assets/js/crm.'.$page_js.'.js?v='.$version) ?>"></script>
 <?php endif; ?>
 
 <?php if($current_role==='field_staff'): ?>

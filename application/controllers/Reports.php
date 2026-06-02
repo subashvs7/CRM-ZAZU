@@ -127,18 +127,53 @@ class Reports extends MY_Controller {
     }
 
     public function coverage() {
-        $this->load_view('reports/coverage', ['page_title'=>'Coverage Map','page_js'=>'reports']);
+        $staff = $this->User_model->get_field_staff();
+        $this->load_view('reports/coverage', ['page_title'=>'Coverage Map','page_js'=>'reports','staff'=>$staff]);
     }
 
     public function coverage_data() {
         $from = $this->input->get('from') ?: date('Y-m-01');
         $to   = $this->input->get('to')   ?: date('Y-m-t');
-        $this->db->select('c.name, c.latitude, c.longitude, COUNT(vl.id) AS visit_count')
-            ->from('customers c')
-            ->join('visit_logs vl','vl.customer_id=c.id AND vl.is_deleted=0 AND DATE(vl.check_in_at)>="'.$from.'" AND DATE(vl.check_in_at)<="'.$to.'"','left')
-            ->where(['c.is_deleted'=>0,'c.status'=>'active'])->where('c.latitude IS NOT NULL')
+        $uid  = (int)$this->input->get('user_id') ?: null;
+        $this->db->select('c.id, c.name, c.latitude, c.longitude, COUNT(vl.id) AS visit_count')
+            ->from('customers c');
+        if ($uid) {
+            $this->db->join('visit_logs vl','vl.customer_id=c.id AND vl.is_deleted=0 AND vl.user_id='.$uid.' AND DATE(vl.check_in_at)>="'.$from.'" AND DATE(vl.check_in_at)<="'.$to.'"','left');
+            $this->db->where('c.assigned_to', $uid);
+        } else {
+            $this->db->join('visit_logs vl','vl.customer_id=c.id AND vl.is_deleted=0 AND DATE(vl.check_in_at)>="'.$from.'" AND DATE(vl.check_in_at)<="'.$to.'"','left');
+        }
+        $this->db->where(['c.is_deleted'=>0,'c.status'=>'active'])->where('c.latitude IS NOT NULL')
             ->group_by('c.id');
         $rows = $this->db->get()->result_array();
+
+        // Fetch detailed visit information for these customers
+        $this->db->select('vl.customer_id, vl.check_in_at, vl.check_out_at, u.name AS staff_name, u.profile_photo')
+            ->from('visit_logs vl')
+            ->join('users u', 'u.id = vl.user_id', 'left')
+            ->where('vl.is_deleted', 0)
+            ->where('DATE(vl.check_in_at) >=', $from)
+            ->where('DATE(vl.check_in_at) <=', $to);
+        if ($uid) {
+            $this->db->where('vl.user_id', $uid);
+        }
+        $visits = $this->db->get()->result_array();
+
+        $visits_by_customer = [];
+        foreach ($visits as $v) {
+            $visits_by_customer[$v['customer_id']][] = [
+                'staff_name' => $v['staff_name'],
+                'profile_photo' => $v['profile_photo'] ? base_url('uploads/' . $v['profile_photo']) : base_url('assets/vendor/adminlte/img/avatar.png'),
+                'check_in_at' => date('d M Y, h:i A', strtotime($v['check_in_at'])),
+                'check_out_at' => $v['check_out_at'] ? date('d M Y, h:i A', strtotime($v['check_out_at'])) : null
+            ];
+        }
+
+        foreach ($rows as &$row) {
+            $row['visits'] = $visits_by_customer[$row['id']] ?? [];
+        }
+        unset($row);
+
         $this->json_success($rows);
     }
 
