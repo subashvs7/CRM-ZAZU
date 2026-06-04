@@ -39,7 +39,7 @@ $initials = implode('', array_map(fn($w) => strtoupper($w[0]), array_slice(explo
 </div>
 
 <!-- ═══════ STAT CARDS ═══════ -->
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5" id="trail-stats" style="display:none">
+<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-5" id="trail-stats" style="display:none">
     <div class="bg-white rounded-2xl border-2 border-blue-100 px-5 py-4 flex items-center gap-4 shadow-sm" style="border-left:5px solid #2563eb">
         <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style="background:#dbeafe">
             <i class="fa fa-map-pin text-blue-600 text-lg"></i>
@@ -74,6 +74,33 @@ $initials = implode('', array_map(fn($w) => strtoupper($w[0]), array_slice(explo
         <div>
             <div class="text-2xl font-extrabold text-pink-600 leading-tight" id="stat-dist">—</div>
             <div class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-0.5">Est. Distance</div>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border-2 border-teal-100 px-5 py-4 flex items-center gap-4 shadow-sm" style="border-left:5px solid #0d9488">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style="background:#ccfbf1">
+            <i class="fa fa-users text-teal-600 text-lg"></i>
+        </div>
+        <div>
+            <div class="text-3xl font-extrabold text-teal-600 leading-tight" id="stat-total-customers">0</div>
+            <div class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-0.5">Total Customers</div>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border-2 border-purple-100 px-5 py-4 flex items-center gap-4 shadow-sm" style="border-left:5px solid #7c3aed">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style="background:#f3e8ff">
+            <i class="fa fa-check-circle text-purple-600 text-lg"></i>
+        </div>
+        <div>
+            <div class="text-3xl font-extrabold text-purple-600 leading-tight" id="stat-visited">0</div>
+            <div class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-0.5">Visited</div>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border-2 border-red-100 px-5 py-4 flex items-center gap-4 shadow-sm" style="border-left:5px solid #dc2626">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style="background:#fee2e2">
+            <i class="fa fa-times-circle text-red-600 text-lg"></i>
+        </div>
+        <div>
+            <div class="text-3xl font-extrabold text-red-600 leading-tight" id="stat-unvisited">0</div>
+            <div class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-0.5">Unvisited</div>
         </div>
     </div>
 </div>
@@ -194,6 +221,100 @@ $initials = implode('', array_map(fn($w) => strtoupper($w[0]), array_slice(explo
 <!-- ═══════ STYLES ═══════ -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
+    /* ─── CUSTOMER MAP CARDS ─── */
+    .cust-marker-icon-container {
+        background: none !important;
+        border: none !important;
+        width: auto !important;
+        height: auto !important;
+    }
+    .cust-map-card-wrapper {
+        position: absolute;
+        transform: translate(-50%, -100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.15));
+    }
+    .cust-map-card {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 5px 10px;
+        border-radius: 12px;
+        min-width: 130px;
+        max-width: 190px;
+        height: 42px;
+        box-sizing: border-box;
+        transition: all 0.2s ease;
+    }
+    .cust-map-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+    .cust-map-card-circle {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 800;
+        flex-shrink: 0;
+        position: relative;
+    }
+    .cust-map-card-badge {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        background: #7c3aed; /* Purple badge for stop sequence */
+        color: white;
+        border-radius: 50%;
+        width: 14px;
+        height: 14px;
+        font-size: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid white;
+        font-weight: 900;
+    }
+    .cust-map-card-content {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1;
+    }
+    .cust-map-card-title {
+        font-size: 11px;
+        font-weight: 800;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.2;
+    }
+    .cust-map-card-subtitle {
+        font-size: 9px;
+        font-weight: 700;
+        margin-top: 1px;
+        line-height: 1.1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .cust-map-card-arrow {
+        width: 0;
+        height: 0;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 8px solid;
+        margin-top: -1px;
+    }
+
     #trail-map {
         z-index: 0;
     }
@@ -509,27 +630,39 @@ $initials = implode('', array_map(fn($w) => strtoupper($w[0]), array_slice(explo
             popupAnchor: [0, -58]
         });
 
-        function makeCustIcon(num) {
-            return L.divIcon({
-                className: '',
-                html: wrapIcon('<div class="tmark-cust">' + num + '</div>', '#f59e0b'),
-                iconSize: [46, 62],
-                iconAnchor: [23, 62],
-                popupAnchor: [0, -64]
-            });
-        }
-
-        function makeOtherCustIcon(name, color) {
-            var initials = (name || 'C').split(' ').slice(0, 2).map(function(w) {
+        function getInitials(name) {
+            return (name || 'C').split(' ').slice(0, 2).map(function(w) {
                 return w ? w[0].toUpperCase() : '';
             }).join('');
-            if (!initials) initials = 'C';
+        }
+
+        function makeCustomerCardIcon(name, color, isVisited, visitTime, stopNumber) {
+            var initials = getInitials(name);
+            var subtitle = isVisited ? 'Visited' + (visitTime ? ': ' + visitTime : '') : 'Unvisited';
+            var badgeHtml = stopNumber ? '<span class="cust-map-card-badge">' + stopNumber + '</span>' : '';
+            var htmlContent = 
+                '<div class="cust-map-card-wrapper">' +
+                '  <div class="cust-map-card" style="border: 2px solid ' + color + '; border-left: 5px solid ' + color + ';">' +
+                '    <div class="cust-map-card-circle" style="background: ' + color + ';">' +
+                       initials +
+                       badgeHtml +
+                '    </div>' +
+                '    <div class="cust-map-card-content">' +
+                '      <div class="cust-map-card-title" title="' + CRM.esc(name) + '">' + CRM.esc(name) + '</div>' +
+                '      <div class="cust-map-card-subtitle" style="color: ' + (isVisited ? '#16a34a' : '#ef4444') + ';">' +
+                         (isVisited ? '<i class="fa fa-check-circle"></i> ' + subtitle : '<i class="fa fa-times-circle"></i> ' + subtitle) +
+                '      </div>' +
+                '    </div>' +
+                '  </div>' +
+                '  <div class="cust-map-card-arrow" style="border-top-color: ' + color + ';"></div>' +
+                '</div>';
+
             return L.divIcon({
-                className: '',
-                html: wrapIcon('<div style="width:40px;height:40px;border-radius:50%;background:' + color + ';color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;border:3px solid white;box-shadow:0 3px 12px ' + color + '66">' + initials + '</div>', color),
-                iconSize: [40, 56],
-                iconAnchor: [20, 56],
-                popupAnchor: [0, -58]
+                className: 'cust-marker-icon-container',
+                html: htmlContent,
+                iconSize: [1, 1],
+                iconAnchor: [0, 0],
+                popupAnchor: [0, -46]
             });
         }
 
@@ -634,8 +767,8 @@ $initials = implode('', array_map(fn($w) => strtoupper($w[0]), array_slice(explo
 
         /* ─── Customer popup HTML ──────────────────────────────────────── */
         function custPopup(v, c, num) {
-            var lat = parseFloat(v.check_in_lat || v.customer_lat || c.latitude);
-            var lng = parseFloat(v.check_in_lng || v.customer_lng || c.longitude);
+            var lat = parseFloat(v.customer_lat || c.latitude || v.check_in_lat);
+            var lng = parseFloat(v.customer_lng || c.longitude || v.check_in_lng);
             var dur = typeof v.check_out_at === 'string' ? durStr(v.check_in_at, v.check_out_at) : 'Still checked in';
             var isOngoing = !v.check_out_at;
             var durClr = isOngoing ? '#f59e0b' : '#2563eb';
@@ -728,6 +861,9 @@ $initials = implode('', array_map(fn($w) => strtoupper($w[0]), array_slice(explo
                 $('#no-visits-panel').show();
                 $('#timeline-list').hide();
                 $('#timeline-summary').text('0 customer visits');
+                if (lastResponse) {
+                    renderCustomersTable(lastResponse, $('#trail-date').val());
+                }
                 return;
             }
             $('#no-visits-panel').hide();
@@ -737,8 +873,8 @@ $initials = implode('', array_map(fn($w) => strtoupper($w[0]), array_slice(explo
             var prevIdx = 0;
             visits.forEach(function(v, i) {
                 var custName = v.customer_name || 'Unknown Customer';
-                var ciLat = parseFloat(v.check_in_lat || v.customer_lat);
-                var ciLng = parseFloat(v.check_in_lng || v.customer_lng);
+                var ciLat = parseFloat(v.customer_lat || v.check_in_lat);
+                var ciLng = parseFloat(v.customer_lng || v.check_in_lng);
                 var ptIdx = findClosestIdx(v.check_in_at, pts);
                 var segKm = segFn(prevIdx, ptIdx, pts);
                 prevIdx = ptIdx;
@@ -764,7 +900,7 @@ $initials = implode('', array_map(fn($w) => strtoupper($w[0]), array_slice(explo
                 /* map marker */
                 if (ciLat && ciLng) {
                     var m = L.marker([ciLat, ciLng], {
-                            icon: makeCustIcon(i + 1)
+                            icon: makeCustomerCardIcon(custName, '#16a34a', true, fmtT(v.check_in_at), i + 1)
                         })
                         .bindPopup(custPopup(v, cObj, i + 1), {
                             maxWidth: 280,
@@ -894,17 +1030,18 @@ $initials = implode('', array_map(fn($w) => strtoupper($w[0]), array_slice(explo
 
                     if (hasCoords && !isVisitedByCurrent) {
                         var color = isVisitedByAny ? '#16a34a' : '#ef4444'; // Green for visited by other staff, Red for unvisited
+                        var vTime = null;
+                        if (isVisitedByAny && c.visits && c.visits.length > 0) {
+                            vTime = fmtT(c.visits[0].check_in_at);
+                        }
                         var m = L.marker([lat, lng], {
-                                icon: makeOtherCustIcon(c.name, color)
+                                icon: makeCustomerCardIcon(c.name, color, isVisitedByAny, vTime, null)
                             })
                             .bindPopup(otherCustPopup(c, date, isVisitedByAny), {
                                 maxWidth: 260,
                                 autoPanPaddingTop: 80
                             })
                             .addTo(trailMap);
-                        m.on('click', function() {
-                            showCustomerDetails(c);
-                        });
                         otherCustomerMarkers.push(m);
                         c.mapMarker = m;
                     } else if (isVisitedByCurrent) {
@@ -945,8 +1082,21 @@ $initials = implode('', array_map(fn($w) => strtoupper($w[0]), array_slice(explo
                 });
             }
 
+            var visitedCnt = 0;
+            if (res.data.day_customers) {
+                res.data.day_customers.forEach(function(c) {
+                    if (c.visits && c.visits.length > 0) {
+                        visitedCnt++;
+                    }
+                });
+            }
+            var unvisitedCnt = totalCnt - visitedCnt;
+
             $('#tbl-completed-count').text(completedCnt);
             $('#tbl-total-count').text(totalCnt);
+            $('#stat-total-customers').text(totalCnt);
+            $('#stat-visited').text(visitedCnt);
+            $('#stat-unvisited').text(unvisitedCnt);
             setTimeout(function() {
                 if (trailMap) {
                     trailMap.invalidateSize();
@@ -996,13 +1146,32 @@ $initials = implode('', array_map(fn($w) => strtoupper($w[0]), array_slice(explo
 
                 if (!allPts.length) {
                     $('#trail-info').text('No GPS data for this date').css('color', '#d97706');
-                    $('#trail-stats').hide();
-                    $('#timeline-empty').show();
-                    $('#timeline-list').hide();
-                    $('#no-visits-panel').hide();
-                    $('#timeline-summary').text('Load a date to see visits');
-                    $('#info-timeline-count').text('0');
-                    renderCustomersTable(res, date);
+                    $('#trail-stats').show();
+                    $('#stat-points').text(0);
+                    $('#stat-start').text('—');
+                    $('#stat-end').text('—');
+                    $('#stat-dist').text('—');
+                    
+                    buildTimeline(allVisits, [], straightSeg);
+                    if (!allVisits.length) {
+                        renderCustomersTable(res, date);
+                    }
+                    
+                    $('#info-timeline-count').text(allVisits.length);
+
+                    var bounds = [];
+                    customerMarkers.forEach(function(m) {
+                        if (m) bounds.push(m.getLatLng());
+                    });
+                    otherCustomerMarkers.forEach(function(m) {
+                        if (m) bounds.push(m.getLatLng());
+                    });
+                    if (bounds.length > 0) {
+                        trailMap.fitBounds(L.latLngBounds(bounds), {
+                            padding: [50, 50]
+                        });
+                    }
+
                     CRM.btn_reset($btn);
                     return;
                 }

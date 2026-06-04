@@ -40,3 +40,5 @@ class Auth extends MY_Controller {
         redirect('auth/login');
     }
 }
+
+

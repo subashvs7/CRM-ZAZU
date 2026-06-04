@@ -77,10 +77,29 @@ class Tracking extends MY_Controller {
             ->order_by('vl.check_in_at', 'asc')
             ->get()->result_array();
 
-        // Fetch all customer IDs created, planned, or visited on this date
-        $c_created = $this->db->select('id')->from('customers')->where('DATE(created_at)', $date)->where('is_deleted', 0)->get()->result_array();
-        $c_planned = $this->db->select('customer_id AS id')->from('visit_plans')->where('planned_date', $date)->where('is_deleted', 0)->get()->result_array();
-        $c_visited = $this->db->select('customer_id AS id')->from('visit_logs')->where('DATE(check_in_at)', $date)->where('is_deleted', 0)->get()->result_array();
+        // Fetch customer IDs that are relevant to this user on this specific date:
+        // 1. Created on this date
+        $c_created = $this->db->select('id')
+            ->from('customers')
+            ->where('DATE(created_at)', $date)
+            ->where('is_deleted', 0)
+            ->get()->result_array();
+
+        // 2. Planned for this date for this user
+        $c_planned = $this->db->select('customer_id AS id')
+            ->from('visit_plans')
+            ->where('planned_date', $date)
+            ->where('user_id', $uid)
+            ->where('is_deleted', 0)
+            ->get()->result_array();
+
+        // 3. Visited on this date by this user (from visit_logs)
+        $c_visited = $this->db->select('customer_id AS id')
+            ->from('visit_logs')
+            ->where('user_id', $uid)
+            ->where('is_deleted', 0)
+            ->where('DATE(check_in_at)', $date)
+            ->get()->result_array();
 
         $cust_ids = array_unique(array_filter(array_merge(
             array_column($c_created, 'id'),
@@ -89,6 +108,7 @@ class Tracking extends MY_Controller {
         )));
 
         $day_customers = [];
+        $day_visits = [];
         if (!empty($cust_ids)) {
             $day_customers = $this->db->select('c.id, c.name, c.phone, c.city, c.latitude, c.longitude, u.name AS assigned_staff')
                 ->from('customers c')
@@ -96,7 +116,7 @@ class Tracking extends MY_Controller {
                 ->where_in('c.id', $cust_ids)
                 ->where('c.is_deleted', 0)
                 ->get()->result_array();
-            
+
             $day_visits = $this->db->select('vl.customer_id, vl.check_in_at, vl.check_out_at, vl.notes, u.name AS visited_by_staff')
                 ->from('visit_logs vl')
                 ->join('users u', 'u.id = vl.user_id', 'left')
@@ -105,15 +125,15 @@ class Tracking extends MY_Controller {
                 ->where('vl.is_deleted', 0)
                 ->order_by('vl.check_in_at', 'asc')
                 ->get()->result_array();
-            
-            $visit_map = [];
-            foreach ($day_visits as $dv) {
-                $visit_map[$dv['customer_id']][] = $dv;
-            }
+        }
 
-            foreach ($day_customers as &$c) {
-                $c['visits'] = $visit_map[$c['id']] ?? [];
-            }
+        $visit_map = [];
+        foreach ($day_visits as $dv) {
+            $visit_map[$dv['customer_id']][] = $dv;
+        }
+
+        foreach ($day_customers as &$c) {
+            $c['visits'] = $visit_map[$c['id']] ?? [];
         }
 
         $this->json_success([
