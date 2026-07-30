@@ -10,7 +10,7 @@ $db['default'] = array(
 
     'username' => 'root',      //test
     'password' => '',          //test
-    'database' => 'field_crm', //test
+    'database' => 'u128207985_crm_zazu', //test
 
     // 'username' => 'u1138516290_zazu_user',
     // 'password' => 'ZAZU@123456789',

@@ -9,9 +9,13 @@ class Customers extends MY_Controller {
         $this->load->model(['Customer_model','Contact_person_model','User_model']);
     }
 
-    public function index() {
+    public function index($type = '') {
         $staff = $this->is_admin() ? $this->User_model->get_staff_list('field_staff') : [];
-        $this->load_view('customers/index', ['page_title'=>'Customers','page_js'=>'customers','staff'=>$staff,'sf'=>'']);
+        $title = 'Customers';
+        if ($type === 'primary') $title = 'Primary Customers';
+        elseif ($type === 'followup') $title = 'Follow-ups Customers';
+        
+        $this->load_view('customers/index', ['page_title'=>$title,'page_js'=>'customers','staff'=>$staff,'sf'=>'','customer_type'=>$type]);
     }
 
     public function datatable() {

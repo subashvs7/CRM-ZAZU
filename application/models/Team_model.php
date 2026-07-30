@@ -27,7 +27,10 @@ class Team_model extends MY_Model {
         if ($search) $this->db->like('t.name', $search);
 
         $total = $this->db->count_all_results('', false);
-        $this->db->order_by('t.name')->limit($params['length'], $params['start']);
+        $this->db->order_by('t.name');
+        if (isset($params['length']) && $params['length'] != -1) {
+            $this->db->limit($params['length'], $params['start'] ?? 0);
+        }
         return [$this->db->get()->result_array(), $total];
     }
 

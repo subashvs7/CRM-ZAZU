@@ -5,12 +5,13 @@
             <i class="fa fa-building-o text-blue-600 text-lg"></i>
         </div>
         <div>
-            <h1 class="text-xl font-bold text-gray-800">Customers</h1>
+            <h1 class="text-xl font-bold text-gray-800"><?= isset($page_title) ? esc_html($page_title) : 'Customers' ?></h1>
             <nav class="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                 <a href="<?= base_url('dashboard') ?>" class="hover:text-blue-600 transition-colors">Home</a>
                 <i class="fa fa-angle-right text-[10px]"></i>
-                <span class="text-gray-600">Customers</span>
+                <span class="text-gray-600"><?= isset($page_title) ? esc_html($page_title) : 'Customers' ?></span>
             </nav>
+            <input type="hidden" id="filter-customer-type" value="<?= isset($customer_type) ? esc_html($customer_type) : '' ?>">
         </div>
     </div>
     <button id="btn-add-customer"

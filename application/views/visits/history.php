@@ -49,7 +49,7 @@
 $('#history-table').DataTable({
     processing: true,
     serverSide: true,
-    ajax: { url: BASE_URL + 'visits/datatable', data: function(d) { d.status_filter = ''; } },
+    ajax: { url: BASE_URL + 'visits/history_datatable', data: function(d) { d.status_filter = ''; } },
     columns: [
         {data: 0}, {data: 1}, {data: 2}, {data: 3},
         {data: 4}, {data: 5}, {data: 6}, {data: 7}

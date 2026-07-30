@@ -181,19 +181,22 @@ $(function() {
         } else {
             var html = '';
             $.each(plans, function(i, p) {
+                var btnHtml = '';
+                if (p.open_visit_log_id) {
+                    btnHtml = '<a href="' + BASE_URL + 'visits" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-100 text-red-700 font-bold rounded-lg hover:bg-red-200 transition-colors flex-shrink-0"><i class="fa fa-sign-out"></i> Check Out</a>';
+                } else {
+                    btnHtml = '<a href="' + BASE_URL + 'visits" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-100 text-green-700 font-bold rounded-lg hover:bg-green-200 transition-colors flex-shrink-0"><i class="fa fa-map-marker"></i> Check In</a>';
+                }
+
                 html +=
                     '<div class="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">' +
                     '<div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center flex-shrink-0">' +
-                    CRM.esc((p.planned_time || '?').substring(0, 5)) +
+                    CRM.esc((p.planned_time && p.planned_time.length >= 5 ? p.planned_time.substring(0, 5) : '?')) +
                     '</div>' +
                     '<div class="flex-1 min-w-0">' +
                     '<p class="text-sm font-semibold text-gray-800 truncate">' + CRM.esc(p.customer_name) + '</p>' +
                     '<p class="text-xs text-gray-400 mt-0.5">' + CRM.esc(p.planned_time || 'Anytime') + '</p>' +
-                    '</div>' +
-                    '<a href="' + BASE_URL + 'visits/checkin?plan_id=' + p.id + '" ' +
-                    'class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors flex-shrink-0">' +
-                    '<i class="fa fa-check"></i> Check In</a>' +
-                    '</div>';
+                    '</div>' + btnHtml + '</div>';
             });
             $('#todays-plans-container').html(html);
         }

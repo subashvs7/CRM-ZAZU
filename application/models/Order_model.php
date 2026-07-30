@@ -37,7 +37,10 @@ class Order_model extends MY_Model {
         }
 
         $total = $this->db->count_all_results('', false);
-        $this->db->order_by('o.id', 'desc')->limit($params['length'], $params['start']);
+        $this->db->order_by('o.id', 'desc');
+        if (isset($params['length']) && $params['length'] != -1) {
+            $this->db->limit($params['length'], $params['start'] ?? 0);
+        }
         return [$this->db->get()->result_array(), $total];
     }
 
@@ -49,7 +52,10 @@ class Order_model extends MY_Model {
             ->where(['o.order_status' => 'pending_approval', 'o.is_deleted' => 0]);
 
         $total = $this->db->count_all_results('', false);
-        $this->db->order_by('o.id', 'asc')->limit($params['length'], $params['start']);
+        $this->db->order_by('o.id', 'asc');
+        if (isset($params['length']) && $params['length'] != -1) {
+            $this->db->limit($params['length'], $params['start'] ?? 0);
+        }
         return [$this->db->get()->result_array(), $total];
     }
 

@@ -15,13 +15,15 @@ class Visit_plan_model extends MY_Model {
     }
 
     public function datatable($params, $status_filter = null, $user_id = null, $role = null) {
-        $this->db->select('vp.id, vp.planned_date, vp.planned_time, c.name AS customer_name, u.name AS user_name, vp.visit_status, vp.purpose, vp.status, vp.created_at')
+        $this->db->select('vp.id, vp.customer_id, vp.planned_date, vp.planned_time, c.name AS customer_name, c.customer_type, u.name AS user_name, vp.visit_status, vp.purpose, vp.status, vp.created_at, vl.id AS open_visit_log_id')
             ->from('visit_plans vp')
             ->join('customers c', 'c.id = vp.customer_id', 'left')
-            ->join('users u', 'u.id = vp.user_id', 'left');
+            ->join('users u', 'u.id = vp.user_id', 'left')
+            ->join('visit_logs vl', 'vl.visit_plan_id = vp.id AND vl.check_out_at IS NULL', 'left');
 
         if ($status_filter === 'deleted')      $this->db->where('vp.is_deleted', 1);
-        elseif ($status_filter === 'active')   $this->db->where(['vp.status' => 'active',   'vp.is_deleted' => 0]);
+        elseif ($status_filter === 'primary')  $this->db->where(['c.customer_type' => 'primary', 'vp.is_deleted' => 0]);
+        elseif ($status_filter === 'followup') $this->db->where(['c.customer_type' => 'followup', 'vp.is_deleted' => 0]);
         elseif ($status_filter === 'inactive') $this->db->where(['vp.status' => 'inactive', 'vp.is_deleted' => 0]);
         else                                   $this->db->where('vp.is_deleted', 0);
 

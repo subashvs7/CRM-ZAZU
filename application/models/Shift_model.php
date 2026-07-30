@@ -15,7 +15,10 @@ class Shift_model extends MY_Model {
 
         $total = $this->db->count_all_results('', false);
         // do NOT pass table name to get() — from() was already called above
-        $this->db->order_by('name')->limit($params['length'], $params['start']);
+        $this->db->order_by('name');
+        if (isset($params['length']) && $params['length'] != -1) {
+            $this->db->limit($params['length'], $params['start'] ?? 0);
+        }
         return [$this->db->get()->result_array(), $total];
     }
 }

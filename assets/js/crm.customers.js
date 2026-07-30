@@ -5,7 +5,7 @@ $(function() {
     if ($('#customers-table').length && !$.fn.DataTable.isDataTable('#customers-table')) {
         window.mainTable = $('#customers-table').DataTable({
             processing: true, serverSide: true,
-            ajax: { url: BASE_URL + 'customers/datatable', data: function(d) { d.status_filter = window.currentStatusFilter || ''; } },
+            ajax: { url: BASE_URL + 'customers/datatable', data: function(d) { d.status_filter = window.currentStatusFilter || ''; d.customer_type = $('#filter-customer-type').val() || ''; } },
             columns: [
                 {data:0},
                 {data:1},
@@ -21,8 +21,7 @@ $(function() {
             drawCallback: function() {
                 // Initialize tooltips with click trigger
                 $('[data-toggle="tooltip"]').tooltip({
-                    trigger: 'click',
-                    container: 'body'
+                    trigger: 'click'
                 });
             }
         });

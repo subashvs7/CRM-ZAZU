@@ -21,7 +21,7 @@ class Visit_log_model extends MY_Model {
     }
 
     public function datatable($params, $status_filter = null, $user_id = null, $role = null) {
-        $this->db->select('vl.id, vl.check_in_at, vl.check_out_at, c.name AS customer_name, u.name AS user_name, vl.distance_from_customer, vl.is_auto_checkin, vl.status')
+        $this->db->select('vl.id, vl.check_in_at, vl.check_out_at, vl.check_in_lat, vl.check_in_lng, vl.check_out_lat, vl.check_out_lng, c.name AS customer_name, u.name AS user_name, vl.distance_from_customer, vl.is_auto_checkin, vl.status, vl.visit_outcome')
             ->from('visit_logs vl')
             ->join('customers c', 'c.id = vl.customer_id', 'left')
             ->join('users u', 'u.id = vl.user_id', 'left');

@@ -4,26 +4,38 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= esc_html($title ?? 'Login') ?> — Field CRM</title>
+<link rel="icon" type="image/png" href="<?= base_url('assets/images/fav-icon.png') ?>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: {
+                    sans: ['Outfit', 'sans-serif'],
+                }
+            }
+        }
+    }
+</script>
 <link rel="stylesheet" href="<?= base_url('assets/vendor/bower_components/font-awesome/css/font-awesome.min.css') ?>">
 </head>
-<body class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
+<body class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center p-4">
 
-<div class="w-full max-w-sm">
-
-    <!-- Logo -->
-    <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl shadow-lg mb-4 ring-4 ring-blue-600/20">
-            <i class="fa fa-map-marker text-white text-3xl"></i>
-        </div>
-        <h1 class="text-3xl font-bold text-white tracking-tight">Field<span class="text-blue-400">CRM</span></h1>
-        <p class="text-slate-400 text-sm mt-1">Enterprise Field Staff Management</p>
-    </div>
+<div class="w-full max-w-md">
 
     <!-- Card -->
-    <div class="bg-white rounded-2xl shadow-2xl p-8">
-        <h2 class="text-xl font-bold text-gray-800 mb-1">Sign in to continue</h2>
-        <p class="text-sm text-gray-400 mb-6">Enter your credentials to access the dashboard</p>
+    <div class="bg-white rounded-3xl shadow-2xl p-8 sm:p-10">
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <img src="<?= base_url('assets/images/crm-logo.png') ?>" alt="CRM Logo" class="mx-auto w-full max-w-[220px] h-auto object-contain mb-3">
+            <p class="text-slate-500 font-medium text-sm">Enterprise Field Staff Management</p>
+        </div>
+
+        <h2 class="text-xl font-bold text-gray-800 mb-1 text-center">Sign in to continue</h2>
+        <p class="text-sm text-gray-400 mb-6 text-center">Enter your credentials to access the dashboard</p>
 
         <div id="login-alert" class="hidden mb-5 flex items-start gap-2 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
             <i class="fa fa-exclamation-circle mt-0.5 flex-shrink-0"></i>
@@ -65,7 +77,7 @@
         </form>
     </div>
 
-    <p class="text-center text-slate-500 text-xs mt-6">&copy; <?= date('Y') ?> Field CRM</p>
+    <p class="text-center text-slate-600 font-medium text-xs mt-6">&copy; <?= date('Y') ?> Field CRM</p>
 </div>
 
 <script src="<?= base_url('assets/vendor/bower_components/jquery/dist/jquery.min.js') ?>"></script>

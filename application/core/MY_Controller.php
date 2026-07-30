@@ -74,7 +74,12 @@ class MY_Controller extends CI_Controller {
         $this->_clean_output_buffer();
         $this->_send_csrf_header();
         header('Content-Type: application/json');
-        echo json_encode(['status' => 'success', 'message' => $message, 'data' => $data]);
+        $payload = ['status' => 'success', 'message' => $message, 'data' => $data];
+        $json = defined('JSON_INVALID_UTF8_SUBSTITUTE') ? json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE) : json_encode($payload);
+        if ($json === false) {
+            $json = json_encode(['status' => 'error', 'message' => 'JSON encode error: ' . json_last_error_msg(), 'errors' => []]);
+        }
+        echo $json;
         exit;
     }
 
@@ -83,7 +88,12 @@ class MY_Controller extends CI_Controller {
         http_response_code($code);
         $this->_send_csrf_header();
         header('Content-Type: application/json');
-        echo json_encode(['status' => 'error', 'message' => $message, 'errors' => $errors]);
+        $payload = ['status' => 'error', 'message' => $message, 'errors' => $errors];
+        $json = defined('JSON_INVALID_UTF8_SUBSTITUTE') ? json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE) : json_encode($payload);
+        if ($json === false) {
+            $json = json_encode(['status' => 'error', 'message' => 'JSON encode error: ' . json_last_error_msg(), 'errors' => []]);
+        }
+        echo $json;
         exit;
     }
 
@@ -91,12 +101,17 @@ class MY_Controller extends CI_Controller {
         $this->_clean_output_buffer();
         $this->_send_csrf_header();
         header('Content-Type: application/json');
-        echo json_encode([
+        $payload = [
             'draw'            => intval($this->input->get('draw')),
             'recordsTotal'    => $total,
             'recordsFiltered' => $filtered,
             'data'            => $data,
-        ]);
+        ];
+        $json = defined('JSON_INVALID_UTF8_SUBSTITUTE') ? json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE) : json_encode($payload);
+        if ($json === false) {
+            $json = json_encode(['error' => 'JSON encode error: ' . json_last_error_msg()]);
+        }
+        echo $json;
         exit;
     }
 

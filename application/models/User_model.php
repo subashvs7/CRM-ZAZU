@@ -57,7 +57,10 @@ class User_model extends MY_Model {
         $oi = $params['order'][0]['column'] ?? 0;
         $od = $params['order'][0]['dir']    ?? 'desc';
         $this->db->order_by($order_col[$oi] ?? 'u.id', $od);
-        $this->db->limit($params['length'], $params['start']);
+        $this->db;
+        if (isset($params['length']) && $params['length'] != -1) {
+            $this->db->limit($params['length'], $params['start'] ?? 0);
+        }
 
         $rows = $this->db->get()->result_array();
         return [$rows, $total];

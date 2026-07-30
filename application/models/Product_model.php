@@ -38,7 +38,10 @@ class Product_model extends MY_Model {
         }
 
         $total = $this->db->count_all_results('', false);
-        $this->db->order_by('p.name')->limit($params['length'], $params['start']);
+        $this->db->order_by('p.name');
+        if (isset($params['length']) && $params['length'] != -1) {
+            $this->db->limit($params['length'], $params['start'] ?? 0);
+        }
         return [$this->db->get()->result_array(), $total];
     }
 }

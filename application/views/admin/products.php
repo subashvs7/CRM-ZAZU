@@ -41,7 +41,7 @@
         </div>
         <div class="p-4 overflow-x-auto">
             <table id="products-table" class="w-full">
-                <thead><tr><th>#</th><th>Name</th><th>SKU</th><th>Category</th><th>Unit</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
+                <thead><tr><th>#</th><th>Name</th><th>SKU</th><th>Category</th><th>Unit</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
@@ -117,10 +117,7 @@
                                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Min Price (₹)</label>
                                 <input type="number" step="0.01" name="min_price" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value="0">
                             </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Stock</label>
-                                <input type="number" name="stock" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value="0">
-                            </div>
+
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Description</label>
                                 <textarea name="description" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" rows="4"></textarea>
@@ -176,7 +173,7 @@
 var prodTable = $('#products-table').DataTable({
     processing:true, serverSide:true,
     ajax:{url:BASE_URL+'admin/products_dt', data:function(d){d.status_filter=window.currentStatusFilter||'';}},
-    columns:[{data:0},{data:1},{data:2},{data:3},{data:4},{data:5},{data:6},{data:7},{data:8,orderable:false}],
+    columns:[{data:0},{data:1},{data:2},{data:3},{data:4},{data:5},{data:6},{data:7,orderable:false}],
     order:[[0,'desc']]
 });
 var catsTable = $('#cats-table').DataTable({
@@ -214,7 +211,7 @@ $(document).on('click', '.btn-edit-product', function(){
         $('#product-form [name=unit]').val(d.unit||'pcs');
         $('#product-form [name=price]').val(d.price||'');
         $('#product-form [name=min_price]').val(d.min_price||0);
-        $('#product-form [name=stock]').val(d.stock||0);
+
         $('#product-form [name=description]').val(d.description||'');
         $('#product-form [name=category_id]').val(d.category_id||'').trigger('change');
         $('#product-modal .modal-title').text('Edit Product');

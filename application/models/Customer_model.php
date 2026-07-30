@@ -24,6 +24,13 @@ class Customer_model extends MY_Model {
 
         if ($role === 'field_staff') $this->db->where('c.assigned_to', $user_id);
 
+        $customer_type = $params['customer_type'] ?? '';
+        if ($customer_type === 'primary') {
+            $this->db->where('c.customer_type', 'primary');
+        } elseif ($customer_type === 'followup') {
+            $this->db->where('c.customer_type', 'followup');
+        }
+
         $search = $params['search']['value'] ?? '';
         if ($search) {
             $this->db->group_start()
@@ -32,7 +39,7 @@ class Customer_model extends MY_Model {
                 ->or_like('c.email', $search)
                 ->or_like('c.city', $search)
                 ->or_like('c.state', $search)
-                ->or_like('c.notes', $search)
+                ->or_like('c.', $search)
                 ->group_end();
         }
 
@@ -42,7 +49,9 @@ class Customer_model extends MY_Model {
         $oi = $params['order'][0]['column'] ?? 0;
         $od = $params['order'][0]['dir']    ?? 'desc';
         $this->db->order_by($order_cols[$oi] ?? 'c.id', $od);
-        $this->db->limit($params['length'], $params['start']);
+        if (isset($params['length']) && $params['length'] != -1) {
+            $this->db->limit($params['length'], $params['start'] ?? 0);
+        }
         return [$this->db->get()->result_array(), $total];
     }
 

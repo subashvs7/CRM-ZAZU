@@ -16,7 +16,10 @@ class Alert_rule_model extends MY_Model {
             ->where('ar.is_deleted', 0);
 
         $total = $this->db->count_all_results('', false);
-        $this->db->order_by('ar.id', 'desc')->limit($params['length'], $params['start']);
+        $this->db->order_by('ar.id', 'desc');
+        if (isset($params['length']) && $params['length'] != -1) {
+            $this->db->limit($params['length'], $params['start'] ?? 0);
+        }
         return [$this->db->get()->result_array(), $total];
     }
 }

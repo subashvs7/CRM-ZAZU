@@ -1,5 +1,5 @@
 <!-- KPI Row -->
-<div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
     <a href="<?= base_url('customers') ?>"
        class="group relative bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-2xl p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5 overflow-hidden block">
         <div class="relative z-10">
@@ -10,7 +10,11 @@
                 <span class="text-blue-200 text-xs font-medium">All time</span>
             </div>
             <p class="text-3xl font-extrabold tracking-tight" id="kpi-customers">—</p>
-            <p class="text-blue-100 text-sm mt-1 font-medium">Total Customers</p>
+            <p class="text-blue-100 text-sm mt-1 font-medium mb-1">Total Customers</p>
+            <div class="flex gap-3 text-xs font-semibold text-blue-50 mt-2">
+                <span title="Primary Customers"><i class="fa fa-star mr-0.5"></i> <span id="kpi-primary-customers">0</span> Primary</span>
+                <span title="Follow-up Customers"><i class="fa fa-refresh mr-0.5"></i> <span id="kpi-followup-customers">0</span> Follow-ups</span>
+            </div>
         </div>
         <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
         <div class="absolute -bottom-8 -right-8 w-32 h-32 bg-white/5 rounded-full"></div>
@@ -48,21 +52,7 @@
         <div class="absolute -bottom-8 -right-8 w-32 h-32 bg-white/5 rounded-full"></div>
     </a>
 
-    <a href="<?= base_url('orders/approval') ?>"
-       class="group relative bg-gradient-to-br from-red-500 to-rose-700 text-white rounded-2xl p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5 overflow-hidden block">
-        <div class="relative z-10">
-            <div class="flex items-center justify-between mb-3">
-                <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                    <i class="fa fa-clock-o text-white text-lg"></i>
-                </div>
-                <span class="text-red-200 text-xs font-medium">Needs action</span>
-            </div>
-            <p class="text-3xl font-extrabold tracking-tight" id="kpi-pending">—</p>
-            <p class="text-red-100 text-sm mt-1 font-medium">Pending Approvals</p>
-        </div>
-        <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
-        <div class="absolute -bottom-8 -right-8 w-32 h-32 bg-white/5 rounded-full"></div>
-    </a>
+
 </div>
 
 <!-- Charts row -->
@@ -174,9 +164,11 @@ $(function(){
     $.getJSON(BASE_URL+'dashboard/kpi_data',function(res){
         var d=res.data;
         $('#kpi-customers').text(d.total_customers||0);
+        $('#kpi-primary-customers').text(d.primary_customers||0);
+        $('#kpi-followup-customers').text(d.followup_customers||0);
         $('#kpi-leads').text(d.total_leads||0);
         $('#kpi-orders').text(d.total_orders||0);
-        $('#kpi-pending').text(d.pending_orders||0);
+
         $('#visits-today').text(d.visits_today||0);
         $('#visits-month').text(d.visits_month||0);
 

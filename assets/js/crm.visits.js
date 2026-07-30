@@ -6,74 +6,191 @@ $(function() {
         window.mainTable = $('#visits-table').DataTable({
             processing: true, serverSide: true,
             ajax: { url: BASE_URL + 'visits/datatable', data: function(d) { d.status_filter = window.currentStatusFilter || ''; } },
-            columns: [{data:0},{data:1},{data:2},{data:3},{data:4},{data:5},{data:6},{data:7},{data:8,orderable:false}],
-            order: [[1, 'desc']]
+            columns: [{data:0},{data:1},{data:2},{data:3},{data:4},{data:5},{data:6},{data:7,orderable:false}],
+            order: [[3, 'desc']] // Date is now column index 3
         });
     }
 
-    function openVisitModal(data) {
-        var $f = $('#visit-form');
-        $f[0].reset();
-        CRM.clear_errors($f);
-        $('#visit-id').val(data ? data.id : 0);
-        // Init plugins BEFORE setting values so Select2 instances are ready to receive .trigger('change')
-        CRM.init_plugins($('#visit-modal'));
-        if (data) {
-            $f.find('[name="customer_id"]').val(data.customer_id || '').trigger('change');
-            // Use datepicker('setDate') to properly sync the calendar state
-            var $pd = $f.find('[name="planned_date"]');
-            if (data.planned_date) {
-                var dp = data.planned_date.split('-');
-                $pd.datepicker('setDate', new Date(dp[0], dp[1] - 1, dp[2]));
-            } else {
-                $pd.datepicker('setDate', null);
-            }
-            // DB returns HH:MM:SS — <input type="time"> needs HH:MM
-            $f.find('[name="planned_time"]').val(data.planned_time ? data.planned_time.substr(0, 5) : '');
-            $f.find('[name="purpose"]').val(data.purpose || '');
-            if ($f.find('[name="user_id"]').length) $f.find('[name="user_id"]').val(data.user_id || '').trigger('change');
-            $('#visit-modal .modal-title').text('Edit Visit');
-        } else {
-            $f.find('[name="planned_date"]').datepicker('setDate', null);
-            $('#visit-modal .modal-title').text('Plan Visit');
+    if ($('#history-table').length && !$.fn.DataTable.isDataTable('#history-table')) {
+        window.historyTable = $('#history-table').DataTable({
+            processing: true, serverSide: true,
+            ajax: { url: BASE_URL + 'visits/history_datatable' },
+            columns: [{data:0},{data:1},{data:2},{data:3},{data:4},{data:5},{data:6},{data:7}],
+            order: [[0, 'desc']]
+        });
+    }
+
+    // Customer Type Tabs Logic
+    function populateCustomers(type) {
+        var $select = $('#plan-customer-select');
+        $select.empty().append('<option value="">-- Select Customer --</option>');
+        
+        if (typeof all_customers !== 'undefined') {
+            $.each(all_customers, function(i, c) {
+                if (c.customer_type === type) {
+                    $select.append('<option value="' + c.id + '">' + c.name + '</option>');
+                }
+            });
         }
-        $('#visit-modal').modal('show');
+        
+        if ($select.hasClass('select2-hidden-accessible')) {
+            $select.trigger('change');
+        }
     }
 
-    $('#btn-plan-visit').click(function() { openVisitModal(null); });
+    if ($('#plan-customer-select').length) {
+        // Initial load
+        populateCustomers('primary');
 
-    $(document).on('click', '.btn-edit-visit', function() {
-        $.getJSON(BASE_URL + 'visits/get/' + $(this).data('id'), function(res) {
-            if (res.status === 'success') openVisitModal(res.data);
-            else CRM.toast('error', res.message || 'Failed to load.');
+        $('#plan-customer-select').select2({
+            placeholder: '-- Select Customer --',
+            allowClear: true,
+            width: '100%'
         });
-    });
+        
+        $('.customer-type-tab').click(function() {
+            var type = $(this).data('type');
+            $('#customer-type-selection').val(type);
+            
+            // UI update
+            $('.customer-type-tab').removeClass('bg-white text-gray-800 shadow-sm').addClass('text-gray-500 hover:text-gray-700');
+            $(this).removeClass('text-gray-500 hover:text-gray-700').addClass('bg-white text-gray-800 shadow-sm');
+            
+            populateCustomers(type);
+        });
+    }
 
-    var _visitSaving = false;
-    $(document).off('click.visitsave').on('click.visitsave', '#btn-save-visit', function() {
-        if (_visitSaving) return;
-        _visitSaving = true;
+    // Right-side inline "Plan New Visit" form save
+    var _rightVisitSaving = false;
+    $(document).off('click.rightvisitsave').on('click.rightvisitsave', '#btn-save-right-visit', function() {
+        if (_rightVisitSaving) return;
+        _rightVisitSaving = true;
         var $btn = $(this); CRM.btn_loading($btn);
         $.ajax({
             url: BASE_URL + 'visits/save', method: 'POST',
-            data: new FormData($('#visit-form')[0]), processData: false, contentType: false,
+            data: new FormData($('#right-visit-form')[0]), processData: false, contentType: false,
             success: function(res) {
                 if (res.status === 'success') {
                     CRM.toast('success', res.message);
-                    $('#visit-modal').modal('hide');
+                    $('#right-visit-form')[0].reset();
                     if (window.mainTable) window.mainTable.ajax.reload(null, false);
                 } else {
-                    CRM.show_errors($('#visit-form'), res.errors || {});
+                    CRM.show_errors($('#right-visit-form'), res.errors || {});
                     CRM.toast('error', res.message);
                 }
             },
-            complete: function() { CRM.btn_reset($btn); _visitSaving = false; }
+            complete: function() { CRM.btn_reset($btn); _rightVisitSaving = false; }
         });
     });
 
-    $(document).on('click', '.btn-visit-status', function() {
-        var action = $(this).data('action'), id = $(this).data('id');
-        CRM.handle_status(action, id, BASE_URL + 'visits/status', window.mainTable,
-            action === 'delete' ? 'Delete this visit plan?' : 'Are you sure?');
+    function openModalWithLocation(modalId, formId, timeField, locField, mapIframe, plan_id, customer_id, $btnOriginal) {
+        var $f = $('#' + formId);
+        $f[0].reset();
+        
+        var now = new Date();
+        $('#' + timeField).val(now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+        
+        if(formId === 'checkin-form') {
+            $('#chk-in-plan-id').val(plan_id);
+            $('#chk-in-customer-id').val(customer_id);
+        }
+        
+        var oldHtml = $btnOriginal ? $btnOriginal.html() : '';
+        if ($btnOriginal) $btnOriginal.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+        
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(pos) {
+                if ($btnOriginal) $btnOriginal.prop('disabled', false).html(oldHtml);
+                var lat = pos.coords.latitude;
+                var lng = pos.coords.longitude;
+                $f.data('lat', lat);
+                $f.data('lng', lng);
+                $('#' + locField).val(lat.toFixed(5) + ', ' + lng.toFixed(5));
+                
+                var mapUrl = 'https://maps.google.com/maps?q=' + lat + ',' + lng + '&z=15&output=embed';
+                $('#' + mapIframe).attr('src', mapUrl).removeClass('hidden');
+                
+                $('#' + modalId).modal('show');
+            }, function() {
+                if ($btnOriginal) $btnOriginal.prop('disabled', false).html(oldHtml);
+                $('#' + locField).val('Location disabled');
+                $('#' + mapIframe).addClass('hidden');
+                $('#' + modalId).modal('show');
+            });
+        } else {
+            if ($btnOriginal) $btnOriginal.prop('disabled', false).html(oldHtml);
+            $('#' + locField).val('Not supported');
+            $('#' + mapIframe).addClass('hidden');
+            $('#' + modalId).modal('show');
+        }
+    }
+
+    // Check-in trigger
+    $(document).on('click', '.btn-checkin', function() {
+        openModalWithLocation('checkin-modal', 'checkin-form', 'chk-in-time-display', 'chk-in-location-display', 'chk-in-map', $(this).data('id'), $(this).data('customer'), $(this));
     });
+    
+    // Check-in save
+    $('#btn-save-checkin').click(function() {
+        var $btn = $(this); CRM.btn_loading($btn);
+        var fd = new FormData($('#checkin-form')[0]);
+        var lat = $('#checkin-form').data('lat');
+        var lng = $('#checkin-form').data('lng');
+        if (lat) fd.append('latitude', lat);
+        if (lng) fd.append('longitude', lng);
+        
+        $.ajax({
+            url: BASE_URL + 'visits/do_checkin', method: 'POST', data: fd, processData: false, contentType: false,
+            success: function(res) {
+                if (res.status === 'success') {
+                    CRM.toast('success', res.message);
+                    $('#checkin-modal').modal('hide');
+                    if (window.mainTable) window.mainTable.ajax.reload(null, false);
+                } else {
+                    CRM.toast('error', res.message);
+                    if (res.errors && res.errors.open_log_id) {
+                        $('#checkin-modal').modal('hide');
+                        activeLogId = res.errors.open_log_id;
+                        openModalWithLocation('checkout-modal', 'checkout-form', 'chk-out-time-display', 'chk-out-location-display', 'chk-out-map', null, null, null);
+                    }
+                }
+            },
+            complete: function() { CRM.btn_reset($btn); }
+        });
+    });
+
+    // Check-out trigger
+    var activeLogId = 0;
+    $(document).on('click', '.btn-checkout', function() {
+        activeLogId = $(this).data('log-id');
+        openModalWithLocation('checkout-modal', 'checkout-form', 'chk-out-time-display', 'chk-out-location-display', 'chk-out-map', null, null, $(this));
+    });
+    
+    // Check-out save
+    $('#btn-save-checkout').click(function() {
+        if (!$('[name="visit_outcome"]:checked').length) {
+            CRM.toast('error', 'Please select a Status.');
+            return;
+        }
+        var $btn = $(this); CRM.btn_loading($btn);
+        var fd = new FormData($('#checkout-form')[0]);
+        var lat = $('#checkout-form').data('lat');
+        var lng = $('#checkout-form').data('lng');
+        if (lat) fd.append('latitude', lat);
+        if (lng) fd.append('longitude', lng);
+        
+        $.ajax({
+            url: BASE_URL + 'visits/do_checkout/' + activeLogId, method: 'POST', data: fd, processData: false, contentType: false,
+            success: function(res) {
+                if (res.status === 'success') {
+                    CRM.toast('success', res.message);
+                    $('#checkout-modal').modal('hide');
+                    if (window.mainTable) window.mainTable.ajax.reload(null, false);
+                    if (window.historyTable) window.historyTable.ajax.reload(null, false);
+                } else CRM.toast('error', res.message);
+            },
+            complete: function() { CRM.btn_reset($btn); }
+        });
+    });
+
 });

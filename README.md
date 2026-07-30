@@ -86,4 +86,32 @@ Field staff browsers automatically send GPS coordinates every 10 minutes (config
 ## License
 
 MIT
-# CRM-ZAZU
+## UI Design Prompt (For ChatGPT)
+
+If you want to generate UI design concepts or improvements for this project using ChatGPT, you can copy and paste the prompt below:
+
+---
+
+**Prompt:**
+
+> Act as an expert UI/UX designer. I am building "CRM-ZAZU", an Enterprise Field Staff CRM using CodeIgniter 3, Bootstrap 3 / AdminLTE 2, and jQuery. I need modern, clean, and highly usable UI design recommendations, color palettes, and layout structures for the following modules:
+> 
+> 1. **Dashboard**: Role-aware KPIs, revenue charts, lead pipeline.
+> 2. **Customers**: Full customer management with contact persons & map.
+> 3. **Leads**: Kanban pipeline (7 stages), activity log, CSV import.
+> 4. **Orders**: Multi-item orders with approval workflow & PDF generation.
+> 5. **Visits**: Visit planning, check-in/out with GPS, planned vs actual.
+> 6. **Live Tracking**: Real-time GPS tracking via browser.
+> 7. **Geofence**: Zone management, auto check-in, violation alerts.
+> 8. **Attendance**: Punch in/out with GPS + selfie verification.
+> 9. **Shifts**: Shift management and assignment calendar.
+> 10. **Leave**: Apply / approve / track leave with balance.
+> 11. **Reports**: 8 report types with charts and coverage map.
+> 12. **Admin**: Users, teams, products, notification templates, settings.
+> 
+> Please provide a cohesive design system, including:
+> - A recommended color palette (primary, secondary, success, warning, danger).
+> - Typography choices (fonts for headings and body).
+> - Layout structure (Sidebar, Header, Main Content area) keeping AdminLTE 2 in mind but making it look more modern.
+> - Detailed UI layout descriptions for the **Dashboard** and **Leads Kanban** views.
+> - Recommendations for micro-interactions and animations.

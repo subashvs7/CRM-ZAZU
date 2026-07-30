@@ -185,7 +185,7 @@ class Admin extends MY_Controller {
             if ($r['status']==='inactive') $acts .= $this->_btn('bg-green-100 text-green-700 hover:bg-green-200 btn-product-status','check','Activate','data-id="'.$r['id'].'" data-action="activate"');
             if ($r['status']==='deleted')  $acts .= $this->_btn('bg-green-100 text-green-700 hover:bg-green-200 btn-product-status','undo','Restore','data-id="'.$r['id'].'" data-action="restore"');
             $acts .= '</div>';
-            $data[] = [$r['id'], esc_html($r['name']), esc_html($r['sku']), esc_html($r['category_name']??'-'), esc_html($r['unit']), format_inr($r['price']), $r['stock'], status_badge($r['status']), $acts];
+            $data[] = [$r['id'], esc_html($r['name']), esc_html($r['sku']), esc_html($r['category_name']??'-'), esc_html($r['unit']), format_inr($r['price']), status_badge($r['status']), $acts];
         }
         $this->json_list($data, $total, $total);
     }
@@ -334,5 +334,71 @@ class Admin extends MY_Controller {
         }
 
         $this->json_success([], 'Role permissions saved.');
+    }
+
+    // ── TRANSFER STAFF ────────────────────────────────────────────────
+    public function transfer_staff() {
+        if (!$this->is_admin()) {
+            $this->session->set_flashdata('error', 'Access denied.');
+            redirect('dashboard');
+        }
+        
+        $staff = $this->User_model->get_field_staff();
+
+        $this->load_view('admin/transfer_staff', [
+            'page_title' => 'Transfer Staff',
+            'page_js' => 'admin',
+            'staff' => $staff
+        ]);
+    }
+    
+    public function transfer_staff_dt() {
+        if (!$this->is_admin()) {
+            $this->json_error('Access denied.', 403);
+        }
+        $this->load->model('Customer_model');
+        $params = $this->input->get();
+        
+        // Adjust column index for ordering since we added a checkbox column at index 0
+        if (isset($params['order'][0]['column'])) {
+            $col_idx = (int)$params['order'][0]['column'];
+            $params['order'][0]['column'] = $col_idx > 0 ? $col_idx - 1 : 0;
+        }
+
+        $sf = ''; // all non-deleted
+        [$rows, $total] = $this->Customer_model->datatable($params, $sf, null, null);
+        
+        $data = [];
+        foreach ($rows as $r) {
+            $checkbox = '<input type="checkbox" class="customer-checkbox w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" value="'.$r['id'].'">';
+            $city = !empty($r['city']) ? esc_html($r['city']) : '-';
+            
+            $data[] = [
+                $checkbox,
+                $r['id'],
+                esc_html($r['name']),
+                esc_html($r['phone']),
+                $city,
+                esc_html($r['assigned_name'] ?? 'Unassigned')
+            ];
+        }
+        $this->json_list($data, $total, $total);
+    }
+
+    public function process_transfer_staff() {
+        if (!$this->is_admin()) {
+            $this->json_error('Access denied.', 403);
+        }
+        
+        $customer_ids = $this->input->post('customer_ids');
+        $staff_id = (int) $this->input->post('staff_id');
+        
+        if (empty($customer_ids) || !is_array($customer_ids) || !$staff_id) {
+            $this->json_error('Please select customers and a field staff.');
+        }
+        
+        $this->db->where_in('id', $customer_ids)->update('customers', ['assigned_to' => $staff_id]);
+        
+        $this->json_success([], count($customer_ids) . ' customer(s) transferred successfully.');
     }
 }

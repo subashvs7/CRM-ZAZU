@@ -1,12 +1,17 @@
-Options -Indexes
-Options +FollowSymLinks
-DirectoryIndex index.php
-
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /CRM-ZAZU/
 
-    RewriteCond %{REQUEST_FILENAME} !-f
+    # Handle /projects/SAS-PRJ/
+    RewriteCond %{REQUEST_URI} ^/crm/
+    RewriteRule ^projects/SAS-PRJ/(.*)$ index.php/$1 [L]
+
+    # Handle /sas-prj/
+    RewriteCond %{REQUEST_URI} ^/crm/
+    RewriteRule ^sas-prj/(.*)$ index.php/$1 [L]
+
+    # Remove index.php from URL
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ index.php?/$1 [QSA,L]
-</IfModule>
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^(.*)$ index.php/$1 [L]
+</IfModule>   
+ 

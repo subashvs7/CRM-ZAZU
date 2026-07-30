@@ -39,43 +39,48 @@ class Visits extends MY_Controller {
 
     public function do_checkin() {
         $cid     = (int)$this->input->post('customer_id');
+        $plan_id = (int)$this->input->post('visit_plan_id') ?: null;
         $lat     = $this->input->post('latitude');
         $lng     = $this->input->post('longitude');
-        $plan_id = (int)$this->input->post('visit_plan_id') ?: null;
+        $notes   = $this->input->post('notes');
 
         if (!$cid) {
-            $this->json_error('Please select a customer.', 400, ['customer_id' => 'Customer is required.']);
+            $this->json_error('Customer is required.', 400);
         }
 
         // Check for an existing open check-in
         $open = $this->Visit_log_model->get_open_visit($this->get_user_id());
         if ($open) {
-            $cust = $this->Customer_model->get_by_id($open['customer_id']);
-            $this->json_error(
-                'You are already checked in at <strong>' . esc_html($cust['name'] ?? 'a customer') . '</strong>. '
-                . 'Please check out first.',
-                400,
-                ['open_visit_id' => $open['id']]
-            );
+            $this->json_error('You are already checked in elsewhere. Please check out first.', 400, ['open_log_id' => $open['id']]);
         }
 
+        $distance = null;
+        if ($lat && $lng) {
+            $customer = $this->Customer_model->get_by_id($cid);
+            if ($customer && $customer['latitude'] && $customer['longitude']) {
+                $theta = $lng - $customer['longitude'];
+                $dist = sin(deg2rad($lat)) * sin(deg2rad($customer['latitude'])) +  cos(deg2rad($lat)) * cos(deg2rad($customer['latitude'])) * cos(deg2rad($theta));
+                $dist = acos($dist);
+                $dist = rad2deg($dist);
+                $distance = round($dist * 60 * 1.1515 * 1.609344 * 1000); // meters
+            }
+        }
+
+        $now = date('Y-m-d H:i:s');
         $data = [
             'visit_plan_id'    => $plan_id,
             'user_id'          => $this->get_user_id(),
             'customer_id'      => $cid,
-            'check_in_at'      => date('Y-m-d H:i:s'),
+            'check_in_at'      => $now,
             'check_in_lat'     => $lat ?: null,
             'check_in_lng'     => $lng ?: null,
-            'check_in_address' => $this->input->post('notes'),
-            'notes'            => $this->input->post('notes'),
+            'distance_from_customer' => $distance,
+            'notes'            => $notes,
         ];
+        
         $id = $this->Visit_log_model->insert($data);
 
-        if ($plan_id) {
-            $this->Visit_plan_model->update($plan_id, ['visit_status' => 'completed']);
-        }
-
-        $this->json_success(['id' => $id], 'Checked in successfully at ' . date('H:i'));
+        $this->json_success(['id' => $id], 'Checked in successfully.');
     }
 
     public function do_checkout($id) {
@@ -83,15 +88,32 @@ class Visits extends MY_Controller {
         if (!$log || $log['user_id'] != $this->get_user_id()) $this->json_error('Not found.', 404);
         if ($log['check_out_at']) $this->json_error('Already checked out.');
 
+        $lat = $this->input->post('latitude');
+        $lng = $this->input->post('longitude');
+        $notes = $this->input->post('notes');
+        $outcome = $this->input->post('visit_outcome');
+
+        if (!$outcome) $this->json_error('Please select a Status.', 400);
+
         $data = [
-            'check_out_at'      => date('Y-m-d H:i:s'),
-            'check_out_lat'     => $this->input->post('latitude') ?: null,
-            'check_out_lng'     => $this->input->post('longitude') ?: null,
-            'check_out_address' => $this->input->post('address'),
-            'notes'             => $this->input->post('notes') ?: $log['notes'],
+            'check_out_at'       => date('Y-m-d H:i:s'),
+            'check_out_lat'      => $lat ?: null,
+            'check_out_lng'      => $lng ?: null,
+            'visit_outcome'      => $outcome,
+            'related_follow_ups' => json_encode($this->input->post('related_follow_ups') ?: []),
+            'notes'              => $notes ?: $log['notes'],
         ];
         $this->Visit_log_model->update($id, $data);
-        $this->json_success([], 'Checked out successfully.');
+        
+        // Complete the plan
+        if ($log['visit_plan_id']) {
+            $this->Visit_plan_model->update($log['visit_plan_id'], ['visit_status' => 'completed']);
+        }
+        
+        // Shift customer to followup
+        $this->Customer_model->update($log['customer_id'], ['customer_type' => 'followup']);
+
+        $this->json_success([], 'Checked out successfully. Customer moved to Follow-ups.');
     }
 
     public function datatable() {
@@ -99,10 +121,71 @@ class Visits extends MY_Controller {
         [$rows, $total] = $this->Visit_plan_model->datatable($params, $sf, $this->get_user_id(), $this->get_role());
         $data = [];
         foreach ($rows as $r) {
-            $acts = '<div class="flex items-center gap-1"><button class="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors btn-edit-visit" data-id="'.$r['id'].'" title="Edit"><i class="fa fa-pencil" style="font-size:11px"></i></button>';
-            if ($r['status']==='active') $acts .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors btn-visit-status" data-id="'.$r['id'].'" data-action="delete" title="Delete"><i class="fa fa-trash" style="font-size:11px"></i></button>';
+            $acts = '<div class="flex items-center justify-center gap-1.5">';
+            if ($r['visit_status'] === 'planned' || $r['visit_status'] === 'rescheduled') {
+                if ($r['open_visit_log_id']) {
+                    $acts .= '<button class="px-2.5 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-xs font-bold btn-checkout" data-id="'.$r['id'].'" data-log-id="'.$r['open_visit_log_id'].'" data-customer="'.$r['customer_id'].'">Check Out</button>';
+                } else {
+                    $acts .= '<button class="px-2.5 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-xs font-bold btn-checkin" data-id="'.$r['id'].'" data-customer="'.$r['customer_id'].'">Check In</button>';
+                }
+            }
+            $acts .= '<button class="inline-flex items-center justify-center w-6 h-6 bg-gray-50 text-gray-500 rounded hover:bg-gray-200 transition-colors btn-view-visit" data-id="'.$r['id'].'" title="View"><i class="fa fa-eye text-[10px]"></i></button>';
             $acts .= '</div>';
-            $data[] = [$r['id'], $r['planned_date'], $r['planned_time']??'-', esc_html($r['customer_name']), esc_html($r['user_name']), visit_status_badge($r['visit_status']), esc_html(substr($r['purpose']??'',0,50)), status_badge($r['status']), $acts];
+            $data[] = [
+                'DT_RowClass' => ($r['customer_type'] === 'primary' ? 'bg-blue-50' : ($r['customer_type'] === 'followup' ? 'bg-yellow-50' : '')),
+                0 => $r['id'], 
+                1 => esc_html($r['customer_name']), 
+                2 => esc_html($r['user_name']), 
+                3 => date('d M Y', strtotime($r['planned_date'])), 
+                4 => $r['planned_time'] ? date('h:i A', strtotime($r['planned_time'])) : '-', 
+                5 => esc_html(substr($r['purpose']??'',0,50)), 
+                6 => visit_status_badge($r['visit_status']), 
+                7 => $acts
+            ];
+        }
+        $this->json_list($data, $total, $total);
+    }
+
+    public function history_datatable() {
+        $params = $this->input->get(); $sf = $this->input->get('status_filter');
+        [$rows, $total] = $this->Visit_log_model->datatable($params, $sf, $this->get_user_id(), $this->get_role());
+        $data = [];
+        foreach ($rows as $r) {
+            $checkin = date('d M Y h:i A', strtotime($r['check_in_at']));
+            if ($r['check_in_lat'] && $r['check_in_lng']) {
+                $checkin .= '<br><span class="text-[10px] text-gray-400"><i class="fa fa-map-marker text-red-500"></i> ' . $r['check_in_lat'] . ', ' . $r['check_in_lng'] . '</span>';
+            }
+
+            $checkout = '-';
+            if ($r['check_out_at']) {
+                $checkout = date('d M Y h:i A', strtotime($r['check_out_at']));
+                if ($r['check_out_lat'] && $r['check_out_lng']) {
+                    $checkout .= '<br><span class="text-[10px] text-gray-400"><i class="fa fa-map-marker text-red-500"></i> ' . $r['check_out_lat'] . ', ' . $r['check_out_lng'] . '</span>';
+                }
+            }
+
+            $outcome = $r['visit_outcome'];
+            $outcome_badge = '<span class="px-2 py-0.5 border border-gray-200 text-gray-500 bg-gray-50 text-[11px] rounded-md font-medium">Pending</span>';
+            if ($outcome === 'Met Successfully') {
+                $outcome_badge = '<span class="px-2 py-0.5 border border-green-200 text-green-600 bg-green-50 text-[11px] rounded-md font-medium">Met Successfully</span>';
+            } elseif ($outcome === 'Refused' || $outcome === 'Canceled') {
+                $outcome_badge = '<span class="px-2 py-0.5 border border-red-200 text-red-600 bg-red-50 text-[11px] rounded-md font-medium">'.$outcome.'</span>';
+            } elseif ($outcome === 'Reschedule' || $outcome === 'Not Available') {
+                $outcome_badge = '<span class="px-2 py-0.5 border border-yellow-200 text-yellow-700 bg-yellow-50 text-[11px] rounded-md font-medium">'.$outcome.'</span>';
+            } elseif ($outcome) {
+                $outcome_badge = '<span class="px-2 py-0.5 border border-blue-200 text-blue-600 bg-blue-50 text-[11px] rounded-md font-medium">'.$outcome.'</span>';
+            }
+
+            $data[] = [
+                $r['id'], 
+                $checkin, 
+                $checkout, 
+                esc_html($r['customer_name']), 
+                esc_html($r['user_name']), 
+                $r['distance_from_customer'] ? $r['distance_from_customer'].'m' : '-', 
+                $r['is_auto_checkin'] ? '<span class="text-green-600">Yes</span>' : '<span class="text-gray-400">No</span>', 
+                $outcome_badge
+            ];
         }
         $this->json_list($data, $total, $total);
     }

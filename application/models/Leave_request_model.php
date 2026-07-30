@@ -29,7 +29,10 @@ class Leave_request_model extends MY_Model {
         if ($search) $this->db->like('u.name', $search);
 
         $total = $this->db->count_all_results('', false);
-        $this->db->order_by('lr.id', 'desc')->limit($params['length'], $params['start']);
+        $this->db->order_by('lr.id', 'desc');
+        if (isset($params['length']) && $params['length'] != -1) {
+            $this->db->limit($params['length'], $params['start'] ?? 0);
+        }
         return [$this->db->get()->result_array(), $total];
     }
 
@@ -41,7 +44,10 @@ class Leave_request_model extends MY_Model {
             ->where(['lr.leave_status' => 'pending', 'lr.is_deleted' => 0]);
 
         $total = $this->db->count_all_results('', false);
-        $this->db->order_by('lr.id', 'asc')->limit($params['length'], $params['start']);
+        $this->db->order_by('lr.id', 'asc');
+        if (isset($params['length']) && $params['length'] != -1) {
+            $this->db->limit($params['length'], $params['start'] ?? 0);
+        }
         return [$this->db->get()->result_array(), $total];
     }
 }
