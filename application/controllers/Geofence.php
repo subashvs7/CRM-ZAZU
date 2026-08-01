@@ -10,7 +10,7 @@ class Geofence extends MY_Controller {
     }
 
     public function index() {
-        $customers = $this->Customer_model->get_active();
+        $customers = $this->Customer_model->get_active($this->is_manager() ? [] : ['assigned_to' => $this->get_user_id()]);
         $this->load_view('geofence/index', ['page_title'=>'Geofence','page_js'=>'geofence','customers'=>$customers,'sf'=>'']);
     }
 
@@ -25,7 +25,7 @@ class Geofence extends MY_Controller {
         }
         $this->json_list($data,$total,$total);
     }
-
+           
     public function save() {
         $id   = (int)$this->input->post('id');
         $name = trim($this->input->post('name'));

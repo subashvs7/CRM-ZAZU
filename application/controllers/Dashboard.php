@@ -62,12 +62,14 @@ class Dashboard extends MY_Controller {
             $data['punch_in_at']      = ($att && $att['punch_in_at'])  ? date('H:i', strtotime($att['punch_in_at']))  : null;
             $data['punch_out_at']     = ($att && $att['punch_out_at']) ? date('H:i', strtotime($att['punch_out_at'])) : null;
 
-            $plan = $this->db->select('vp.id, vp.planned_time, c.name AS customer_name, vp.customer_id, vp.visit_status, vl.id AS open_visit_log_id')
+            $plan = $this->db->select('vp.id, vp.planned_date, vp.planned_time, vp.purpose, c.name AS customer_name, vp.customer_id, vp.visit_status, vl.id AS open_visit_log_id')
                 ->from('visit_plans vp')
                 ->join('customers c','c.id=vp.customer_id','left')
                 ->join('visit_logs vl', 'vl.visit_plan_id = vp.id AND vl.check_out_at IS NULL', 'left')
-                ->where(['vp.user_id'=>$uid,'vp.planned_date'=>$today,'vp.is_deleted'=>0])
+                ->where(['vp.user_id'=>$uid,'vp.is_deleted'=>0])
+                ->where('vp.planned_date >=', $today)
                 ->where_in('vp.visit_status', ['planned', 'rescheduled'])
+                ->order_by('vp.planned_date', 'asc')->order_by('vp.planned_time', 'asc')
                 ->get()->result_array();
             $data['todays_plans'] = $plan;
         }

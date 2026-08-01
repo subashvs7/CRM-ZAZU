@@ -186,11 +186,11 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-500 mb-1.5">Check In Time</label>
-                                <input type="text" id="chk-in-time-display" class="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-xs" readonly>
+                                <input type="text" id="chk-in-time-display" name="check_in_at" class="w-full px-3 py-2 border border-gray-200 <?= $is_admin ? '' : 'bg-gray-50' ?> rounded-lg text-xs" <?= $is_admin ? '' : 'readonly' ?>>
                             </div>
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-500 mb-1.5">Location</label>
-                                <input type="text" id="chk-in-location-display" class="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-xs" readonly placeholder="Fetching...">
+                                <input type="text" id="chk-in-location-display" name="check_in_location" class="w-full px-3 py-2 border border-gray-200 <?= $is_admin ? '' : 'bg-gray-50' ?> rounded-lg text-xs" <?= $is_admin ? '' : 'readonly' ?> placeholder="Fetching...">
                             </div>
                         </div>
                         
@@ -227,11 +227,11 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-500 mb-1.5">Check Out Time</label>
-                                <input type="text" id="chk-out-time-display" class="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-xs" readonly>
+                                <input type="text" id="chk-out-time-display" name="check_out_at" class="w-full px-3 py-2 border border-gray-200 <?= $is_admin ? '' : 'bg-gray-50' ?> rounded-lg text-xs" <?= $is_admin ? '' : 'readonly' ?>>
                             </div>
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-500 mb-1.5">Location</label>
-                                <input type="text" id="chk-out-location-display" class="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-xs" readonly placeholder="Fetching...">
+                                <input type="text" id="chk-out-location-display" name="check_out_location" class="w-full px-3 py-2 border border-gray-200 <?= $is_admin ? '' : 'bg-gray-50' ?> rounded-lg text-xs" <?= $is_admin ? '' : 'readonly' ?> placeholder="Fetching...">
                             </div>
                         </div>
 

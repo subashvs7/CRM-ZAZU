@@ -39,7 +39,7 @@ class Customer_model extends MY_Model {
                 ->or_like('c.email', $search)
                 ->or_like('c.city', $search)
                 ->or_like('c.state', $search)
-                ->or_like('c.', $search)
+                ->or_like('c.notes', $search)
                 ->group_end();
         }
 

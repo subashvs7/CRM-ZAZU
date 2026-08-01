@@ -11,7 +11,7 @@ class Orders extends MY_Controller {
     }
 
     public function index() {
-        $customers = $this->Customer_model->get_active();
+        $customers = $this->Customer_model->get_active($this->is_manager() ? [] : ['assigned_to' => $this->get_user_id()]);
         $products  = $this->Product_model->get_active_with_category();
         $this->load_view('orders/index', ['page_title'=>'Orders','page_js'=>'orders','customers'=>$customers,'products'=>$products,'sf'=>'']);
     }

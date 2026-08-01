@@ -10,7 +10,7 @@ class Leads extends MY_Controller {
     }
 
     public function index() {
-        $customers = $this->Customer_model->get_active();
+        $customers = $this->Customer_model->get_active($this->is_manager() ? [] : ['assigned_to' => $this->get_user_id()]);
         $staff     = $this->is_manager() ? $this->User_model->get_field_staff() : [];
         $this->load_view('leads/index', ['page_title'=>'Leads','page_js'=>'leads','customers'=>$customers,'staff'=>$staff,'sf'=>'']);
     }

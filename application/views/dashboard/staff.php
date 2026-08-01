@@ -102,16 +102,16 @@
         </div>
     </div>
 
-    <!-- Today's Planned Visits -->
-    <div class="xl:col-span-3 bg-white rounded-2xl shadow-sm border border-gray-100">
+    <!-- Planned Visits -->
+    <div class="xl:col-span-3 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col">
         <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                     <i class="fa fa-list text-purple-600 text-sm"></i>
                 </div>
                 <div>
-                    <h3 class="text-sm font-bold text-gray-800">Today's Planned Visits</h3>
-                    <p class="text-xs text-gray-400">Your schedule for today</p>
+                    <h3 class="text-sm font-bold text-gray-800">Planned Visits</h3>
+                    <p class="text-xs text-gray-400">Your schedule</p>
                 </div>
             </div>
             <a href="<?= base_url('visits') ?>"
@@ -119,7 +119,11 @@
                 <i class="fa fa-plus"></i> Plan Visit
             </a>
         </div>
-        <div class="divide-y divide-gray-50" id="todays-plans-container">
+        <div class="border-b border-gray-100 px-6 pt-2 flex items-center gap-6">
+            <button class="dash-visit-tab active text-sm font-semibold text-blue-600 border-b-2 border-blue-600 pb-2" data-target="today">Today</button>
+            <button class="dash-visit-tab text-sm font-semibold text-gray-500 hover:text-gray-700 pb-2 border-b-2 border-transparent" data-target="upcoming">Upcoming</button>
+        </div>
+        <div class="divide-y divide-gray-50 flex-1 overflow-y-auto" style="max-height: 400px;" id="todays-plans-container">
             <div class="p-8 text-center text-gray-300">
                 <i class="fa fa-spinner fa-spin fa-2x"></i>
                 <p class="text-sm mt-3">Loading plans...</p>
@@ -168,38 +172,60 @@ $(function() {
         $('#attendance-box').html(attHtml);
 
         /* Planned visits */
-        var plans = d.todays_plans || [];
-        if (plans.length === 0) {
-            $('#todays-plans-container').html(
-                '<div class="p-10 text-center">' +
-                '<div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">' +
-                '<i class="fa fa-calendar-o text-gray-300 text-2xl"></i></div>' +
-                '<p class="text-sm font-medium text-gray-500">No visits planned for today</p>' +
-                '<p class="text-xs text-gray-400 mt-1">Click "Plan Visit" to schedule your first visit</p>' +
-                '</div>'
-            );
-        } else {
-            var html = '';
-            $.each(plans, function(i, p) {
-                var btnHtml = '';
-                if (p.open_visit_log_id) {
-                    btnHtml = '<a href="' + BASE_URL + 'visits" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-100 text-red-700 font-bold rounded-lg hover:bg-red-200 transition-colors flex-shrink-0"><i class="fa fa-sign-out"></i> Check Out</a>';
-                } else {
-                    btnHtml = '<a href="' + BASE_URL + 'visits" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-100 text-green-700 font-bold rounded-lg hover:bg-green-200 transition-colors flex-shrink-0"><i class="fa fa-map-marker"></i> Check In</a>';
-                }
+        var allPlans = d.todays_plans || [];
+        var todayStr = new Date().toISOString().split('T')[0];
 
-                html +=
-                    '<div class="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">' +
-                    '<div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center flex-shrink-0">' +
-                    CRM.esc((p.planned_time && p.planned_time.length >= 5 ? p.planned_time.substring(0, 5) : '?')) +
-                    '</div>' +
-                    '<div class="flex-1 min-w-0">' +
-                    '<p class="text-sm font-semibold text-gray-800 truncate">' + CRM.esc(p.customer_name) + '</p>' +
-                    '<p class="text-xs text-gray-400 mt-0.5">' + CRM.esc(p.planned_time || 'Anytime') + '</p>' +
-                    '</div>' + btnHtml + '</div>';
+        function renderPlans(tab) {
+            var filtered = allPlans.filter(function(p) {
+                if (tab === 'today') return p.planned_date === todayStr;
+                return p.planned_date !== todayStr;
             });
-            $('#todays-plans-container').html(html);
+            
+            if (filtered.length === 0) {
+                $('#todays-plans-container').html(
+                    '<div class="p-10 text-center">' +
+                    '<div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">' +
+                    '<i class="fa fa-calendar-o text-gray-300 text-2xl"></i></div>' +
+                    '<p class="text-sm font-medium text-gray-500">No visits planned</p>' +
+                    '<p class="text-xs text-gray-400 mt-1">Click "Plan Visit" to schedule your first visit</p>' +
+                    '</div>'
+                );
+            } else {
+                var html = '';
+                $.each(filtered, function(i, p) {
+                    var btnHtml = '';
+                    if (p.open_visit_log_id) {
+                        btnHtml = '<a href="' + BASE_URL + 'visits" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-100 text-red-700 font-bold rounded-lg hover:bg-red-200 transition-colors flex-shrink-0"><i class="fa fa-sign-out"></i> Check Out</a>';
+                    } else {
+                        if (p.planned_date > todayStr) {
+                            btnHtml = '<button onclick="alert(\'You can only check in on the scheduled date.\')" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-gray-100 text-gray-400 font-bold rounded-lg cursor-not-allowed flex-shrink-0"><i class="fa fa-map-marker"></i> Check In</button>';
+                        } else {
+                            btnHtml = '<a href="' + BASE_URL + 'visits" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-100 text-green-700 font-bold rounded-lg hover:bg-green-200 transition-colors flex-shrink-0"><i class="fa fa-map-marker"></i> Check In</a>';
+                        }
+                    }
+
+                    var dateLabel = p.planned_date === todayStr ? 'Today' : p.planned_date;
+                    html +=
+                        '<div class="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">' +
+                        '<div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center flex-shrink-0">' +
+                        CRM.esc((p.planned_time && p.planned_time.length >= 5 ? p.planned_time.substring(0, 5) : '?')) +
+                        '</div>' +
+                        '<div class="flex-1 min-w-0">' +
+                        '<p class="text-sm font-semibold text-gray-800 truncate">' + CRM.esc(p.customer_name) + '</p>' +
+                        '<p class="text-xs text-gray-500 mt-0.5"><span class="font-medium">' + CRM.esc(dateLabel) + ' at ' + CRM.esc(p.planned_time || 'Anytime') + '</span> &bull; <span class="text-gray-400">' + CRM.esc(p.purpose || 'No purpose') + '</span></p>' +
+                        '</div>' + btnHtml + '</div>';
+                });
+                $('#todays-plans-container').html(html);
+            }
         }
+
+        renderPlans('today');
+        
+        $('.dash-visit-tab').on('click', function() {
+            $('.dash-visit-tab').removeClass('active text-blue-600 border-blue-600').addClass('text-gray-500 border-transparent hover:text-gray-700');
+            $(this).removeClass('text-gray-500 border-transparent hover:text-gray-700').addClass('active text-blue-600 border-blue-600');
+            renderPlans($(this).data('target'));
+        });
     });
 });
 </script>

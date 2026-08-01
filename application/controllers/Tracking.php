@@ -82,6 +82,7 @@ class Tracking extends MY_Controller {
         $c_created = $this->db->select('id')
             ->from('customers')
             ->where('DATE(created_at)', $date)
+            ->where('assigned_to', $uid)
             ->where('is_deleted', 0)
             ->get()->result_array();
 

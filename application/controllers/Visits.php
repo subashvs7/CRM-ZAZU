@@ -10,7 +10,7 @@ class Visits extends MY_Controller {
     }
 
     public function index() {
-        $customers = $this->Customer_model->get_active();
+        $customers = $this->Customer_model->get_active($this->is_manager() ? [] : ['assigned_to' => $this->get_user_id()]);
         $staff     = $this->is_manager() ? $this->User_model->get_field_staff() : [];
         $this->load_view('visits/index', ['page_title'=>'Visit Plans','page_js'=>'visits','customers'=>$customers,'staff'=>$staff,'sf'=>'']);
     }
@@ -26,7 +26,7 @@ class Visits extends MY_Controller {
     public function checkin() {
         $plan_id   = (int)$this->input->get('plan_id');
         $plan      = $plan_id ? $this->Visit_plan_model->get_with_details($plan_id) : null;
-        $customers = $this->Customer_model->get_active();
+        $customers = $this->Customer_model->get_active($this->is_manager() ? [] : ['assigned_to' => $this->get_user_id()]);
         // Pass any existing open check-in so view can show a "checkout" prompt
         $open_visit = $this->Visit_log_model->get_open_visit($this->get_user_id());
         $this->load_view('visits/checkin', [
@@ -42,6 +42,14 @@ class Visits extends MY_Controller {
         $plan_id = (int)$this->input->post('visit_plan_id') ?: null;
         $lat     = $this->input->post('latitude');
         $lng     = $this->input->post('longitude');
+
+        if ($this->is_admin() && $this->input->post('check_in_location')) {
+            $loc = explode(',', $this->input->post('check_in_location'));
+            if (count($loc) == 2) {
+                $lat = trim($loc[0]);
+                $lng = trim($loc[1]);
+            }
+        }
         $notes   = $this->input->post('notes');
 
         if (!$cid) {
@@ -67,6 +75,10 @@ class Visits extends MY_Controller {
         }
 
         $now = date('Y-m-d H:i:s');
+        if ($this->is_admin() && $this->input->post('check_in_at')) {
+            $parsed = strtotime($this->input->post('check_in_at'));
+            if ($parsed) $now = date('Y-m-d H:i:s', $parsed);
+        }
         $data = [
             'visit_plan_id'    => $plan_id,
             'user_id'          => $this->get_user_id(),
@@ -90,13 +102,27 @@ class Visits extends MY_Controller {
 
         $lat = $this->input->post('latitude');
         $lng = $this->input->post('longitude');
+        
+        if ($this->is_admin() && $this->input->post('check_out_location')) {
+            $loc = explode(',', $this->input->post('check_out_location'));
+            if (count($loc) == 2) {
+                $lat = trim($loc[0]);
+                $lng = trim($loc[1]);
+            }
+        }
         $notes = $this->input->post('notes');
         $outcome = $this->input->post('visit_outcome');
 
         if (!$outcome) $this->json_error('Please select a Status.', 400);
 
+        $now = date('Y-m-d H:i:s');
+        if ($this->is_admin() && $this->input->post('check_out_at')) {
+            $parsed = strtotime($this->input->post('check_out_at'));
+            if ($parsed) $now = date('Y-m-d H:i:s', $parsed);
+        }
+
         $data = [
-            'check_out_at'       => date('Y-m-d H:i:s'),
+            'check_out_at'       => $now,
             'check_out_lat'      => $lat ?: null,
             'check_out_lng'      => $lng ?: null,
             'visit_outcome'      => $outcome,
@@ -129,7 +155,6 @@ class Visits extends MY_Controller {
                     $acts .= '<button class="px-2.5 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-xs font-bold btn-checkin" data-id="'.$r['id'].'" data-customer="'.$r['customer_id'].'">Check In</button>';
                 }
             }
-            $acts .= '<button class="inline-flex items-center justify-center w-6 h-6 bg-gray-50 text-gray-500 rounded hover:bg-gray-200 transition-colors btn-view-visit" data-id="'.$r['id'].'" title="View"><i class="fa fa-eye text-[10px]"></i></button>';
             $acts .= '</div>';
             $data[] = [
                 'DT_RowClass' => ($r['customer_type'] === 'primary' ? 'bg-blue-50' : ($r['customer_type'] === 'followup' ? 'bg-yellow-50' : '')),
