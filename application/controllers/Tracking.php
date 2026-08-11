@@ -75,7 +75,7 @@ class Tracking extends MY_Controller {
             ->where(['vl.user_id' => $uid, 'vl.is_deleted' => 0])
             ->where('DATE(vl.check_in_at)', $date)
             ->order_by('vl.check_in_at', 'asc')
-            ->get()->result_array();
+            ->get()->result_array(); 
 
         // Fetch customer IDs that are relevant to this user on this specific date:
         // 1. Created on this date

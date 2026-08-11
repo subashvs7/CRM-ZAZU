@@ -96,7 +96,7 @@ $total_staff = count($staff);
             <?php foreach ($staff as $s):
                 $colors  = ['#2563eb','#7c3aed','#059669','#dc2626','#d97706','#0891b2'];
                 $bgColor = $colors[abs(crc32($s['name'])) % count($colors)];
-                $initials = implode('', array_map(fn($w) => strtoupper($w[0]), array_slice(explode(' ', $s['name']), 0, 2)));
+                $initials = implode('', array_map(function($w) { return isset($w[0]) ? strtoupper($w[0]) : ''; }, array_slice(explode(' ', $s['name']), 0, 2)));
             ?>
             <div class="staff-card offline px-3 py-3 border-b-2 border-gray-50 cursor-pointer hover:bg-blue-50 transition-all"
                  id="card-<?= $s['id'] ?>" data-uid="<?= $s['id'] ?>" data-name="<?= esc_html($s['name']) ?>" data-status="offline"
@@ -284,10 +284,10 @@ $total_staff = count($staff);
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-var STAFF_DATA = <?= json_encode(array_map(fn($s) => [
+var STAFF_DATA = <?= json_encode(array_map(function($s) { return [
     'id'      => (int)$s['id'],
     'name'    => $s['name'],
-    'initials'=> implode('', array_map(fn($w)=>strtoupper($w[0]), array_slice(explode(' ',$s['name']),0,2))),
+    'initials'=> implode('', array_map(function($w) { return isset($w[0]) ? strtoupper($w[0]) : ''; }, array_slice(explode(' ',$s['name']),0,2))),
     'color'   => ['#2563eb','#7c3aed','#059669','#dc2626','#d97706','#0891b2'][abs(crc32($s['name'])) % 6],
-], $staff)) ?>;
+]; }, $staff)) ?>;
 </script>

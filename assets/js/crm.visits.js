@@ -5,9 +5,22 @@ $(function() {
     if ($('#visits-table').length && !$.fn.DataTable.isDataTable('#visits-table')) {
         window.mainTable = $('#visits-table').DataTable({
             processing: true, serverSide: true,
-            ajax: { url: BASE_URL + 'visits/datatable', data: function(d) { d.status_filter = window.currentStatusFilter || ''; } },
-            columns: [{data:0},{data:1},{data:2},{data:3},{data:4},{data:5},{data:6},{data:7,orderable:false}],
+            ajax: { 
+                url: BASE_URL + 'visits/datatable', 
+                data: function(d) { 
+                    d.status_filter = window.currentStatusFilter || ''; 
+                    d.staff_filter = $('#filter-staff').val() || '';
+                    d.date_filter = $('#filter-date').val() || '';
+                    d.customer_type = $('#filter-customer-type').val() || '';
+                } 
+            },
+            columns: [{data:0},{data:1},{data:2},{data:3},{data:4},{data:5},{data:6,orderable:false}],
             order: [[3, 'desc']] // Date is now column index 3
+        });
+
+        // Trigger AJAX reload when filters change
+        $('#filter-staff, #filter-date, #filter-customer-type').on('change', function() {
+            window.mainTable.ajax.reload();
         });
     }
 
@@ -190,6 +203,46 @@ $(function() {
                 } else CRM.toast('error', res.message);
             },
             complete: function() { CRM.btn_reset($btn); }
+        });
+    });
+
+    // Re-plan trigger
+    $(document).on('click', '.btn-replan', function() {
+        var id = $(this).data('id');
+        var date = $(this).data('date');
+        var time = $(this).data('time');
+        
+        $('#replan-form')[0].reset();
+        $('#replan-plan-id').val(id);
+        $('#replan-date').val(date);
+        $('#replan-time').val(time);
+        
+        $('#replan-modal').modal('show');
+    });
+
+    // Re-plan save
+    $('#btn-save-replan').click(function() {
+        var $btn = $(this); 
+        CRM.btn_loading($btn);
+        
+        $.ajax({
+            url: BASE_URL + 'visits/save', 
+            method: 'POST', 
+            data: new FormData($('#replan-form')[0]), 
+            processData: false, 
+            contentType: false,
+            success: function(res) {
+                if (res.status === 'success') {
+                    CRM.toast('success', 'Visit re-planned successfully.');
+                    $('#replan-modal').modal('hide');
+                    if (window.mainTable) window.mainTable.ajax.reload(null, false);
+                } else {
+                    CRM.toast('error', res.message);
+                }
+            },
+            complete: function() { 
+                CRM.btn_reset($btn); 
+            }
         });
     });
 

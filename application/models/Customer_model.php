@@ -13,7 +13,7 @@ class Customer_model extends MY_Model {
     }
 
     public function datatable($params, $status_filter = null, $user_id = null, $role = null) {
-        $this->db->select('c.id, c.name, c.phone, c.email, c.city, c.state, c.notes, u.name AS assigned_name, c.status, c.created_at')
+        $this->db->select('c.id, c.name, c.phone, c.email, c.city, c.state, c.notes, c.product_ids, u.name AS assigned_name, c.status, c.created_at')
             ->from('customers c')
             ->join('users u', 'u.id = c.assigned_to', 'left');
 
@@ -23,6 +23,14 @@ class Customer_model extends MY_Model {
         else                                   $this->db->where('c.is_deleted', 0);
 
         if ($role === 'field_staff') $this->db->where('c.assigned_to', $user_id);
+
+        if (!empty($params['staff_filter'])) {
+            $this->db->where('c.assigned_to', $params['staff_filter']);
+        }
+
+        if (!empty($params['date_filter'])) {
+            $this->db->where('DATE(c.created_at)', $params['date_filter']);
+        }
 
         $customer_type = $params['customer_type'] ?? '';
         if ($customer_type === 'primary') {

@@ -154,6 +154,8 @@ class Visits extends MY_Controller {
                 } else {
                     $acts .= '<button class="px-2.5 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-xs font-bold btn-checkin" data-id="'.$r['id'].'" data-customer="'.$r['customer_id'].'">Check In</button>';
                 }
+            } else if ($r['visit_status'] === 'completed') {
+                $acts .= '<button class="px-2.5 py-1 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors text-xs font-bold btn-replan" data-id="'.$r['id'].'" data-date="'.$r['planned_date'].'" data-time="'.$r['planned_time'].'">Re-plan</button>';
             }
             $acts .= '</div>';
             $data[] = [
@@ -161,11 +163,10 @@ class Visits extends MY_Controller {
                 0 => $r['id'], 
                 1 => esc_html($r['customer_name']), 
                 2 => esc_html($r['user_name']), 
-                3 => date('d M Y', strtotime($r['planned_date'])), 
-                4 => $r['planned_time'] ? date('h:i A', strtotime($r['planned_time'])) : '-', 
-                5 => esc_html(substr($r['purpose']??'',0,50)), 
-                6 => visit_status_badge($r['visit_status']), 
-                7 => $acts
+                3 => date('d M Y', strtotime($r['planned_date'])) . ($r['planned_time'] ? '<br><span class="text-[10px] text-gray-500">'.date('h:i A', strtotime($r['planned_time'])).'</span>' : ''), 
+                4 => esc_html(substr($r['purpose']??'',0,50)), 
+                5 => visit_status_badge($r['visit_status']), 
+                6 => $acts
             ];
         }
         $this->json_list($data, $total, $total);
@@ -217,6 +218,18 @@ class Visits extends MY_Controller {
 
     public function save() {
         $id  = (int)$this->input->post('id');
+        
+        if ($this->input->post('action') === 'replan') {
+            $dt = $this->input->post('planned_date');
+            if (!$dt) $this->json_error('Validation failed.', 400, ['planned_date'=>'Required.']);
+            $this->Visit_plan_model->update($id, [
+                'planned_date' => $dt,
+                'planned_time' => $this->input->post('planned_time'),
+                'visit_status' => 'planned'
+            ]);
+            $this->json_success([], 'Visit re-planned.');
+        }
+
         $cid = (int)$this->input->post('customer_id');
         $uid = (int)$this->input->post('user_id') ?: $this->get_user_id();
         $dt  = $this->input->post('planned_date');

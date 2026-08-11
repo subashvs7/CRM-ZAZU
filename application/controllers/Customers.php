@@ -6,26 +6,36 @@ class Customers extends MY_Controller {
     public function __construct() {
         parent::__construct();
         $this->require_login();
-        $this->load->model(['Customer_model','Contact_person_model','User_model']);
+        $this->load->model(['Customer_model','Contact_person_model','User_model','Product_model']);
     }
 
     public function index($type = '') {
         $staff = $this->is_admin() ? $this->User_model->get_staff_list('field_staff') : [];
+        $products = $this->Product_model->get_active_with_category();
         $title = 'Customers';
         if ($type === 'primary') $title = 'Primary Customers';
         elseif ($type === 'followup') $title = 'Follow-ups Customers';
         
-        $this->load_view('customers/index', ['page_title'=>$title,'page_js'=>'customers','staff'=>$staff,'sf'=>'','customer_type'=>$type]);
+        $this->load_view('customers/index', ['page_title'=>$title,'page_js'=>'customers','staff'=>$staff,'products'=>$products,'sf'=>'','customer_type'=>$type]);
     }
 
     public function datatable() {
         $params = $this->input->get();
         $sf     = $this->input->get('status_filter');
         [$rows, $total] = $this->Customer_model->datatable($params, $sf, $this->get_user_id(), $this->get_role());
+        
+        $products = $this->Product_model->get_active_with_category();
+        $prod_map = [];
+        foreach ($products as $p) {
+            $prod_map[$p['id']] = $p['name'];
+        }
+
         $data = [];
         foreach ($rows as $r) {
             $actions = crm_action_btns($r['id'], 'customers', $r['status'], ['view'=>true,'edit'=>true]);
-            
+            if ($r['status'] !== 'deleted') {
+                $actions = str_replace('</div>', '<button class="inline-flex items-center justify-center w-7 h-7 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors btn-plan-visit" data-id="'.$r['id'].'" data-name="'.esc_html($r['name']).'" title="Plan Visit"><i class="fa fa-calendar-plus-o" style="font-size:11px"></i></button></div>', $actions);
+            }
             // Format contact: phone & email
             $phone = esc_html($r['phone']);
             $email = !empty($r['email']) ? esc_html($r['email']) : '-';
@@ -43,6 +53,18 @@ class Customers extends MY_Controller {
             if ($state !== '') {
                 $location .= '<div class="text-xs text-gray-500">' . $state . '</div>';
             }
+
+            // Format products as small badges
+            $prod_badges = [];
+            if (!empty($r['product_ids'])) {
+                $pids = explode(',', $r['product_ids']);
+                foreach ($pids as $pid) {
+                    if (isset($prod_map[$pid])) {
+                        $prod_badges[] = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">' . esc_html($prod_map[$pid]) . '</span>';
+                    }
+                }
+            }
+            $products_html = !empty($prod_badges) ? '<div class="flex flex-wrap gap-1">' . implode('', $prod_badges) . '</div>' : '<span class="text-gray-400">-</span>';
 
             // Format notes: truncate and set tooltip if > 50 chars
             $notes = !empty($r['notes']) ? trim($r['notes']) : '';
@@ -63,6 +85,7 @@ class Customers extends MY_Controller {
                 $contact,
                 $location,
                 esc_html($r['assigned_name'] ?? '-'),
+                $products_html,
                 $notes_html,
                 status_badge($r['status']),
                 date('d M Y', strtotime($r['created_at'])),
@@ -81,6 +104,9 @@ class Customers extends MY_Controller {
         if (!$phone) $errors['phone'] = 'Phone is required.';
         if ($errors) $this->json_error('Validation failed.', 400, $errors);
 
+        $product_ids = $this->input->post('product_ids');
+        $product_ids_str = !empty($product_ids) && is_array($product_ids) ? implode(',', array_map('intval', $product_ids)) : null;
+
         $data = [
             'name'        => $name,
             'phone'       => $phone,
@@ -91,6 +117,7 @@ class Customers extends MY_Controller {
             'pincode'     => $this->input->post('pincode'),
             'gst_number'  => $this->input->post('gst_number'),
             'notes'       => $this->input->post('notes'),
+            'product_ids' => $product_ids_str,
             'latitude'    => $this->input->post('latitude') ?: null,
             'longitude'   => $this->input->post('longitude') ?: null,
         ];
@@ -107,6 +134,54 @@ class Customers extends MY_Controller {
         $c = $this->Customer_model->get_with_staff($id);
         if (!$c) $this->json_error('Not found.', 404);
         $this->json_success($c);
+    }
+
+    public function get_details($id) {
+        $customer = $this->Customer_model->get_with_staff($id);
+        if (!$customer) $this->json_error('Not found.', 404);
+        
+        $contacts = $this->Contact_person_model->get_by_customer($id);
+        
+        // Resolve products
+        $this->load->model('Product_model');
+        $products = $this->Product_model->get_active_with_category();
+        $prod_map = [];
+        foreach ($products as $p) {
+            $prod_map[$p['id']] = $p['name'];
+        }
+        $resolved_products = [];
+        if (!empty($customer['product_ids'])) {
+            $pids = explode(',', $customer['product_ids']);
+            foreach ($pids as $pid) {
+                if (isset($prod_map[$pid])) {
+                    $resolved_products[] = $prod_map[$pid];
+                }
+            }
+        }
+        $customer['products'] = $resolved_products;
+        
+        // Fetch Visit Plans
+        $visits = $this->db->select('vp.id, vp.planned_date, vp.planned_time, vp.visit_status, vp.purpose, u.name AS user_name')
+            ->from('visit_plans vp')
+            ->join('users u', 'u.id = vp.user_id', 'left')
+            ->where(['vp.customer_id' => $id, 'vp.is_deleted' => 0])
+            ->order_by('vp.planned_date', 'desc')
+            ->get()->result_array();
+            
+        // Fetch Visit Logs
+        $logs = $this->db->select('vl.id, vl.check_in_at, vl.check_out_at, u.name AS user_name, vl.visit_outcome, vl.notes')
+            ->from('visit_logs vl')
+            ->join('users u', 'u.id = vl.user_id', 'left')
+            ->where(['vl.customer_id' => $id, 'vl.is_deleted' => 0])
+            ->order_by('vl.check_in_at', 'desc')
+            ->get()->result_array();
+            
+        $this->json_success([
+            'customer' => $customer,
+            'contacts' => $contacts,
+            'visit_plans' => $visits,
+            'visit_logs' => $logs
+        ]);
     }
 
     public function detail($id) {

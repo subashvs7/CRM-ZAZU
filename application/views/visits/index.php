@@ -40,14 +40,33 @@
     <div class="lg:col-span-2 flex flex-col">
         <!-- Table -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col">
-            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div class="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h3 class="text-sm font-bold text-gray-800">Scheduled Visits</h3>
                     <p class="text-xs text-gray-400 mt-0.5">Planned field visit schedule</p>
                 </div>
-                <span class="px-2.5 py-1 bg-cyan-50 text-cyan-600 text-xs font-semibold rounded-lg">
-                    <i class="fa fa-map-signs mr-1"></i> Plans
-                </span>
+                <div class="flex flex-col sm:flex-row gap-3 items-center">
+                    <div class="w-full sm:w-auto">
+                        <select id="filter-customer-type" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Types</option>
+                            <option value="primary">Primary</option>
+                            <option value="followup">Follow-up</option>
+                        </select>
+                    </div>
+                    <div class="w-full sm:w-auto">
+                        <input type="date" id="filter-date" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <?php if(isset($is_admin) && $is_admin || (isset($is_manager) && $is_manager)): ?>
+                    <div class="w-full sm:w-auto">
+                        <select id="filter-staff" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Staff</option>
+                            <?php foreach($staff as $s): ?>
+                                <option value="<?= $s['id'] ?>"><?= esc_html($s['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php endif; ?>
+                </div>
             </div>
             <div class="p-4 overflow-x-auto">
                 <table id="visits-table" class="w-full text-sm">
@@ -56,8 +75,7 @@
                             <th class="text-left font-semibold text-gray-500 pb-2">#</th>
                             <th class="text-left font-semibold text-gray-500 pb-2">Customer</th>
                             <th class="text-left font-semibold text-gray-500 pb-2">Assigned To</th>
-                            <th class="text-left font-semibold text-gray-500 pb-2">Date</th>
-                            <th class="text-left font-semibold text-gray-500 pb-2">Time</th>
+                            <th class="text-left font-semibold text-gray-500 pb-2">Date & Time</th>
                             <th class="text-left font-semibold text-gray-500 pb-2">Purpose</th>
                             <th class="text-left font-semibold text-gray-500 pb-2">Status</th>
                             <th class="text-center font-semibold text-gray-500 pb-2">Action</th>
@@ -271,6 +289,42 @@
             <div class="modal-footer bg-gray-50 border-t border-gray-100 px-6 py-4 flex justify-end gap-3">
                 <button type="button" class="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 transition-colors" data-dismiss="modal">Cancel</button>
                 <button type="button" class="px-5 py-2 text-xs font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors shadow-sm" id="btn-save-checkout">Save & Move</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Re-plan Modal -->
+<div class="modal fade" id="replan-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 rounded-2xl shadow-xl overflow-hidden">
+            <div class="modal-header bg-yellow-500 text-white border-0 px-5 py-4">
+                <h4 class="modal-title text-sm font-bold flex items-center gap-2"><i class="fa fa-calendar"></i> Re-plan Visit</h4>
+                <button type="button" class="close text-white opacity-80 hover:opacity-100 text-lg leading-none" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body p-6 bg-white">
+                <form id="replan-form" onsubmit="return false;">
+                    <input type="hidden" name="<?= $csrf_name ?>" value="<?= $csrf_hash ?>">
+                    <input type="hidden" name="id" id="replan-plan-id" value="">
+                    <input type="hidden" name="action" value="replan">
+                    
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-500 mb-1.5">New Date <span class="text-red-500">*</span></label>
+                                <input type="date" id="replan-date" name="planned_date" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-yellow-500" required>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-500 mb-1.5">New Time <span class="text-red-500">*</span></label>
+                                <input type="time" id="replan-time" name="planned_time" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-yellow-500" required>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-gray-50 border-t border-gray-100 px-6 py-4 flex justify-end gap-3">
+                <button type="button" class="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 transition-colors" data-dismiss="modal">Cancel</button>
+                <button type="button" class="px-5 py-2 text-xs font-semibold text-white bg-yellow-500 rounded-xl hover:bg-yellow-600 transition-colors shadow-sm" id="btn-save-replan">Save Changes</button>
             </div>
         </div>
     </div>

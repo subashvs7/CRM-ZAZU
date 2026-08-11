@@ -135,8 +135,13 @@ if (!function_exists('crm_action_btns')) {
     function crm_action_btns($id, $resource, $status, $opts = []) {
         $mod = rtrim($resource, 's'); // 'customers'→'customer', 'leads'→'lead', etc.
         $b = '<div class="flex items-center gap-1">';
-        if (!empty($opts['view']))
-            $b .= '<a href="'.base_url($resource.'/detail/'.$id).'" class="inline-flex items-center justify-center w-7 h-7 bg-cyan-100 text-cyan-700 rounded-lg hover:bg-cyan-200 transition-colors" title="View"><i class="fa fa-eye" style="font-size:11px"></i></a>';
+        if (!empty($opts['view'])) {
+            if ($resource === 'customers') {
+                $b .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-cyan-100 text-cyan-700 rounded-lg hover:bg-cyan-200 transition-colors btn-view-customer" data-id="'.$id.'" title="View"><i class="fa fa-eye" style="font-size:11px"></i></button>';
+            } else {
+                $b .= '<a href="'.base_url($resource.'/detail/'.$id).'" class="inline-flex items-center justify-center w-7 h-7 bg-cyan-100 text-cyan-700 rounded-lg hover:bg-cyan-200 transition-colors" title="View"><i class="fa fa-eye" style="font-size:11px"></i></a>';
+            }
+        }
         if (!empty($opts['edit']) && $status !== 'deleted')
             $b .= '<button class="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors btn-edit-'.$mod.'" data-id="'.$id.'" title="Edit"><i class="fa fa-pencil" style="font-size:11px"></i></button>';
         if ($status === 'active')

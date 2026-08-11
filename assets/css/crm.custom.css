@@ -17,6 +17,16 @@ body.modal-open { overflow: hidden; }
 }
 .modal-dialog.modal-lg { max-width: 900px; }
 .modal-lg .modal-dialog  { max-width: 900px; }
+.modal-dialog.modal-xl { max-width: 1200px; width: calc(100% - 2rem); }
+.responsive-table-container {
+    width: 100%;
+    overflow-x: hidden;
+}
+@media (max-width: 768px) {
+    .responsive-table-container {
+        overflow-x: auto;
+    }
+}
 .modal-backdrop {
     position: fixed; top: 0; left: 0;
     width: 100vw; height: 100vh;

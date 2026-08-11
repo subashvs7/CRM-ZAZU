@@ -29,6 +29,18 @@ class Visit_plan_model extends MY_Model {
 
         if ($role === 'field_staff') $this->db->where('vp.user_id', $user_id);
 
+        if (!empty($params['staff_filter'])) {
+            $this->db->where('vp.user_id', $params['staff_filter']);
+        }
+
+        if (!empty($params['date_filter'])) {
+            $this->db->where('DATE(vp.planned_date)', $params['date_filter']);
+        }
+
+        if (!empty($params['customer_type'])) {
+            $this->db->where('c.customer_type', $params['customer_type']);
+        }
+
         $search = $params['search']['value'] ?? '';
         if ($search) {
             $this->db->group_start()

@@ -58,7 +58,7 @@
         <?php if (has_module_access('leads')): ?>
         <a href="<?= base_url('leads') ?>" class="<?= tw_active('leads') ? $lnk_on : $lnk ?>">
             <i class="fa fa-filter <?= $ic ?>"></i>
-            <span class="sidebar-text">Leads</span>
+            <span class="sidebar-text">Ads Leads</span>
         </a>
         <?php endif; ?>
         <?php if (has_module_access('orders')): ?>
@@ -87,10 +87,10 @@
         </a>
         <?php endif; ?>
         <?php if (has_module_access('geofence')): ?>
-        <a href="<?= base_url('geofence') ?>" class="<?= tw_active('geofence') ? $lnk_on : $lnk ?>">
+        <!-- <a href="<?= base_url('geofence') ?>" class="<?= tw_active('geofence') ? $lnk_on : $lnk ?>">
             <i class="fa fa-circle-o <?= $ic ?>"></i>
             <span class="sidebar-text">Geofence</span>
-        </a>
+        </a> -->
         <?php endif; ?>
         <?php endif; ?>
 
@@ -102,46 +102,46 @@
             <span class="sidebar-text">Attendance</span>
         </a>
         <?php endif; ?>
-        <?php if (has_module_access('shifts')): ?>
-        <a href="<?= base_url('shifts') ?>" class="<?= tw_active('shifts') ? $lnk_on : $lnk ?>">
-            <i class="fa fa-calendar <?= $ic ?>"></i>
-            <span class="sidebar-text">Shifts</span>
-        </a>
-        <?php endif; ?>
-        <?php if (has_module_access('leave')): ?>
-        <a href="<?= base_url('leave') ?>" class="<?= tw_active('leave') ? $lnk_on : $lnk ?>">
-            <i class="fa fa-plane <?= $ic ?>"></i>
-            <span class="sidebar-text">Leave</span>
-        </a>
-        <?php endif; ?>
-        <?php if (has_module_access('selfie/log')): ?>
-        <a href="<?= base_url('selfie/log') ?>" class="<?= tw_active('selfie') ? $lnk_on : $lnk ?>">
-            <i class="fa fa-camera <?= $ic ?>"></i>
-            <span class="sidebar-text">Selfie Verify</span>
-        </a>
-        <?php endif; ?>
+        <!--<?php if (has_module_access('shifts')): ?>-->
+        <!--<a href="<?= base_url('shifts') ?>" class="<?= tw_active('shifts') ? $lnk_on : $lnk ?>">-->
+        <!--    <i class="fa fa-calendar <?= $ic ?>"></i>-->
+        <!--    <span class="sidebar-text">Shifts</span>-->
+        <!--</a>-->
+        <!--<?php endif; ?>-->
+        <!--<?php if (has_module_access('leave')): ?>-->
+        <!--<a href="<?= base_url('leave') ?>" class="<?= tw_active('leave') ? $lnk_on : $lnk ?>">-->
+        <!--    <i class="fa fa-plane <?= $ic ?>"></i>-->
+        <!--    <span class="sidebar-text">Leave</span>-->
+        <!--</a>-->
+        <!--<?php endif; ?>-->
+        <!--<?php if (has_module_access('selfie/log')): ?>-->
+        <!--<a href="<?= base_url('selfie/log') ?>" class="<?= tw_active('selfie') ? $lnk_on : $lnk ?>">-->
+        <!--    <i class="fa fa-camera <?= $ic ?>"></i>-->
+        <!--    <span class="sidebar-text">Selfie Verify</span>-->
+        <!--</a>-->
+        <!--<?php endif; ?>-->
         <?php endif; ?>
 
-        <?php if (has_module_access('reports')): ?>
+        <!--<?php if (has_module_access('reports')): ?>-->
         <!-- Reports submenu -->
-        <p class="px-3 pt-3 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest sidebar-text">Analytics</p>
-        <button type="button" onclick="toggleSubmenu('reports-sub',this)"
-                class="<?= $lnk ?> sidebar-text w-[calc(100%-1.5rem)]">
-            <i class="fa fa-bar-chart <?= $ic ?>"></i>
-            <span class="flex-1 sidebar-text text-left">Reports</span>
-            <i class="fa fa-angle-right text-xs sub-arrow sidebar-text transition-transform duration-200 <?= $seg1==='reports'?'rotate-90':'' ?>"></i>
-        </button>
-        <div id="reports-sub" class="crm-submenu <?= $seg1==='reports'?'open':'' ?>">
-            <a href="<?= base_url('reports/visits') ?>"          class="sub-link sidebar-text<?= $seg2==='visits'?' active':'' ?>"><i class="fa fa-map w-4 text-center"></i> Visit Reports</a>
-            <a href="<?= base_url('reports/lead_conversion') ?>" class="sub-link sidebar-text<?= $seg2==='lead_conversion'?' active':'' ?>"><i class="fa fa-funnel w-4 text-center"></i> Lead Conversion</a>
-            <a href="<?= base_url('reports/orders') ?>"          class="sub-link sidebar-text<?= $seg2==='orders'?' active':'' ?>"><i class="fa fa-shopping-bag w-4 text-center"></i> Orders</a>
-            <a href="<?= base_url('reports/staff_sales') ?>"     class="sub-link sidebar-text<?= $seg2==='staff_sales'?' active':'' ?>"><i class="fa fa-trophy w-4 text-center"></i> Staff Sales</a>
-            <a href="<?= base_url('reports/attendance') ?>"      class="sub-link sidebar-text<?= $seg2==='attendance'?' active':'' ?>"><i class="fa fa-clock-o w-4 text-center"></i> Attendance</a>
-            <a href="<?= base_url('reports/punctuality') ?>"     class="sub-link sidebar-text<?= $seg2==='punctuality'?' active':'' ?>"><i class="fa fa-check-circle w-4 text-center"></i> Punctuality</a>
-            <a href="<?= base_url('reports/leave_util') ?>"      class="sub-link sidebar-text<?= $seg2==='leave_util'?' active':'' ?>"><i class="fa fa-plane w-4 text-center"></i> Leave Util.</a>
-            <a href="<?= base_url('reports/coverage') ?>"        class="sub-link sidebar-text<?= $seg2==='coverage'?' active':'' ?>"><i class="fa fa-map-o w-4 text-center"></i> Coverage Map</a>
-        </div>
-        <?php endif; ?>
+        <!--<p class="px-3 pt-3 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest sidebar-text">Analytics</p>-->
+        <!--<button type="button" onclick="toggleSubmenu('reports-sub',this)"-->
+        <!--        class="<?= $lnk ?> sidebar-text w-[calc(100%-1.5rem)]">-->
+        <!--    <i class="fa fa-bar-chart <?= $ic ?>"></i>-->
+        <!--    <span class="flex-1 sidebar-text text-left">Reports</span>-->
+        <!--    <i class="fa fa-angle-right text-xs sub-arrow sidebar-text transition-transform duration-200 <?= $seg1==='reports'?'rotate-90':'' ?>"></i>-->
+        <!--</button>-->
+        <!--<div id="reports-sub" class="crm-submenu <?= $seg1==='reports'?'open':'' ?>">-->
+        <!--    <a href="<?= base_url('reports/visits') ?>"          class="sub-link sidebar-text<?= $seg2==='visits'?' active':'' ?>"><i class="fa fa-map w-4 text-center"></i> Visit Reports</a>-->
+        <!--    <a href="<?= base_url('reports/lead_conversion') ?>" class="sub-link sidebar-text<?= $seg2==='lead_conversion'?' active':'' ?>"><i class="fa fa-funnel w-4 text-center"></i> Lead Conversion</a>-->
+        <!--    <a href="<?= base_url('reports/orders') ?>"          class="sub-link sidebar-text<?= $seg2==='orders'?' active':'' ?>"><i class="fa fa-shopping-bag w-4 text-center"></i> Orders</a>-->
+        <!--    <a href="<?= base_url('reports/staff_sales') ?>"     class="sub-link sidebar-text<?= $seg2==='staff_sales'?' active':'' ?>"><i class="fa fa-trophy w-4 text-center"></i> Staff Sales</a>-->
+        <!--    <a href="<?= base_url('reports/attendance') ?>"      class="sub-link sidebar-text<?= $seg2==='attendance'?' active':'' ?>"><i class="fa fa-clock-o w-4 text-center"></i> Attendance</a>-->
+        <!--    <a href="<?= base_url('reports/punctuality') ?>"     class="sub-link sidebar-text<?= $seg2==='punctuality'?' active':'' ?>"><i class="fa fa-check-circle w-4 text-center"></i> Punctuality</a>-->
+        <!--    <a href="<?= base_url('reports/leave_util') ?>"      class="sub-link sidebar-text<?= $seg2==='leave_util'?' active':'' ?>"><i class="fa fa-plane w-4 text-center"></i> Leave Util.</a>-->
+        <!--    <a href="<?= base_url('reports/coverage') ?>"        class="sub-link sidebar-text<?= $seg2==='coverage'?' active':'' ?>"><i class="fa fa-map-o w-4 text-center"></i> Coverage Map</a>-->
+        <!--</div>-->
+        <!--<?php endif; ?>-->
 
         <!-- Product Hub -->
         <p class="px-3 pt-3 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest sidebar-text">Product Hub</p>
@@ -179,8 +179,8 @@
         </button>
         <div id="admin-sub" class="crm-submenu <?= $seg1==='admin'?'open':'' ?>">
             <a href="<?= base_url('admin/users') ?>"           class="sub-link sidebar-text<?= $seg2==='users'?' active':'' ?>"><i class="fa fa-users w-4 text-center"></i> Users</a>
-            <a href="<?= base_url('admin/teams') ?>"           class="sub-link sidebar-text<?= $seg2==='teams'?' active':'' ?>"><i class="fa fa-group w-4 text-center"></i> Teams</a>
-            <a href="<?= base_url('admin/notif_templates') ?>" class="sub-link sidebar-text<?= $seg2==='notif_templates'?' active':'' ?>"><i class="fa fa-envelope w-4 text-center"></i> Notif Templates</a>
+            <!--<a href="<?= base_url('admin/teams') ?>"           class="sub-link sidebar-text<?= $seg2==='teams'?' active':'' ?>"><i class="fa fa-group w-4 text-center"></i> Teams</a>-->
+            <!--<a href="<?= base_url('admin/notif_templates') ?>" class="sub-link sidebar-text<?= $seg2==='notif_templates'?' active':'' ?>"><i class="fa fa-envelope w-4 text-center"></i> Notif Templates</a>-->
             <a href="<?= base_url('admin/settings') ?>"        class="sub-link sidebar-text<?= $seg2==='settings'?' active':'' ?>"><i class="fa fa-sliders w-4 text-center"></i> Settings</a>
             <a href="<?= base_url('admin/role_permissions') ?>" class="sub-link sidebar-text<?= $seg2==='role_permissions'?' active':'' ?>"><i class="fa fa-key w-4 text-center"></i> Role Permissions</a>
             <a href="<?= base_url('admin/transfer_staff') ?>" class="sub-link sidebar-text<?= $seg2==='transfer_staff'?' active':'' ?>"><i class="fa fa-exchange w-4 text-center"></i> Transfer Staff</a>
