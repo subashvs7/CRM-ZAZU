@@ -135,7 +135,7 @@ class Reports extends MY_Controller {
         $from = $this->input->get('from') ?: date('Y-m-01');
         $to   = $this->input->get('to')   ?: date('Y-m-t');
         $uid  = (int)$this->input->get('user_id') ?: null;
-        $this->db->select('c.id, c.name, c.latitude, c.longitude, COUNT(vl.id) AS visit_count')
+        $this->db->select("c.id, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS name, c.latitude, c.longitude, COUNT(vl.id) AS visit_count")
             ->from('customers c');
         if ($uid) {
             $this->db->join('visit_logs vl','vl.customer_id=c.id AND vl.is_deleted=0 AND vl.user_id='.$uid.' AND DATE(vl.check_in_at)>="'.$from.'" AND DATE(vl.check_in_at)<="'.$to.'"','left');

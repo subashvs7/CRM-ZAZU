@@ -2,6 +2,12 @@
    Field CRM — Custom Styles (Tailwind-compatible)
    ═══════════════════════════════════════════════════════════════════ */
 
+/* ── Global Font: Outfit ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, input, button, select, textarea, table, th, td, label, a, span, p, h1, h2, h3, h4, h5, h6, div {
+    font-family: 'Outfit', sans-serif !important;
+}
+
 /* ── Bootstrap 3 Modal shim ──────────────────────────────────────── */
 body.modal-open { overflow: hidden; }
 .modal {

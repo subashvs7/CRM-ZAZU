@@ -7,11 +7,22 @@
 <title><?= esc_html($page_title ?? 'Field CRM') ?> — Field CRM</title>
 <link rel="icon" type="image/png" href="<?= base_url('assets/images/fav-icon.png') ?>">
 
+<!-- Google Fonts: Outfit -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
 <!-- Tailwind CSS (Play CDN) -->
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config = {
-    theme: { extend: {} }
+    theme: {
+        extend: {
+            fontFamily: {
+                sans: ['Outfit', 'sans-serif'],
+            }
+        }
+    }
 }
 </script>
 
@@ -38,6 +49,7 @@ $css_version = file_exists($css_path) ? filemtime($css_path) : time();
 <script src="<?= base_url('assets/vendor/bower_components/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js') ?>"></script>
 <script src="<?= base_url('assets/vendor/bower_components/moment/moment.js') ?>"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <!-- Global JS Variables -->
 <script>

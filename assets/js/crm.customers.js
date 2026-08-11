@@ -20,11 +20,12 @@ $(function() {
                 {data:2},
                 {data:3},
                 {data:4},
-                {data:5, orderable:false},
+                {data:5},
                 {data:6, orderable:false},
-                {data:7},
+                {data:7, orderable:false},
                 {data:8},
-                {data:9, orderable:false}
+                {data:9},
+                {data:10, orderable:false}
             ],
             order: [[0, 'desc']],
             drawCallback: function() {
@@ -57,7 +58,7 @@ $(function() {
         $('#customer-id').val(data ? data.id : 0);
         CRM.init_plugins($('#customer-modal'));
         if (data) {
-            $.each(['name','phone','email','gst_number','address','city','state','pincode','latitude','longitude','notes'], function(i, f) {
+            $.each(['customer_name','customer_org_name','phone','email','gst_number','address','city','state','pincode','latitude','longitude','notes'], function(i, f) {
                 $f.find('[name="'+f+'"]').val(data[f] || '');
             });
             if (data.assigned_to) $f.find('[name="assigned_to"]').val(data.assigned_to).trigger('change');
@@ -209,6 +210,28 @@ $(function() {
         );
     });
 
+    $(document).on('click', '.btn-view-notes', function() {
+        var notes = $(this).data('notes');
+        Swal.fire({
+            html: 
+                '<div class="bg-blue-600 text-white p-4 rounded-t-xl text-left">' +
+                    '<h3 class="text-base font-bold flex items-center gap-2"><i class="fa fa-sticky-note-o"></i> Customer Notes</h3>' +
+                '</div>' +
+                '<div class="text-left text-[13px] text-gray-700 p-5 leading-relaxed whitespace-pre-wrap bg-white">' + 
+                    CRM.esc(notes) + 
+                '</div>',
+            showConfirmButton: true,
+            confirmButtonText: 'Close',
+            confirmButtonColor: '#2563eb',
+            padding: '0',
+            customClass: {
+                popup: 'rounded-xl overflow-hidden border border-gray-200 shadow-xl',
+                htmlContainer: 'm-0 p-0',
+                confirmButton: 'mb-4 px-6 py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-blue-700'
+            }
+        });
+    });
+
     $(document).on('click', '.btn-view-customer', function() {
         var id = $(this).data('id');
         $.getJSON(BASE_URL + 'customers/get_details/' + id, function(res) {
@@ -217,8 +240,13 @@ $(function() {
                 var c = d.customer;
                 
                 // Set Header details
-                $('#view-customer-initial').text(c.name ? c.name.charAt(0).toUpperCase() : 'C');
-                $('#view-customer-name').text(c.name || 'Customer Details');
+                var initialName = c.customer_name || c.customer_org_name || 'C';
+                $('#view-customer-initial').text(initialName.charAt(0).toUpperCase());
+                $('#view-customer-name').text(c.customer_org_name || 'Customer Details');
+                
+                // Set General Info fields
+                $('#view-customer-contact-name').text(c.customer_name || '—');
+                $('#view-customer-company-name').text(c.customer_org_name || '—');
                 
                 // Status badge
                 var stClass = 'bg-gray-100 text-gray-800';
@@ -244,17 +272,33 @@ $(function() {
                 }
                 $('#view-customer-products-container').html(prodHtml);
                 
-                // Contacts
+                // Contacts (Contact Persons + Contact Book)
                 var contactsHtml = '';
+                var allContacts = [];
+                
+                // Add contact persons (from Contact_person_model)
                 if (d.contacts && d.contacts.length) {
                     $.each(d.contacts, function(i, con) {
-                        var isPri = con.is_primary == 1 ? '<span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold bg-green-100 text-green-700 uppercase tracking-wide ml-1.5">Primary</span>' : '';
-                        contactsHtml += '<div class="py-3 flex items-start gap-2.5">' +
+                        allContacts.push({ name: con.name, phone: con.phone, title: con.designation, is_primary: con.is_primary, source: 'contact_person' });
+                    });
+                }
+                // Add Contact Book entries linked to this customer
+                if (d.cb_contacts && d.cb_contacts.length) {
+                    $.each(d.cb_contacts, function(i, con) {
+                        allContacts.push({ name: con.name, phone: con.phone, title: con.job_title, is_primary: 0, source: 'contact_book' });
+                    });
+                }
+
+                if (allContacts.length) {
+                    $.each(allContacts, function(i, con) {
+                        var isPri = con.is_primary == 1 ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 text-green-700 uppercase tracking-wide ml-1.5">Primary</span>' : '';
+                        var srcBadge = con.source === 'contact_book' ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-indigo-50 text-indigo-500 ml-1">Book</span>' : '';
+                        contactsHtml += '<div class="py-3 flex items-start gap-2.5 border-b border-gray-50 last:border-0">' +
                             '<div class="w-7 h-7 rounded-full bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">' + (con.name ? con.name.charAt(0).toUpperCase() : 'C') + '</div>' +
                             '<div class="min-w-0 flex-1">' +
-                                '<div class="font-semibold text-gray-800 text-xs">' + CRM.esc(con.name) + isPri + '</div>' +
-                                (con.designation ? '<div class="text-[10px] text-gray-400">' + CRM.esc(con.designation) + '</div>' : '') +
-                                (con.phone ? '<div class="text-[10px] text-gray-600 mt-0.5"><i class="fa fa-phone text-gray-300 mr-1"></i>' + CRM.esc(con.phone) + '</div>' : '') +
+                                '<div class="font-semibold text-gray-800 text-xs flex items-center flex-wrap gap-1">' + CRM.esc(con.name) + isPri + srcBadge + '</div>' +
+                                (con.title ? '<div class="text-[10px] text-gray-400 mt-0.5">' + CRM.esc(con.title) + '</div>' : '') +
+                                (con.phone ? '<div class="text-[11px] text-blue-600 mt-1 font-medium"><a href="tel:' + CRM.esc(con.phone) + '" class="flex items-center gap-1 hover:underline"><i class="fa fa-phone text-[9px]"></i>' + CRM.esc(con.phone) + '</a></div>' : '<div class="text-[10px] text-gray-300 mt-0.5">No phone</div>') +
                             '</div>' +
                         '</div>';
                     });

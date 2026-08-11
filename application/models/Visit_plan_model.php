@@ -5,7 +5,7 @@ class Visit_plan_model extends MY_Model {
     protected $table = 'visit_plans';
 
     public function get_with_details($id) {
-        return $this->db->select('vp.*, c.name AS customer_name, u.name AS user_name, cb.name AS created_by_name')
+        return $this->db->select("vp.*, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, u.name AS user_name, cb.name AS created_by_name")
             ->from('visit_plans vp')
             ->join('customers c', 'c.id = vp.customer_id', 'left')
             ->join('users u', 'u.id = vp.user_id', 'left')
@@ -15,7 +15,7 @@ class Visit_plan_model extends MY_Model {
     }
 
     public function datatable($params, $status_filter = null, $user_id = null, $role = null) {
-        $this->db->select('vp.id, vp.customer_id, vp.planned_date, vp.planned_time, c.name AS customer_name, c.customer_type, u.name AS user_name, vp.visit_status, vp.purpose, vp.status, vp.created_at, vl.id AS open_visit_log_id')
+        $this->db->select("vp.id, vp.customer_id, vp.planned_date, vp.planned_time, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, c.customer_type, u.name AS user_name, vp.visit_status, vp.purpose, vp.status, vp.created_at, vl.id AS open_visit_log_id")
             ->from('visit_plans vp')
             ->join('customers c', 'c.id = vp.customer_id', 'left')
             ->join('users u', 'u.id = vp.user_id', 'left')
@@ -44,7 +44,7 @@ class Visit_plan_model extends MY_Model {
         $search = $params['search']['value'] ?? '';
         if ($search) {
             $this->db->group_start()
-                ->like('c.name', $search)->or_like('u.name', $search)->or_like('vp.visit_status', $search)
+                ->like('c.customer_name', $search)->or_like('c.customer_org_name', $search)->or_like('u.name', $search)->or_like('vp.visit_status', $search)
                 ->group_end();
         }
 
@@ -54,7 +54,7 @@ class Visit_plan_model extends MY_Model {
     }
 
     public function calendar_data($user_id = null, $role = null, $start = null, $end = null) {
-        $this->db->select('vp.id, vp.planned_date, vp.planned_time, vp.visit_status, c.name AS customer_name, u.name AS user_name')
+        $this->db->select("vp.id, vp.planned_date, vp.planned_time, vp.visit_status, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, u.name AS user_name")
             ->from('visit_plans vp')
             ->join('customers c', 'c.id = vp.customer_id', 'left')
             ->join('users u', 'u.id = vp.user_id', 'left')

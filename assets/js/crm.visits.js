@@ -41,7 +41,8 @@ $(function() {
         if (typeof all_customers !== 'undefined') {
             $.each(all_customers, function(i, c) {
                 if (c.customer_type === type) {
-                    $select.append('<option value="' + c.id + '">' + c.name + '</option>');
+                    var displayName = c.customer_name ? c.customer_name + ' (' + c.customer_org_name + ')' : c.customer_org_name;
+                    $select.append('<option value="' + c.id + '">' + displayName + '</option>');
                 }
             });
         }

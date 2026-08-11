@@ -83,7 +83,7 @@
                             <option value="">— Select Customer —</option>
                             <?php foreach($customers as $c): ?>
                             <option value="<?= $c['id'] ?>" <?= (isset($plan) && $plan['customer_id'] == $c['id']) ? 'selected' : '' ?>>
-                                <?= esc_html($c['name']) ?><?php if($c['city']): ?> — <?= esc_html($c['city']) ?><?php endif; ?>
+                                <?= esc_html($c['customer_name'] ? $c['customer_name'] . ' (' . $c['customer_org_name'] . ')' : $c['customer_org_name']) ?><?php if($c['city']): ?> — <?= esc_html($c['city']) ?><?php endif; ?>
                             </option>
                             <?php endforeach; ?>
                         </select>

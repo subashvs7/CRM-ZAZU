@@ -76,7 +76,7 @@
                                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Customer</label>
                                 <select name="customer_id" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 select2">
                                     <option value="">-- None --</option>
-                                    <?php foreach($customers as $c): ?><option value="<?= $c['id'] ?>"><?= esc_html($c['name']) ?></option><?php endforeach; ?>
+                                    <?php foreach($customers as $c): ?><option value="<?= $c['id'] ?>"><?= esc_html($c['customer_name'] ? $c['customer_name'] . ' (' . $c['customer_org_name'] . ')' : $c['customer_org_name']) ?></option><?php endforeach; ?>
                                 </select>
                             </div>
                         </div>

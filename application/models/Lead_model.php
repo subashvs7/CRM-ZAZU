@@ -5,7 +5,7 @@ class Lead_model extends MY_Model {
     protected $table = 'leads';
 
     public function get_with_details($id) {
-        return $this->db->select('l.*, c.name AS customer_name, c.phone AS customer_phone, u.name AS assigned_name')
+        return $this->db->select("l.*, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, c.phone AS customer_phone, u.name AS assigned_name")
             ->from('leads l')
             ->join('customers c', 'c.id = l.customer_id', 'left')
             ->join('users u', 'u.id = l.assigned_to', 'left')
@@ -14,7 +14,7 @@ class Lead_model extends MY_Model {
     }
 
     public function datatable($params, $status_filter = null, $user_id = null, $role = null) {
-        $this->db->select('l.id, l.title, c.name AS customer_name, l.lead_status, l.source, u.name AS assigned_name, l.expected_value, l.expected_close_date, l.status, l.created_at')
+        $this->db->select("l.id, l.title, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, l.lead_status, l.source, u.name AS assigned_name, l.expected_value, l.expected_close_date, l.status, l.created_at")
             ->from('leads l')
             ->join('customers c', 'c.id = l.customer_id', 'left')
             ->join('users u', 'u.id = l.assigned_to', 'left');
@@ -31,7 +31,7 @@ class Lead_model extends MY_Model {
         $search = $params['search']['value'] ?? '';
         if ($search) {
             $this->db->group_start()
-                ->like('l.title', $search)->or_like('c.name', $search)->or_like('l.lead_status', $search)
+                ->like('l.title', $search)->or_like('c.customer_name', $search)->or_like('c.customer_org_name', $search)->or_like('l.lead_status', $search)
                 ->group_end();
         }
 
@@ -39,21 +39,6 @@ class Lead_model extends MY_Model {
         $this->db->order_by('l.id', 'desc');
         if (isset($params['length']) && $params['length'] != -1) {
             $this->db->limit($params['length'], $params['start'] ?? 0);
-        }
-        return [$this->db->get()->result_array(), $total];
-    }
-
-    public function pipeline_data($user_id = null, $role = null) {
-        $stages = ['new','contacted','qualified','proposal','negotiation','won','lost'];
-        $result = [];
-        foreach ($stages as $stage) {
-            $q = $this->db->select('l.id, l.title, l.expected_value, l.expected_close_date, c.name AS customer_name, u.name AS assigned_name')
-                ->from('leads l')
-                ->join('customers c', 'c.id = l.customer_id', 'left')
-                ->join('users u', 'u.id = l.assigned_to', 'left')
-                ->where(['l.lead_status' => $stage, 'l.is_deleted' => 0, 'l.status' => 'active']);
-            if ($role === 'field_staff') $q->where('l.assigned_to', $user_id);
-            $result[$stage] = $q->order_by('l.id', 'desc')->get()->result_array();
         }
         return $result;
     }

@@ -74,7 +74,7 @@
                             <select name="customer_id" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 select2" required>
                                 <option value="">— Select Customer —</option>
                                 <?php foreach($customers as $c): ?>
-                                <option value="<?= $c['id'] ?>"><?= esc_html($c['name']) ?></option>
+                                <option value="<?= $c['id'] ?>"><?= esc_html($c['customer_name'] ? $c['customer_name'] . ' (' . $c['customer_org_name'] . ')' : $c['customer_org_name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>

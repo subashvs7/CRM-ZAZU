@@ -32,9 +32,10 @@ class Customers extends MY_Controller {
 
         $data = [];
         foreach ($rows as $r) {
+            $combined_name = $r['customer_name'] ? esc_html($r['customer_name'] . ' (' . $r['customer_org_name'] . ')') : esc_html($r['customer_org_name']);
             $actions = crm_action_btns($r['id'], 'customers', $r['status'], ['view'=>true,'edit'=>true]);
             if ($r['status'] !== 'deleted') {
-                $actions = str_replace('</div>', '<button class="inline-flex items-center justify-center w-7 h-7 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors btn-plan-visit" data-id="'.$r['id'].'" data-name="'.esc_html($r['name']).'" title="Plan Visit"><i class="fa fa-calendar-plus-o" style="font-size:11px"></i></button></div>', $actions);
+                $actions = str_replace('</div>', '<button class="inline-flex items-center justify-center w-7 h-7 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors btn-plan-visit" data-id="'.$r['id'].'" data-name="'.$combined_name.'" title="Plan Visit"><i class="fa fa-calendar-plus-o" style="font-size:11px"></i></button></div>', $actions);
             }
             // Format contact: phone & email
             $phone = esc_html($r['phone']);
@@ -73,7 +74,7 @@ class Customers extends MY_Controller {
                 if (mb_strlen($notes) > 50) {
                     $truncated = esc_html(mb_substr($notes, 0, 50));
                     $full = esc_html($notes);
-                    $notes_html = '<span class="cursor-pointer text-blue-600 hover:text-blue-800 hover:underline note-tooltip" data-toggle="tooltip" data-placement="top" title="' . $full . '">' . $truncated . '... <span class="text-[10px] text-gray-400 font-semibold">[read more]</span></span>';
+                    $notes_html = '<span class="cursor-pointer text-blue-600 hover:text-blue-800 hover:underline btn-view-notes" data-notes="' . htmlspecialchars($full, ENT_QUOTES, 'UTF-8') . '">' . $truncated . '... <span class="text-[10px] text-blue-500 font-semibold ml-1">[read more]</span></span>';
                 } else {
                     $notes_html = esc_html($notes);
                 }
@@ -81,7 +82,8 @@ class Customers extends MY_Controller {
 
             $data[] = [
                 $r['id'],
-                esc_html($r['name']),
+                esc_html($r['customer_name'] ?? '-'),
+                esc_html($r['customer_org_name'] ?? '-'),
                 $contact,
                 $location,
                 esc_html($r['assigned_name'] ?? '-'),
@@ -96,30 +98,33 @@ class Customers extends MY_Controller {
     }
 
     public function save() {
-        $id    = (int) $this->input->post('id');
-        $name  = trim($this->input->post('name'));
-        $phone = trim($this->input->post('phone'));
+        $id                = (int) $this->input->post('id');
+        $customer_name     = trim($this->input->post('customer_name'));
+        $customer_org_name = trim($this->input->post('customer_org_name'));
+        $phone             = trim($this->input->post('phone'));
         $errors = [];
-        if (!$name)  $errors['name']  = 'Name is required.';
-        if (!$phone) $errors['phone'] = 'Phone is required.';
+        if (!$customer_name)      $errors['customer_name']     = 'Customer Name is required.';
+        if (!$customer_org_name)  $errors['customer_org_name'] = 'Company Name is required.';
+        if (!$phone)              $errors['phone']             = 'Phone is required.';
         if ($errors) $this->json_error('Validation failed.', 400, $errors);
 
         $product_ids = $this->input->post('product_ids');
         $product_ids_str = !empty($product_ids) && is_array($product_ids) ? implode(',', array_map('intval', $product_ids)) : null;
 
         $data = [
-            'name'        => $name,
-            'phone'       => $phone,
-            'email'       => $this->input->post('email'),
-            'address'     => $this->input->post('address'),
-            'city'        => $this->input->post('city'),
-            'state'       => $this->input->post('state'),
-            'pincode'     => $this->input->post('pincode'),
-            'gst_number'  => $this->input->post('gst_number'),
-            'notes'       => $this->input->post('notes'),
-            'product_ids' => $product_ids_str,
-            'latitude'    => $this->input->post('latitude') ?: null,
-            'longitude'   => $this->input->post('longitude') ?: null,
+            'customer_name'     => $customer_name,
+            'customer_org_name' => $customer_org_name,
+            'phone'             => $phone,
+            'email'             => $this->input->post('email'),
+            'address'           => $this->input->post('address'),
+            'city'              => $this->input->post('city'),
+            'state'             => $this->input->post('state'),
+            'pincode'           => $this->input->post('pincode'),
+            'gst_number'        => $this->input->post('gst_number'),
+            'notes'             => $this->input->post('notes'),
+            'product_ids'       => $product_ids_str,
+            'latitude'          => $this->input->post('latitude') ?: null,
+            'longitude'         => $this->input->post('longitude') ?: null,
         ];
         if ($this->is_manager()) {
             $data['assigned_to'] = (int)$this->input->post('assigned_to') ?: null;
@@ -176,11 +181,19 @@ class Customers extends MY_Controller {
             ->order_by('vl.check_in_at', 'desc')
             ->get()->result_array();
             
+        // Fetch Contact Book entries linked to this customer
+        $cb_contacts = $this->db->select('id, name, phone, email, job_title, company_name')
+            ->from('contact_book')
+            ->where(['customer_id' => $id, 'is_deleted' => 0])
+            ->order_by('name', 'asc')
+            ->get()->result_array();
+            
         $this->json_success([
-            'customer' => $customer,
-            'contacts' => $contacts,
+            'customer'    => $customer,
+            'contacts'    => $contacts,
+            'cb_contacts' => $cb_contacts,
             'visit_plans' => $visits,
-            'visit_logs' => $logs
+            'visit_logs'  => $logs
         ]);
     }
 

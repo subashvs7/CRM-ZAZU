@@ -22,7 +22,7 @@ class Tracking extends MY_Controller {
         // Today's visit counts per user
         $today = date('Y-m-d');
         $visit_rows = $this->db
-            ->select('vl.user_id, COUNT(*) AS visit_count, MAX(c.name) AS last_customer')
+            ->select("vl.user_id, COUNT(*) AS visit_count, MAX(IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name)) AS last_customer")
             ->from('visit_logs vl')
             ->join('customers c', 'c.id = vl.customer_id', 'left')
             ->where(['vl.is_deleted' => 0])
@@ -69,7 +69,7 @@ class Tracking extends MY_Controller {
         $data = $this->Gps_track_model->get_trail($uid, $date);
 
         // Fetch customer visits for this user on this date
-        $visits = $this->db->select('vl.id, vl.customer_id, vl.check_in_at, vl.check_out_at, vl.check_in_lat, vl.check_in_lng, vl.check_out_lat, vl.check_out_lng, vl.notes, c.name AS customer_name, c.latitude AS customer_lat, c.longitude AS customer_lng')
+        $visits = $this->db->select("vl.id, vl.customer_id, vl.check_in_at, vl.check_out_at, vl.check_in_lat, vl.check_in_lng, vl.check_out_lat, vl.check_out_lng, vl.notes, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, c.latitude AS customer_lat, c.longitude AS customer_lng")
             ->from('visit_logs vl')
             ->join('customers c', 'c.id = vl.customer_id', 'left')
             ->where(['vl.user_id' => $uid, 'vl.is_deleted' => 0])
@@ -111,7 +111,7 @@ class Tracking extends MY_Controller {
         $day_customers = [];
         $day_visits = [];
         if (!empty($cust_ids)) {
-            $day_customers = $this->db->select('c.id, c.name, c.phone, c.city, c.latitude, c.longitude, u.name AS assigned_staff')
+            $day_customers = $this->db->select("c.id, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS name, c.phone, c.city, c.latitude, c.longitude, u.name AS assigned_staff")
                 ->from('customers c')
                 ->join('users u', 'u.id = c.assigned_to', 'left')
                 ->where_in('c.id', $cust_ids)

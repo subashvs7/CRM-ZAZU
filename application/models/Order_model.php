@@ -5,7 +5,7 @@ class Order_model extends MY_Model {
     protected $table = 'orders';
 
     public function get_with_details($id) {
-        return $this->db->select('o.*, c.name AS customer_name, c.phone AS customer_phone, c.address AS customer_address, u.name AS created_by_name, a.name AS approved_by_name')
+        return $this->db->select("o.*, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, c.phone AS customer_phone, c.address AS customer_address, u.name AS created_by_name, a.name AS approved_by_name")
             ->from('orders o')
             ->join('customers c', 'c.id = o.customer_id', 'left')
             ->join('users u', 'u.id = o.created_by', 'left')
@@ -15,7 +15,7 @@ class Order_model extends MY_Model {
     }
 
     public function datatable($params, $status_filter = null, $user_id = null, $role = null) {
-        $this->db->select('o.id, o.order_number, c.name AS customer_name, o.order_status, o.final_amount, u.name AS created_by_name, o.created_at, o.status')
+        $this->db->select("o.id, o.order_number, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, o.order_status, o.final_amount, u.name AS created_by_name, o.created_at, o.status")
             ->from('orders o')
             ->join('customers c', 'c.id = o.customer_id', 'left')
             ->join('users u', 'u.id = o.created_by', 'left');
@@ -32,7 +32,7 @@ class Order_model extends MY_Model {
         $search = $params['search']['value'] ?? '';
         if ($search) {
             $this->db->group_start()
-                ->like('o.order_number', $search)->or_like('c.name', $search)
+                ->like('o.order_number', $search)->or_like('c.customer_name', $search)->or_like('c.customer_org_name', $search)
                 ->group_end();
         }
 
@@ -45,7 +45,7 @@ class Order_model extends MY_Model {
     }
 
     public function pending_approval_datatable($params) {
-        $this->db->select('o.id, o.order_number, c.name AS customer_name, o.final_amount, u.name AS created_by_name, o.created_at')
+        $this->db->select("o.id, o.order_number, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, o.final_amount, u.name AS created_by_name, o.created_at")
             ->from('orders o')
             ->join('customers c', 'c.id = o.customer_id', 'left')
             ->join('users u', 'u.id = o.created_by', 'left')

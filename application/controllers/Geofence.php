@@ -60,7 +60,7 @@ class Geofence extends MY_Controller {
 
     public function checkins_datatable() {
         $params = $this->input->get();
-        $this->db->select('vl.id, u.name AS user_name, c.name AS customer_name, vl.check_in_at, gz.name AS zone_name')
+        $this->db->select("vl.id, u.name AS user_name, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, vl.check_in_at, gz.name AS zone_name")
             ->from('visit_logs vl')
             ->join('users u','u.id=vl.user_id','left')->join('customers c','c.id=vl.customer_id','left')
             ->join('geofence_zones gz','gz.id=vl.geofence_zone_id','left')

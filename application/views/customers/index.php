@@ -50,7 +50,7 @@
         <table id="customers-table" class="w-full">
             <thead>
                 <tr>
-                    <th>#</th><th>Name</th><th>Phone / Email</th>
+                    <th>#</th><th>Name</th><th>Company Name</th><th>Phone / Email</th>
                     <th>City / State</th><th>Assigned To</th><th>Products</th><th>Notes</th>
                     <th>Status</th><th>Created</th><th>Actions</th>
                 </tr>
@@ -75,8 +75,12 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Name *</label>
-                                <input type="text" name="name" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow" required>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Customer Name *</label>
+                                <input type="text" name="customer_name" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Company Name *</label>
+                                <input type="text" name="customer_org_name" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow" required>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Phone *</label>
@@ -251,6 +255,14 @@
                             <h3 class="text-xs font-bold text-gray-800 flex items-center gap-2 border-b pb-2.5 mb-3">
                                 <i class="fa fa-info-circle text-blue-500 text-sm"></i> General Info
                             </h3>
+                            <div>
+                                <span class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Customer Name</span>
+                                <span class="text-xs font-semibold text-gray-700" id="view-customer-contact-name"></span>
+                            </div>
+                            <div>
+                                <span class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Company Name</span>
+                                <span class="text-xs font-semibold text-gray-700" id="view-customer-company-name"></span>
+                            </div>
                             <div>
                                 <span class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Phone</span>
                                 <span class="text-xs font-semibold text-gray-700" id="view-customer-phone"></span>

@@ -5,7 +5,7 @@ class Geofence_zone_model extends MY_Model {
     protected $table = 'geofence_zones';
 
     public function get_with_customer($id) {
-        return $this->db->select('gz.*, c.name AS customer_name')
+        return $this->db->select("gz.*, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name")
             ->from('geofence_zones gz')
             ->join('customers c', 'c.id = gz.customer_id', 'left')
             ->where(['gz.id' => $id, 'gz.is_deleted' => 0])
@@ -13,7 +13,7 @@ class Geofence_zone_model extends MY_Model {
     }
 
     public function get_active_zones() {
-        return $this->db->select('gz.*, c.name AS customer_name')
+        return $this->db->select("gz.*, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name")
             ->from('geofence_zones gz')
             ->join('customers c', 'c.id = gz.customer_id', 'left')
             ->where(['gz.status' => 'active', 'gz.is_deleted' => 0])

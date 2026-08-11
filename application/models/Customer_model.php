@@ -13,7 +13,7 @@ class Customer_model extends MY_Model {
     }
 
     public function datatable($params, $status_filter = null, $user_id = null, $role = null) {
-        $this->db->select('c.id, c.name, c.phone, c.email, c.city, c.state, c.notes, c.product_ids, u.name AS assigned_name, c.status, c.created_at')
+        $this->db->select('c.id, c.customer_name, c.customer_org_name, c.phone, c.email, c.city, c.state, c.notes, c.product_ids, u.name AS assigned_name, c.status, c.created_at')
             ->from('customers c')
             ->join('users u', 'u.id = c.assigned_to', 'left');
 
@@ -42,7 +42,8 @@ class Customer_model extends MY_Model {
         $search = $params['search']['value'] ?? '';
         if ($search) {
             $this->db->group_start()
-                ->like('c.name', $search)
+                ->like('c.customer_name', $search)
+                ->or_like('c.customer_org_name', $search)
                 ->or_like('c.phone', $search)
                 ->or_like('c.email', $search)
                 ->or_like('c.city', $search)
@@ -53,7 +54,19 @@ class Customer_model extends MY_Model {
 
         $total = $this->db->count_all_results('', false);
 
-        $order_cols = ['c.id', 'c.name', 'c.phone', 'c.city', 'u.name', 'c.id', 'c.status', 'c.created_at'];
+        $order_cols = [
+            0 => 'c.id',
+            1 => 'c.customer_name',
+            2 => 'c.customer_org_name',
+            3 => 'c.phone',
+            4 => 'c.city',
+            5 => 'u.name',
+            6 => 'c.id',
+            7 => 'c.id',
+            8 => 'c.status',
+            9 => 'c.created_at',
+            10 => 'c.id'
+        ];
         $oi = $params['order'][0]['column'] ?? 0;
         $od = $params['order'][0]['dir']    ?? 'desc';
         $this->db->order_by($order_cols[$oi] ?? 'c.id', $od);
@@ -64,7 +77,7 @@ class Customer_model extends MY_Model {
     }
 
     public function get_map_data($user_id = null, $role = null) {
-        $this->db->select('c.id, c.name, c.phone, c.city, c.latitude, c.longitude, c.status')
+        $this->db->select("c.id, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS name, c.phone, c.city, c.latitude, c.longitude, c.status")
             ->from('customers c')
             ->where(['c.is_deleted' => 0, 'c.status' => 'active'])
             ->where('c.latitude IS NOT NULL')
