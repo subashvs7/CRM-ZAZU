@@ -63,3 +63,120 @@ ALTER TABLE `contact_book`
 ALTER TABLE `customers` ADD COLUMN `customer_type` ENUM('primary', 'followup') NOT NULL DEFAULT 'primary' AFTER `id`;
 
 ALTER TABLE `visit_logs` ADD COLUMN `visit_outcome` VARCHAR(100) DEFAULT NULL AFTER `notes`, ADD COLUMN `related_follow_ups` VARCHAR(255) DEFAULT NULL AFTER `visit_outcome`;
+
+
+-- =========================================================================
+-- PRODUCT HUB, PACKAGE TIERS & PRICING SPLITS (NEWLY ADDED SCHEMAS)
+-- =========================================================================
+
+-- 1. Products Table Alterations (Branding, Logo, Subtitle, Theme Palette, URL)
+ALTER TABLE `products` 
+  ADD COLUMN `subtitle` VARCHAR(255) NULL AFTER `name`,
+  ADD COLUMN `logo` VARCHAR(255) NULL AFTER `image`,
+  ADD COLUMN `theme_color` VARCHAR(50) NOT NULL DEFAULT 'blue' AFTER `status`,
+  ADD COLUMN `website_url` VARCHAR(255) NULL AFTER `theme_color`,
+  ADD COLUMN `why_points` TEXT NULL AFTER `website_url`;
+
+
+-- 2. Master Package Tiers Table
+CREATE TABLE IF NOT EXISTS `package_tiers` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `slug` varchar(100) NOT NULL,
+  `badge_color` varchar(50) NOT NULL DEFAULT 'gray',
+  `icon` varchar(50) NOT NULL DEFAULT 'fa-cube',
+  `description` varchar(255) DEFAULT NULL,
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
+  `is_deleted` tinyint(1) NOT NULL DEFAULT 0,
+  `deleted_at` datetime DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- 3. Product Package Splits Table (Tier-based pricing, monthly/yearly, setup fee, features)
+CREATE TABLE IF NOT EXISTS `product_package_splits` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `product_id` int(10) unsigned NOT NULL,
+  `package_tier_id` int(10) unsigned NOT NULL,
+  `tier_subtitle` varchar(150) DEFAULT NULL,
+  `price` bigint(20) NOT NULL DEFAULT 0,
+  `monthly_price` bigint(20) NOT NULL DEFAULT 0,
+  `yearly_price` bigint(20) NOT NULL DEFAULT 0,
+  `discount_label` varchar(50) DEFAULT 'Save 17%',
+  `min_price` bigint(20) NOT NULL DEFAULT 0,
+  `billing_cycle` enum('one_time','annual','monthly','quarterly') NOT NULL DEFAULT 'annual',
+  `amc_percentage` decimal(5,2) NOT NULL DEFAULT 18.00,
+  `implementation_fee` bigint(20) NOT NULL DEFAULT 0,
+  `user_limit` varchar(50) NOT NULL DEFAULT '5 Users',
+  `storage_limit` varchar(50) NOT NULL DEFAULT '10 GB',
+  `support_type` varchar(100) DEFAULT 'Standard Support',
+  `reports_type` varchar(100) DEFAULT 'Basic Reports',
+  `features_included` text DEFAULT NULL,
+  `core_modules_included` text DEFAULT NULL,
+  `is_popular` tinyint(1) NOT NULL DEFAULT 0,
+  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
+  `is_deleted` tinyint(1) NOT NULL DEFAULT 0,
+  `deleted_at` datetime DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `product_id` (`product_id`),
+  KEY `package_tier_id` (`package_tier_id`),
+  CONSTRAINT `fk_pps_prod` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_pps_tier` FOREIGN KEY (`package_tier_id`) REFERENCES `package_tiers` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- 4. Product Addons Table (Individual modular add-ons)
+CREATE TABLE IF NOT EXISTS `product_addons` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `product_id` int(10) unsigned NOT NULL,
+  `name` varchar(150) NOT NULL,
+  `monthly_price` bigint(20) NOT NULL DEFAULT 0,
+  `icon` varchar(50) NOT NULL DEFAULT 'fa-cube',
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
+  `is_deleted` tinyint(1) NOT NULL DEFAULT 0,
+  `deleted_at` datetime DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `product_id` (`product_id`),
+  CONSTRAINT `fk_p_addons_prod` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- 5. Product Core Modules Table (Core included checklist modules)
+CREATE TABLE IF NOT EXISTS `product_core_modules` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `product_id` int(10) unsigned NOT NULL,
+  `name` varchar(150) NOT NULL,
+  `icon` varchar(50) NOT NULL DEFAULT 'fa-check-circle',
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
+  `is_deleted` tinyint(1) NOT NULL DEFAULT 0,
+  `deleted_at` datetime DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `product_id` (`product_id`),
+  CONSTRAINT `fk_p_cmod_prod` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- =========================================================================
+-- DEFAULT SEED DATA INSERTIONS
+-- =========================================================================
+
+-- Insert Master Package Tiers
+INSERT INTO `package_tiers` (`id`, `name`, `slug`, `badge_color`, `icon`, `description`, `sort_order`, `status`) VALUES
+(1, 'Bronze', 'bronze', 'amber', 'fa-shield', 'Essential entry plan for small operations', 1, 'active'),
+(2, 'Silver', 'silver', 'slate', 'fa-star-half-o', 'Growing teams requiring expanded feature set', 2, 'active'),
+(3, 'Gold', 'gold', 'yellow', 'fa-star', 'High performance tier for established businesses', 3, 'active'),
+(4, 'Platinum', 'platinum', 'purple', 'fa-diamond', 'Full automation and multi-branch management', 4, 'active'),
+(5, 'Enterprise', 'enterprise', 'blue', 'fa-building', 'Unlimited scalability, dedicated support & customization', 5, 'active')
+ON DUPLICATE KEY UPDATE `name`=VALUES(`name`);

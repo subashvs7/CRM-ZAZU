@@ -149,7 +149,7 @@
             <i class="fa fa-folder-open <?= $ic ?>"></i>
             <span class="sidebar-text">Assets & Demos</span>
         </a>
-        <a href="<?= base_url('product_hub/products') ?>" class="<?= tw_active('product_hub') && $seg2==='products' ? $lnk_on : $lnk ?>">
+        <a href="<?= base_url('product_hub/products') ?>" class="<?= tw_active('product_hub') && ($seg2==='products' || $seg2==='package_tiers') ? $lnk_on : $lnk ?>">
             <i class="fa fa-cubes <?= $ic ?>"></i>
             <span class="sidebar-text">Products</span>
         </a>

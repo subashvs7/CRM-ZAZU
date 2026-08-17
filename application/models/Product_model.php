@@ -21,7 +21,7 @@ class Product_model extends MY_Model {
     }
 
     public function datatable($params, $status_filter = null) {
-        $this->db->select('p.id, p.name, p.sku, pc.name AS category_name, p.unit, p.price, p.stock, p.status, p.created_at')
+        $this->db->select('p.*, pc.name AS category_name')
             ->from('products p')
             ->join('product_categories pc', 'pc.id = p.category_id', 'left');
 

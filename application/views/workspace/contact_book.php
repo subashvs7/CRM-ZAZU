@@ -159,7 +159,6 @@ table.dataTable.no-footer { border-bottom: 0 !important; }
 .select2-search--dropdown input { border-radius: 6px !important; border: 1px solid #e5e7eb !important; font-size: 13px; padding: 6px 10px; }
 .select2-results__option { font-size: 13px; padding: 8px 12px; }
 .select2-results__option--highlighted { background: #eff6ff !important; color: #1d4ed8 !important; }
-.select2-container { width: 100% !important; }
 </style>
 
 <!-- Edit Contact Modal -->
@@ -244,14 +243,16 @@ $(function() {
     $('.select2-customer').select2({
         placeholder: '— Select Customer —',
         allowClear: true,
-        dropdownParent: $('#contact-form')
+        dropdownParent: $('#contact-form'),
+        width: '100%'
     });
 
     // Init Select2 for edit modal
     $('.select2-customer-edit').select2({
         placeholder: '— Select Customer —',
         allowClear: true,
-        dropdownParent: $('#editContactModal')
+        dropdownParent: $('#editContactModal'),
+        width: '100%'
     });
 
     // DataTable
