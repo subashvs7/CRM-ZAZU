@@ -30,8 +30,6 @@ tailwind.config = {
 <link rel="stylesheet" href="<?= base_url('assets/vendor/bower_components/font-awesome/css/font-awesome.min.css') ?>">
 <!-- Select2 -->
 <link rel="stylesheet" href="<?= base_url('assets/vendor/bower_components/select2/dist/css/select2.min.css') ?>">
-<!-- Toastr -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
 <!-- Bootstrap Datepicker CSS -->
 <link rel="stylesheet" href="<?= base_url('assets/vendor/bower_components/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css') ?>">
 <!-- Custom CRM Styles -->
@@ -48,18 +46,31 @@ $css_version = file_exists($css_path) ? filemtime($css_path) : time();
 <script src="<?= base_url('assets/vendor/bower_components/select2/dist/js/select2.full.min.js') ?>"></script>
 <script src="<?= base_url('assets/vendor/bower_components/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js') ?>"></script>
 <script src="<?= base_url('assets/vendor/bower_components/moment/moment.js') ?>"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<!-- Global JS Variables -->
+<!-- Global JS Variables & Toast Bridge -->
 <script>
 var BASE_URL        = '<?= base_url() ?>';
 var CI3_CSRF_NAME   = '<?= $csrf_name ?>';
 var CI3_CSRF_HASH   = '<?= $csrf_hash ?>';
 var CURRENT_USER_ID = <?= (int) $current_user_id ?>;
 var CURRENT_ROLE    = '<?= esc_html($current_role) ?>';
+
+window.toastr = {
+    success: function(m, t) { if (window.CRM && CRM.toast) return CRM.toast('success', m, t); else return Swal.fire(t || 'Success', m, 'success'); },
+    error:   function(m, t) { if (window.CRM && CRM.toast) return CRM.toast('error', m, t);   else return Swal.fire(t || 'Error', m, 'error'); },
+    warning: function(m, t) { if (window.CRM && CRM.toast) return CRM.toast('warning', m, t); else return Swal.fire(t || 'Warning', m, 'warning'); },
+    info:    function(m, t) { if (window.CRM && CRM.toast) return CRM.toast('info', m, t);    else return Swal.fire(t || 'Information', m, 'info'); },
+    clear:   function() {},
+    remove:  function() {},
+    options: {}
+};
 </script>
-<script src="<?= base_url('assets/js/crm.core.js') ?>"></script>
+<?php
+$core_js_path = FCPATH . 'assets/js/crm.core.js';
+$core_js_version = file_exists($core_js_path) ? filemtime($core_js_path) : time();
+?>
+<script src="<?= base_url('assets/js/crm.core.js?v=' . $core_js_version) ?>"></script>
 </head>
 <body class="bg-slate-100">
 

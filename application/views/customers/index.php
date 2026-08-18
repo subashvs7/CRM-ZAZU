@@ -144,11 +144,21 @@
                         </div>
                     </div>
                     <div class="mt-4">
-                        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Products</label>
-                        <select name="product_ids[]" id="customer-products" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 select2" multiple="multiple" data-placeholder="Select Products">
+                        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Product</label>
+                        <select name="product_ids" id="customer-products" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 select2" data-placeholder="-- Select Product --">
+                            <option value="">-- Select Product --</option>
                             <?php foreach($products as $p): ?>
                                 <option value="<?= $p['id'] ?>"><?= esc_html($p['name']) ?> (<?= esc_html($p['sku']) ?>)</option>
                             <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mt-4" id="customer-splits-container" style="display:none;">
+                        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                            <span>Package Tier / Split Name</span>
+                            <span class="text-[10px] text-indigo-600 font-bold" id="splits-status-msg"></span>
+                        </label>
+                        <select name="package_split_ids" id="customer-package-splits" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 select2" data-placeholder="-- Select Package Tier --">
+                            <option value="">-- Select Package Tier --</option>
                         </select>
                     </div>
                     <div class="mt-4">
@@ -289,6 +299,10 @@
                             <div>
                                 <span class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Products</span>
                                 <div class="flex flex-wrap gap-1 mt-1" id="view-customer-products-container"></div>
+                            </div>
+                            <div id="view-customer-splits-wrap" style="display:none;">
+                                <span class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Package Tiers / Splits</span>
+                                <div class="flex flex-wrap gap-1 mt-1" id="view-customer-splits-container"></div>
                             </div>
                             <div>
                                 <span class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Address</span>

@@ -97,7 +97,8 @@
                     <label class="block text-[11px] font-extrabold uppercase tracking-wider text-gray-500 mb-1.5">Select Product to Configure Splits</label>
                     <select id="split-product-select" class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all select2">
                         <?php if(!empty($all_products)): foreach($all_products as $p): 
-                            $p_img = !empty($p['logo']) ? base_url($p['logo']) : (!empty($p['image']) ? base_url($p['image']) : '');
+                            $raw_img = !empty($p['logo']) ? $p['logo'] : (!empty($p['image']) ? $p['image'] : '');
+                            $p_img = !empty($raw_img) ? (preg_match('/^https?:\/\//i', $raw_img) ? $raw_img : base_url(ltrim($raw_img, '/'))) : '';
                         ?>
                             <option value="<?= $p['id'] ?>" data-name="<?= esc_html($p['name']) ?>" data-sku="<?= esc_html($p['sku']) ?>" data-subtitle="<?= esc_html($p['subtitle'] ?? '') ?>" data-logo="<?= $p_img ?>">
                                 <?= esc_html($p['name']) ?> (<?= esc_html($p['sku']) ?>)
@@ -109,7 +110,7 @@
                 <div class="flex items-center gap-3 pt-2 sm:pt-4">
                     <div id="split-selected-logo-wrap" class="w-14 h-14 rounded-2xl bg-white border border-gray-200 shadow-sm flex items-center justify-center p-1.5 flex-shrink-0 overflow-hidden">
                         <i class="fa fa-cube text-blue-600 text-xl" id="split-logo-icon"></i>
-                        <img id="split-logo-img" src="" class="w-full h-full object-contain hidden" alt="Product Image">
+                        <img id="split-logo-img" src="" class="w-full h-full object-contain hidden" alt="Product Image" onerror="this.classList.add('hidden'); document.getElementById('split-logo-icon').classList.remove('hidden');">
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
@@ -314,7 +315,7 @@
                         <div class="flex flex-col sm:flex-row items-center gap-4">
                             <div id="logo-preview-container" class="w-20 h-20 rounded-2xl bg-white border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm p-1">
                                 <i class="fa fa-image text-gray-300 text-2xl" id="logo-placeholder-icon"></i>
-                                <img id="logo-preview-img" src="" class="w-full h-full object-contain hidden" alt="Product Image Preview">
+                                <img id="logo-preview-img" src="" class="w-full h-full object-contain hidden" alt="Product Image Preview" onerror="this.classList.add('hidden'); document.getElementById('logo-placeholder-icon').classList.remove('hidden');">
                             </div>
                             <div class="flex-1 w-full">
                                 <input type="file" name="logo" id="product-logo-input" accept="image/*" class="w-full text-xs text-gray-500 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-purple-600 file:text-white hover:file:bg-purple-700 file:cursor-pointer file:shadow-sm">
@@ -899,6 +900,17 @@ $(function() {
         });
     }
 
+    // Modal Close Trigger
+    $(document).on('click', '.btn-close-modal', function() {
+        $('#split-modal').addClass('hidden');
+    });
+
+    $('#split-modal').on('click', function(e) {
+        if (e.target === this) {
+            $(this).addClass('hidden');
+        }
+    });
+
     // Modal Add Trigger
     $(document).on('click', '#btn-add-new-split, .btn-open-add-split', function() {
         $('#split-form')[0].reset();
@@ -911,25 +923,36 @@ $(function() {
     // Modal Edit Trigger
     $(document).on('click', '.btn-edit-split', function() {
         let splitId = $(this).data('id');
+        let $btn = $(this);
+        let origHtml = $btn.html();
+        $btn.html('<i class="fa fa-spinner fa-spin"></i>');
+
         $.get(BASE_URL + 'product_hub/get_single_package_split/' + splitId, function(res) {
-            if (res.status !== 'success') return;
+            $btn.html(origHtml);
+            if (res.status !== 'success' || !res.data) {
+                Swal.fire('Error', res.message || 'Failed to load package split details', 'error');
+                return;
+            }
             let d = res.data;
             $('#split-id').val(d.id);
             $('#split-product-id').val(d.product_id);
             $('#split-tier-id').val(d.package_tier_id);
-            $('#split-tier-subtitle').val(d.tier_subtitle);
-            $('#split-monthly-price').val(d.monthly_price);
-            $('#split-yearly-price').val(d.yearly_price);
-            $('#split-discount-label').val(d.discount_label);
-            $('#split-impl-fee').val(d.implementation_fee);
-            $('#split-users').val(d.user_limit);
-            $('#split-support-type').val(d.support_type);
-            $('#split-reports-type').val(d.reports_type);
-            $('#split-features').val(d.features_included);
+            $('#split-tier-subtitle').val(d.tier_subtitle || '');
+            $('#split-monthly-price').val(d.monthly_price || 0);
+            $('#split-yearly-price').val(d.yearly_price || 0);
+            $('#split-discount-label').val(d.discount_label || '');
+            $('#split-impl-fee').val(d.implementation_fee || 0);
+            $('#split-users').val(d.user_limit || '');
+            $('#split-support-type').val(d.support_type || '');
+            $('#split-reports-type').val(d.reports_type || '');
+            $('#split-features').val(d.features_included || '');
             $('#split-popular').prop('checked', d.is_popular == 1);
 
-            $('#split-modal-title').text('Edit ' + d.tier_name + ' Tier Split');
+            $('#split-modal-title').text('Edit ' + (d.tier_name || '') + ' Tier Split');
             $('#split-modal').removeClass('hidden');
+        }).fail(function(xhr) {
+            $btn.html(origHtml);
+            Swal.fire('Error', 'Failed to load tier details. Please try again.', 'error');
         });
     });
 
@@ -965,8 +988,8 @@ $(function() {
     // Delete Split
     $(document).on('click', '.btn-delete-split', function() {
         let splitId = $(this).data('id');
-        let csrfName = '<?= $csrf_name ?>';
-        let csrfHash = $('#split-csrf').val();
+        let csrfHash = $('#split-csrf').val() || (typeof CI3_CSRF_HASH !== 'undefined' ? CI3_CSRF_HASH : '');
+        let csrfName = typeof CI3_CSRF_NAME !== 'undefined' ? CI3_CSRF_NAME : '<?= $csrf_name ?>';
 
         Swal.fire({
             title: 'Delete this Tier Split?',
@@ -984,8 +1007,10 @@ $(function() {
                         Swal.fire('Deleted!', res.message, 'success');
                         loadProductPackageSplits(currentSelectedProductId);
                     } else {
-                        Swal.fire('Error', res.message, 'error');
+                        Swal.fire('Error', res.message || 'Failed to delete tier split', 'error');
                     }
+                }).fail(function() {
+                    Swal.fire('Error', 'Server error while deleting tier.', 'error');
                 });
             }
         });

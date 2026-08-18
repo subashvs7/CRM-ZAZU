@@ -1,12 +1,13 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-$is_https = (isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) === 'on') 
+$is_https = (isset($_SERVER['HTTPS']) && (strtolower($_SERVER['HTTPS']) === 'on' || $_SERVER['HTTPS'] == 1)) 
             || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
-            || (isset($_SERVER['HTTP_FRONT_END_HTTPS']) && strtolower($_SERVER['HTTP_FRONT_END_HTTPS']) === 'on');
-$base  = ($is_https ? "http" : "http") . "://" . $_SERVER['HTTP_HOST'];
-$base .= str_replace(basename($_SERVER['SCRIPT_NAME']),"",$_SERVER['SCRIPT_NAME']);
-$config['base_url'] = $base;
+            || (isset($_SERVER['HTTP_FRONT_END_HTTPS']) && strtolower($_SERVER['HTTP_FRONT_END_HTTPS']) === 'on')
+            || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+$base  = ($is_https ? "https" : "http") . "://" . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+$base .= str_replace(basename($_SERVER['SCRIPT_NAME'] ?? ''), "", $_SERVER['SCRIPT_NAME'] ?? '/');
+$config['base_url'] = rtrim($base, '/') . '/';
 $config['index_page']           = '';
 $config['uri_protocol']         = 'REQUEST_URI';
 $config['url_suffix']           = '';

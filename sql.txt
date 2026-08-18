@@ -61,6 +61,7 @@ ALTER TABLE `contact_book`
 
 
 ALTER TABLE `customers` ADD COLUMN `customer_type` ENUM('primary', 'followup') NOT NULL DEFAULT 'primary' AFTER `id`;
+ALTER TABLE `customers` ADD COLUMN `package_split_ids` TEXT NULL AFTER `product_ids`;
 
 ALTER TABLE `visit_logs` ADD COLUMN `visit_outcome` VARCHAR(100) DEFAULT NULL AFTER `notes`, ADD COLUMN `related_follow_ups` VARCHAR(255) DEFAULT NULL AFTER `visit_outcome`;
 

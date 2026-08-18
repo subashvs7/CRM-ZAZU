@@ -28,26 +28,45 @@ class Product_hub extends MY_Controller {
         [$rows, $total] = $this->Product_asset_model->datatable($params);
         $data = [];
         foreach ($rows as $r) {
-            $actions = '<a href="'.base_url('product_hub/asset_details/'.$r['id']).'" class="text-blue-600 hover:text-blue-800"><i class="fa fa-info-circle"></i> Details</a>';
-            
-            $file_link = esc_html($r['file_link']);
-            if (filter_var($file_link, FILTER_VALIDATE_URL)) {
-                $link_html = '<a href="'.$file_link.'" target="_blank" class="text-blue-600 hover:underline"><i class="fa fa-external-link"></i> View</a>';
+            $raw_logo = !empty($r['product_logo']) ? $r['product_logo'] : (!empty($r['product_image']) ? $r['product_image'] : '');
+            $logo_url = $this->_format_logo_url($raw_logo);
+
+            if (!empty($logo_url)) {
+                $product_badge = '<div class="flex items-center gap-2.5">
+                    <img src="'.$logo_url.'" class="w-8 h-8 rounded-lg object-contain bg-white border border-gray-200 p-0.5 shadow-xs flex-shrink-0" alt="Logo" onerror="this.onerror=null; this.outerHTML=\'<div class=\\\'w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs border border-blue-100 shadow-xs flex-shrink-0\\\'><i class=\\\'fa fa-cube\\\'></i></div>\';">
+                    <div class="min-w-0">
+                        <div class="font-bold text-gray-900 text-xs truncate">'.esc_html($r['product_name'] ?: 'General Collateral').'</div>
+                        '.(!empty($r['product_sku']) ? '<span class="text-[10px] text-gray-400 font-mono font-medium uppercase">'.esc_html($r['product_sku']).'</span>' : '').'
+                    </div>
+                </div>';
             } else {
-                $link_html = '<a href="'.base_url($file_link).'" target="_blank" class="text-blue-600 hover:underline"><i class="fa fa-download"></i> Download</a>';
+                $product_badge = '<div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs border border-blue-100 shadow-xs flex-shrink-0"><i class="fa fa-cube"></i></div>
+                    <div class="min-w-0">
+                        <div class="font-bold text-gray-900 text-xs truncate">'.esc_html($r['product_name'] ?: 'General Collateral').'</div>
+                        '.(!empty($r['product_sku']) ? '<span class="text-[10px] text-gray-400 font-mono font-medium uppercase">'.esc_html($r['product_sku']).'</span>' : '').'
+                    </div>
+                </div>';
             }
 
-            $raw_url = filter_var($file_link, FILTER_VALIDATE_URL) ? $file_link : base_url($file_link);
+            $file_link = $r['file_link'];
+            $is_url = filter_var($file_link, FILTER_VALIDATE_URL);
+            $raw_url = $is_url ? $file_link : base_url(ltrim($file_link, '/'));
+            $file_name = basename($file_link);
             
             $data[] = [
                 $r['id'],
                 esc_html($r['title']),
+                $product_badge,
                 esc_html($r['asset_type']),
-                esc_html($r['product_name']),
-                $link_html,
+                $raw_url,
+                esc_html($r['user_name'] ?: 'Admin'),
                 date('d M Y', strtotime($r['created_at'])),
-                $actions,
-                $raw_url
+                $r['id'],
+                $raw_url,
+                $r['asset_type'],
+                esc_html($r['description'] ?? ''),
+                $file_name
             ];
         }
         $this->json_list($data, $total, $total);
@@ -172,16 +191,28 @@ class Product_hub extends MY_Controller {
         ]);
     }
 
+    private function _format_logo_url($path) {
+        if (empty($path)) return '';
+        // If DB has localhost URL saved, strip localhost so it generates the live domain URL
+        if (preg_match('/^https?:\/\/localhost[^\/]*\/[^\/]+\/(.+)$/i', $path, $m)) {
+            $path = $m[1];
+        }
+        if (preg_match('/^https?:\/\//i', $path)) {
+            return $path;
+        }
+        return base_url(ltrim($path, '/'));
+    }
+
     public function products_dt() {
         $params = $this->input->get();
         [$rows, $total] = $this->Product_model->datatable($params);
         $data = [];
         foreach ($rows as $r) {
-            $logo_html = '';
-            if (!empty($r['logo'])) {
-                $logo_html = '<img src="'.base_url($r['logo']).'" class="w-12 h-12 rounded-xl object-contain bg-white border border-gray-200 p-1 shadow-sm flex-shrink-0" alt="Product Image">';
-            } elseif (!empty($r['image'])) {
-                $logo_html = '<img src="'.base_url($r['image']).'" class="w-12 h-12 rounded-xl object-contain bg-white border border-gray-200 p-1 shadow-sm flex-shrink-0" alt="Product Image">';
+            $raw_logo = !empty($r['logo']) ? $r['logo'] : (!empty($r['image']) ? $r['image'] : '');
+            $logo_url = $this->_format_logo_url($raw_logo);
+
+            if (!empty($logo_url)) {
+                $logo_html = '<img src="'.$logo_url.'" class="w-12 h-12 rounded-xl object-contain bg-white border border-gray-200 p-1 shadow-sm flex-shrink-0" alt="Product Image" onerror="this.onerror=null; this.outerHTML=\'<div class=\\\'w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-base border border-blue-100 shadow-sm flex-shrink-0\\\'><i class=\\\'fa fa-cube\\\'></i></div>\';">';
             } else {
                 $logo_html = '<div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-base border border-blue-100 shadow-sm flex-shrink-0"><i class="fa fa-cube"></i></div>';
             }
@@ -273,7 +304,8 @@ class Product_hub extends MY_Controller {
         if (!$p) $this->json_error('Product not found.', 404);
         $p['price'] = $p['price'] / 100;
         $p['min_price'] = $p['min_price'] / 100;
-        $p['logo_url'] = !empty($p['logo']) ? base_url($p['logo']) : (!empty($p['image']) ? base_url($p['image']) : '');
+        $raw_logo = !empty($p['logo']) ? $p['logo'] : (!empty($p['image']) ? $p['image'] : '');
+        $p['logo_url'] = $this->_format_logo_url($raw_logo);
         $this->json_success($p);
     }
 
@@ -291,7 +323,8 @@ class Product_hub extends MY_Controller {
         $products = $this->Product_model->get_active_with_category();
         $list = [];
         foreach ($products as $p) {
-            $logo_url = !empty($p['logo']) ? base_url($p['logo']) : (!empty($p['image']) ? base_url($p['image']) : '');
+            $raw_logo = !empty($p['logo']) ? $p['logo'] : (!empty($p['image']) ? $p['image'] : '');
+            $logo_url = $this->_format_logo_url($raw_logo);
             $list[] = [
                 'id'       => $p['id'],
                 'name'     => $p['name'],

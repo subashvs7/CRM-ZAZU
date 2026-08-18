@@ -26,9 +26,10 @@ class Product_asset_model extends MY_Model {
     }
 
     public function datatable($params) {
-        $this->db->select('a.id, a.title, a.asset_type, p.name as product_name, a.file_link, a.created_at, a.updated_at')
+        $this->db->select('a.id, a.title, a.description, a.asset_type, a.product_id, p.name as product_name, p.sku as product_sku, p.logo as product_logo, p.image as product_image, p.theme_color as product_theme_color, u.name as user_name, a.file_link, a.created_at, a.updated_at')
             ->from('product_assets a')
             ->join('products p', 'p.id = a.product_id', 'left')
+            ->join('users u', 'u.id = a.created_by', 'left')
             ->where('a.is_deleted', 0);
 
         $search = $params['search']['value'] ?? '';
