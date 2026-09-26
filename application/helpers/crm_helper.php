@@ -7,6 +7,12 @@ if (!function_exists('format_inr')) {
     }
 }
 
+if (!function_exists('inr_paise_to_rupees')) {
+    function inr_paise_to_rupees($paise) {
+        return format_inr($paise);
+    }
+}
+
 if (!function_exists('paise_to_inr')) {
     function paise_to_inr($paise) { return $paise / 100; }
 }
@@ -48,6 +54,21 @@ if (!function_exists('lead_status_badge')) {
             'lost'        => '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700">Lost</span>',
         ];
         return $map[$s] ?? '<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-600">' . esc_html($s) . '</span>';
+    }
+}
+
+if (!function_exists('email_status_badge')) {
+    function email_status_badge($s) {
+        if (!$s) return '';
+        $clean = strtolower(trim($s));
+        if (in_array($clean, ['valid', 'verified', 'deliverable'])) {
+            return '<span class="inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa fa-check-circle mr-1 text-[10px]"></i>' . esc_html($s) . '</span>';
+        } elseif (in_array($clean, ['bounced', 'invalid', 'undeliverable'])) {
+            return '<span class="inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded-md bg-rose-50 text-rose-700 border border-rose-200"><i class="fa fa-times-circle mr-1 text-[10px]"></i>' . esc_html($s) . '</span>';
+        } elseif (in_array($clean, ['catch-all', 'risky', 'unverified'])) {
+            return '<span class="inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded-md bg-amber-50 text-amber-700 border border-amber-200"><i class="fa fa-exclamation-triangle mr-1 text-[10px]"></i>' . esc_html($s) . '</span>';
+        }
+        return '<span class="inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded-md bg-slate-50 text-slate-600 border border-slate-200">' . esc_html($s) . '</span>';
     }
 }
 

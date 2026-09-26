@@ -162,11 +162,11 @@
         </a>
 
         <!-- Communications -->
-        <!-- <p class="px-3 pt-3 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest sidebar-text">Communications</p>
+        <p class="px-3 pt-3 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest sidebar-text">Communications</p>
         <a href="<?= base_url('communications/bulk_mail') ?>" class="<?= tw_active('communications') ? $lnk_on : $lnk ?>">
-            <i class="fa fa-paper-plane <?= $ic ?>"></i>
-            <span class="sidebar-text">Bulk Mail</span>
-        </a> -->
+            <i class="fa fa-envelope-open-o <?= $ic ?>"></i>
+            <span class="sidebar-text">Bulk Mail Hub</span>
+        </a>
 
         <?php if (has_module_access('admin')): ?>
         <!-- Admin submenu -->

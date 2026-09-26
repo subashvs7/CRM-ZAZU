@@ -80,9 +80,9 @@
                 <h3 class="text-sm font-bold text-gray-800">Lead Pipeline</h3>
                 <p class="text-xs text-gray-400 mt-0.5">By stage</p>
             </div>
-            <a href="<?= base_url('leads/pipeline') ?>"
+            <a href="<?= base_url('leads') ?>"
                class="px-2.5 py-1 bg-green-50 text-green-600 text-xs font-semibold rounded-lg hover:bg-green-100 transition-colors">
-                Kanban <i class="fa fa-arrow-right ml-1"></i>
+                View Leads <i class="fa fa-arrow-right ml-1"></i>
             </a>
         </div>
         <div class="p-5" id="pipeline-summary">

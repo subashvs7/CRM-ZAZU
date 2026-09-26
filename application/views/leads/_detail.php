@@ -32,40 +32,110 @@
                 </h3>
             </div>
             <div class="p-5 space-y-3">
+                <?php 
+                $fullName = trim(($lead['first_name'] ?? '') . ' ' . ($lead['last_name'] ?? ''));
+                if ($fullName): 
+                ?>
                 <div class="flex items-center justify-between py-1 border-b border-gray-50">
-                    <span class="text-xs text-gray-400 uppercase font-semibold tracking-wide">Customer</span>
-                    <a href="<?= base_url('customers/detail/'.$lead['customer_id']) ?>"
-                       class="text-sm font-semibold text-blue-600 hover:underline">
-                        <?= esc_html($lead['customer_name']) ?>
-                    </a>
+                    <span class="text-xs text-gray-400 uppercase font-semibold tracking-wide">Contact Person</span>
+                    <span class="text-sm font-bold text-gray-800"><?= esc_html($fullName) ?></span>
                 </div>
-                <?php if(!empty($lead['customer_phone'])): ?>
+                <?php endif; ?>
+
+                <?php if(!empty($lead['title'])): ?>
+                <div class="flex items-center justify-between py-1 border-b border-gray-50">
+                    <span class="text-xs text-gray-400 uppercase font-semibold tracking-wide">Title / Role</span>
+                    <span class="text-sm font-semibold text-gray-800"><?= esc_html($lead['title']) ?></span>
+                </div>
+                <?php endif; ?>
+
+                <div class="flex items-center justify-between py-1 border-b border-gray-50">
+                    <span class="text-xs text-gray-400 uppercase font-semibold tracking-wide">Company</span>
+                    <?php if($lead['customer_id']): ?>
+                    <a href="<?= base_url('customers/detail/'.$lead['customer_id']) ?>" class="text-sm font-semibold text-blue-600 hover:underline">
+                        <?= esc_html($lead['company_name'] ?: $lead['customer_name']) ?>
+                    </a>
+                    <?php else: ?>
+                    <span class="text-sm font-semibold text-gray-800"><?= esc_html($lead['company_name'] ?: ($lead['customer_name'] ?: '-')) ?></span>
+                    <?php endif; ?>
+                </div>
+
+                <?php if(!empty($lead['email'])): ?>
+                <div class="flex items-center justify-between py-1 border-b border-gray-50">
+                    <span class="text-xs text-gray-400 uppercase font-semibold tracking-wide">Email</span>
+                    <div class="text-right">
+                        <a href="mailto:<?= esc_html($lead['email']) ?>" class="text-xs text-blue-600 font-mono hover:underline block"><?= esc_html($lead['email']) ?></a>
+                        <?php if(!empty($lead['email_status'])): ?>
+                            <div class="mt-0.5"><?= email_status_badge($lead['email_status']) ?></div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <?php if(!empty($lead['corporate_phone']) || !empty($lead['customer_phone'])): ?>
                 <div class="flex items-center justify-between py-1 border-b border-gray-50">
                     <span class="text-xs text-gray-400 uppercase font-semibold tracking-wide">Phone</span>
-                    <a href="tel:<?= esc_html($lead['customer_phone']) ?>" class="text-sm text-blue-600 hover:underline">
-                        <?= esc_html($lead['customer_phone']) ?>
+                    <a href="tel:<?= esc_html($lead['corporate_phone'] ?: $lead['customer_phone']) ?>" class="text-sm text-emerald-600 hover:underline font-mono">
+                        <?= esc_html($lead['corporate_phone'] ?: $lead['customer_phone']) ?>
                     </a>
                 </div>
                 <?php endif; ?>
+
+                <?php if(!empty($lead['account_owner']) || !empty($lead['assigned_name'])): ?>
+                <div class="flex items-center justify-between py-1 border-b border-gray-50">
+                    <span class="text-xs text-gray-400 uppercase font-semibold tracking-wide">Account Owner</span>
+                    <span class="text-sm font-medium text-gray-800"><?= esc_html($lead['account_owner'] ?: $lead['assigned_name']) ?></span>
+                </div>
+                <?php endif; ?>
+
+                <?php if(!empty($lead['industry'])): ?>
+                <div class="flex items-center justify-between py-1 border-b border-gray-50">
+                    <span class="text-xs text-gray-400 uppercase font-semibold tracking-wide">Industry</span>
+                    <span class="text-sm text-gray-700"><?= esc_html($lead['industry']) ?></span>
+                </div>
+                <?php endif; ?>
+
+                <?php if(!empty($lead['employees_count'])): ?>
+                <div class="flex items-center justify-between py-1 border-b border-gray-50">
+                    <span class="text-xs text-gray-400 uppercase font-semibold tracking-wide"># Employees</span>
+                    <span class="text-sm text-gray-700"><?= esc_html($lead['employees_count']) ?></span>
+                </div>
+                <?php endif; ?>
+
+                <?php if(!empty($lead['annual_revenue'])): ?>
+                <div class="flex items-center justify-between py-1 border-b border-gray-50">
+                    <span class="text-xs text-gray-400 uppercase font-semibold tracking-wide">Annual Revenue</span>
+                    <span class="text-sm font-bold text-emerald-600"><?= esc_html($lead['annual_revenue']) ?></span>
+                </div>
+                <?php endif; ?>
+
+                <!-- Outreach & Tracking Badges -->
+                <div class="py-2 border-b border-gray-50 space-y-1">
+                    <span class="text-[11px] text-gray-400 uppercase font-semibold tracking-wide block">Email Outreach Tracking</span>
+                    <div class="flex flex-wrap gap-1.5 text-xs">
+                        <?php if(!empty($lead['email_sent'])): ?>
+                        <span class="px-2 py-0.5 rounded font-semibold <?= strtolower($lead['email_sent']) === 'yes' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-gray-100 text-gray-600' ?>">Sent: <?= esc_html($lead['email_sent']) ?></span>
+                        <?php endif; ?>
+                        <?php if(!empty($lead['email_open'])): ?>
+                        <span class="px-2 py-0.5 rounded font-semibold <?= strtolower($lead['email_open']) === 'yes' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600' ?>">Open: <?= esc_html($lead['email_open']) ?></span>
+                        <?php endif; ?>
+                        <?php if(!empty($lead['email_bounced'])): ?>
+                        <span class="px-2 py-0.5 rounded font-semibold <?= strtolower($lead['email_bounced']) === 'yes' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200' ?>">Bounce: <?= esc_html($lead['email_bounced']) ?></span>
+                        <?php endif; ?>
+                        <?php if(!empty($lead['demo'])): ?>
+                        <span class="px-2 py-0.5 rounded font-semibold bg-purple-50 text-purple-700 border border-purple-200"><i class="fa fa-desktop mr-1"></i>Demo: <?= esc_html($lead['demo']) ?></span>
+                        <?php endif; ?>
+                        <?php if(!empty($lead['quotation'])): ?>
+                        <span class="px-2 py-0.5 rounded font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200"><i class="fa fa-file-text-o mr-1"></i>Quote: <?= esc_html($lead['quotation']) ?></span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
                 <div class="flex items-center justify-between py-1 border-b border-gray-50">
                     <span class="text-xs text-gray-400 uppercase font-semibold tracking-wide">Source</span>
                     <span class="text-sm text-gray-700"><?= esc_html(ucfirst(str_replace('_', ' ', $lead['source']))) ?></span>
                 </div>
-                <div class="flex items-center justify-between py-1 border-b border-gray-50">
-                    <span class="text-xs text-gray-400 uppercase font-semibold tracking-wide">Assigned</span>
-                    <span class="text-sm font-medium text-gray-700">
-                        <?php if(!empty($lead['assigned_name'])): ?>
-                        <span class="inline-flex items-center gap-1.5">
-                            <span class="w-5 h-5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-bold flex items-center justify-center">
-                                <?= strtoupper(substr($lead['assigned_name'], 0, 1)) ?>
-                            </span>
-                            <?= esc_html($lead['assigned_name']) ?>
-                        </span>
-                        <?php else: ?>
-                        <span class="text-gray-400">Unassigned</span>
-                        <?php endif; ?>
-                    </span>
-                </div>
+
                 <?php if($lead['expected_value']): ?>
                 <div class="flex items-center justify-between py-1 border-b border-gray-50">
                     <span class="text-xs text-gray-400 uppercase font-semibold tracking-wide">Value</span>
@@ -87,11 +157,31 @@
                     <?= status_badge($lead['status']) ?>
                 </div>
             </div>
+            <?php if($lead['technologies']): ?>
+            <div class="px-5 pb-3">
+                <span class="text-[11px] text-gray-400 uppercase font-semibold tracking-wide block mb-1">Technologies</span>
+                <div class="flex flex-wrap gap-1 text-xs">
+                    <?php foreach(explode(',', $lead['technologies']) as $tech): ?>
+                    <span class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md border border-blue-100 font-semibold"><?= esc_html(trim($tech)) ?></span>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+            <?php if($lead['keywords']): ?>
+            <div class="px-5 pb-3">
+                <span class="text-[11px] text-gray-400 uppercase font-semibold tracking-wide block mb-1">Keywords</span>
+                <div class="flex flex-wrap gap-1 text-xs">
+                    <?php foreach(explode(',', $lead['keywords']) as $kw): ?>
+                    <span class="px-2 py-0.5 bg-purple-50 text-purple-700 rounded-md border border-purple-100 font-semibold"><?= esc_html(trim($kw)) ?></span>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
             <?php if($lead['description']): ?>
             <div class="px-5 pb-5">
                 <div class="bg-blue-50 border border-blue-100 rounded-xl p-3">
                     <p class="text-xs text-blue-600 font-semibold uppercase tracking-wide mb-1">
-                        <i class="fa fa-align-left mr-1"></i> Description
+                        <i class="fa fa-align-left mr-1"></i> Description / Notes
                     </p>
                     <p class="text-xs text-gray-600 leading-relaxed"><?= nl2br(esc_html($lead['description'])) ?></p>
                 </div>

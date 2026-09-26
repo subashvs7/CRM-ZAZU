@@ -6,7 +6,7 @@ class Admin extends MY_Controller {
     public function __construct() {
         parent::__construct();
         $this->require_login();
-        $this->load->model(['User_model','Team_model','Product_model','Product_category_model','Notification_template_model','App_setting_model']);
+        $this->load->model(['User_model','Team_model','Product_model','Product_category_model','Notification_template_model','App_setting_model','Smtp_account_model']);
         $this->load->library('Crm_auth');
     }
 
@@ -280,8 +280,14 @@ class Admin extends MY_Controller {
 
     // ── SETTINGS ──────────────────────────────────────────────────────
     public function settings() {
-        $settings = $this->App_setting_model->get_all_as_array();
-        $this->load_view('admin/settings', ['page_title'=>'Settings','page_js'=>'admin','settings'=>$settings]);
+        $settings  = $this->App_setting_model->get_all_as_array();
+        $smtp_pool = $this->Smtp_account_model->get_pool_status();
+        $this->load_view('admin/settings', [
+            'page_title' => 'Settings & SMTP Mail Pool',
+            'page_js'    => 'admin',
+            'settings'   => $settings,
+            'smtp_pool'  => $smtp_pool
+        ]);
     }
 
     public function save_settings() {
@@ -289,6 +295,112 @@ class Admin extends MY_Controller {
         unset($post[$this->security->get_csrf_token_name()]);
         $this->App_setting_model->set_bulk($post);
         $this->json_success([], 'Settings saved.');
+    }
+
+    /**
+     * AJAX: Get all Hostinger SMTP Accounts in Pool
+     */
+    public function smtp_accounts_ajax() {
+        $pool = $this->Smtp_account_model->get_pool_status();
+        $this->json_success($pool);
+    }
+
+    /**
+     * AJAX: Save or Create Hostinger SMTP Account
+     */
+    public function save_smtp_account() {
+        $id = (int)$this->input->post('id') ?: null;
+        $name = trim($this->input->post('name'));
+        $sender_email = trim($this->input->post('sender_email'));
+
+        if (!$name || !$sender_email) {
+            $this->json_error('Account Name and Sender Email are required.');
+        }
+
+        if (!filter_var($sender_email, FILTER_VALIDATE_EMAIL)) {
+            $this->json_error('Please provide a valid sender email address.');
+        }
+
+        $data = [
+            'name'         => $name,
+            'sender_email' => $sender_email,
+            'sender_name'  => trim($this->input->post('sender_name')) ?: $name,
+            'smtp_host'    => trim($this->input->post('smtp_host')) ?: 'smtp.hostinger.com',
+            'smtp_port'    => (int)$this->input->post('smtp_port') ?: 465,
+            'smtp_crypto'  => strtolower(trim($this->input->post('smtp_crypto'))) ?: 'ssl',
+            'smtp_user'    => trim($this->input->post('smtp_user')),
+            'smtp_pass'    => trim($this->input->post('smtp_pass')),
+            'daily_limit'  => (int)$this->input->post('daily_limit') ?: 100,
+            'status'       => $this->input->post('status') === 'disabled' ? 'disabled' : 'active'
+        ];
+
+        $res = $this->Smtp_account_model->save_account($data, $id);
+        if ($res['success']) {
+            $this->json_success(['id' => $res['id']], $res['message']);
+        } else {
+            $this->json_error($res['message']);
+        }
+    }
+
+    /**
+     * AJAX: Delete Hostinger SMTP Account
+     */
+    public function delete_smtp_account() {
+        $id = (int)$this->input->post('id');
+        if (!$id) {
+            $this->json_error('Invalid account ID.');
+        }
+
+        $this->Smtp_account_model->delete_account($id);
+        $this->json_success([], 'Hostinger SMTP account removed from pool.');
+    }
+
+    /**
+     * AJAX: Reset today's sent counter manually
+     */
+    public function reset_smtp_counter() {
+        $id = (int)$this->input->post('id');
+        if (!$id) {
+            $this->json_error('Invalid account ID.');
+        }
+
+        $this->Smtp_account_model->reset_sent_today($id);
+        $this->json_success([], 'Daily sent count reset to 0 for this account.');
+    }
+
+    /**
+     * AJAX: Test SMTP Connection to Hostinger Server
+     */
+    public function test_smtp_connection() {
+        $id = (int)$this->input->post('id');
+        if ($id) {
+            $account = $this->Smtp_account_model->get_by_id($id);
+            if (!$account) {
+                $this->json_error('SMTP Account not found.', 404);
+            }
+        } else {
+            // Live test before saving
+            $account = [
+                'smtp_host'   => trim($this->input->post('smtp_host')) ?: 'smtp.hostinger.com',
+                'smtp_port'   => (int)$this->input->post('smtp_port') ?: 465,
+                'smtp_crypto' => strtolower(trim($this->input->post('smtp_crypto'))) ?: 'ssl'
+            ];
+        }
+
+        $result = $this->Smtp_account_model->test_connection($account);
+        if ($result['success']) {
+            $this->json_success($result, $result['message']);
+        } else {
+            $this->json_error($result['message']);
+        }
+    }
+
+    /**
+     * AJAX: Get SMTP pool status with live remaining counts & alerts
+     */
+    public function smtp_pool_status_ajax() {
+        $status = $this->Smtp_account_model->get_pool_status();
+        $this->json_success($status);
     }
 
     // ── ROLE PERMISSIONS ──────────────────────────────────────────────

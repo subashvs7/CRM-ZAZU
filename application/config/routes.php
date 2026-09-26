@@ -26,6 +26,10 @@ $route['leads/add_activity']      = 'Leads/add_activity';
 $route['leads/activities/(:num)'] = 'Leads/activities/$1';
 $route['leads/import']            = 'Leads/import';
 $route['leads/import_process']    = 'Leads/import_process';
+$route['leads/import_validate']   = 'Leads/import_validate';
+$route['leads/import_confirm']    = 'Leads/import_confirm';
+$route['leads/sample_template']   = 'Leads/sample_template';
+$route['leads/export']            = 'Leads/export';
 
 // Customers
 $route['customers']                 = 'Customers/index';
@@ -184,6 +188,12 @@ $route['admin/templates_dt']       = 'Admin/templates_datatable';
 $route['admin/save_template']      = 'Admin/save_template';
 $route['admin/settings']           = 'Admin/settings';
 $route['admin/save_settings']      = 'Admin/save_settings';
+$route['admin/smtp_accounts']       = 'Admin/smtp_accounts_ajax';
+$route['admin/save_smtp_account']   = 'Admin/save_smtp_account';
+$route['admin/delete_smtp_account'] = 'Admin/delete_smtp_account';
+$route['admin/test_smtp_connection']= 'Admin/test_smtp_connection';
+$route['admin/reset_smtp_counter']  = 'Admin/reset_smtp_counter';
+$route['admin/smtp_pool_status']    = 'Admin/smtp_pool_status_ajax';
 $route['admin/role_permissions']      = 'Admin/role_permissions';
 $route['admin/role_permissions/get']  = 'Admin/fetch_role_permissions';
 $route['admin/role_permissions/save'] = 'Admin/save_role_permissions';
@@ -209,3 +219,20 @@ $route['gps/status'] = 'Gps/status';
 
 // Seeder (CLI only)
 $route['seeder/(:any)'] = 'Seeder/$1';
+
+// Communications & Bulk Mail Hub
+$route['bulk_mail']                                   = 'Communications/bulk_mail';
+$route['communications']                              = 'Communications/index';
+$route['communications/bulk_mail']                    = 'Communications/bulk_mail';
+$route['communications/get_templates_ajax']           = 'Communications/get_templates_ajax';
+$route['communications/get_template_ajax/(:num)']        = 'Communications/get_template_ajax/$1';
+$route['communications/save_template_ajax']           = 'Communications/save_template_ajax';
+$route['communications/delete_template_ajax']         = 'Communications/delete_template_ajax';
+$route['communications/audience_count_ajax']          = 'Communications/audience_count_ajax';
+$route['communications/upload_image']                 = 'Communications/upload_image';
+$route['communications/send_test_email']              = 'Communications/send_test_email';
+$route['communications/process_bulk_mail']            = 'Communications/process_bulk_mail';
+$route['communications/campaign_detail_ajax/(:num)']  = 'Communications/campaign_detail_ajax/$1';
+$route['communications/history_ajax']                 = 'Communications/history_ajax';
+$route['communications/smtp_pool_status']             = 'Communications/smtp_pool_status_ajax';
+
