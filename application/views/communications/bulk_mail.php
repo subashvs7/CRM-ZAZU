@@ -248,13 +248,47 @@
                                     </span>
                                 </div>
                                 <div class="flex items-center gap-1.5 flex-wrap">
-                                    <button type="button" id="btn-leads-select-all" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors shadow-2xs">
-                                        <i class="fa fa-check-square"></i> Select All
+                                    <!-- Quick Batch Pickers -->
+                                    <span class="text-[10px] font-bold text-emerald-800 uppercase mr-0.5">Quick Pick:</span>
+                                    <button type="button" class="btn-leads-select-batch px-2 py-1 bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer" data-count="25" title="Select First 25 Leads">
+                                        25
                                     </button>
-                                    <button type="button" id="btn-leads-deselect-all" class="px-2.5 py-1 bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-lg text-xs font-bold transition-colors">
+                                    <button type="button" class="btn-leads-select-batch px-2 py-1 bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer" data-count="50" title="Select First 50 Leads">
+                                        50
+                                    </button>
+                                    <button type="button" class="btn-leads-select-batch px-2 py-1 bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer" data-count="100" title="Select First 100 Leads">
+                                        100
+                                    </button>
+                                    <span class="text-emerald-300 mx-0.5">|</span>
+                                    <button type="button" id="btn-leads-select-all" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer">
+                                        <i class="fa fa-check-square"></i> All
+                                    </button>
+                                    <button type="button" id="btn-leads-deselect-all" class="px-2.5 py-1 bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs font-bold transition-colors cursor-pointer">
                                         <i class="fa fa-square-o"></i> Clear
                                     </button>
                                 </div>
+                            </div>
+
+                            <!-- Smart Filter Tabs Bar for Leads -->
+                            <div class="flex items-center gap-1.5 flex-wrap pt-1">
+                                <button type="button" class="leads-tab-filter active px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-2xs transition cursor-pointer" data-filter="all">
+                                    🌟 All Leads
+                                </button>
+                                <button type="button" class="leads-tab-filter px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-gray-700 hover:bg-emerald-50 border border-gray-200 transition cursor-pointer" data-filter="never_sent">
+                                    📬 Never Sent (Fresh)
+                                </button>
+                                <button type="button" class="leads-tab-filter px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-gray-700 hover:bg-emerald-50 border border-gray-200 transition cursor-pointer" data-filter="already_sent">
+                                    🔄 Already Sent (Follow-Up)
+                                </button>
+                                <button type="button" class="leads-tab-filter px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-gray-700 hover:bg-emerald-50 border border-gray-200 transition cursor-pointer" data-filter="failed">
+                                    ⚠️ Failed / Bounced (Retry)
+                                </button>
+                                <button type="button" class="leads-tab-filter px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-gray-700 hover:bg-emerald-50 border border-gray-200 transition cursor-pointer" data-filter="inbound">
+                                    📥 Inbound
+                                </button>
+                                <button type="button" class="leads-tab-filter px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-gray-700 hover:bg-emerald-50 border border-gray-200 transition cursor-pointer" data-filter="outbound">
+                                    📤 Outbound
+                                </button>
                             </div>
 
                             <!-- Stage Filter & Search Row -->
@@ -303,13 +337,41 @@
                                     </span>
                                 </div>
                                 <div class="flex items-center gap-1.5 flex-wrap">
-                                    <button type="button" id="btn-custs-select-all" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-colors shadow-2xs">
-                                        <i class="fa fa-check-square"></i> Select All
+                                    <!-- Quick Batch Pickers -->
+                                    <span class="text-[10px] font-bold text-indigo-800 uppercase mr-0.5">Quick Pick:</span>
+                                    <button type="button" class="btn-custs-select-batch px-2 py-1 bg-white hover:bg-indigo-100 border border-indigo-300 text-indigo-800 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer" data-count="25" title="Select First 25 Customers">
+                                        25
                                     </button>
-                                    <button type="button" id="btn-custs-deselect-all" class="px-2.5 py-1 bg-white hover:bg-indigo-100 border border-indigo-300 text-indigo-800 rounded-lg text-xs font-bold transition-colors">
+                                    <button type="button" class="btn-custs-select-batch px-2 py-1 bg-white hover:bg-indigo-100 border border-indigo-300 text-indigo-800 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer" data-count="50" title="Select First 50 Customers">
+                                        50
+                                    </button>
+                                    <button type="button" class="btn-custs-select-batch px-2 py-1 bg-white hover:bg-indigo-100 border border-indigo-300 text-indigo-800 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer" data-count="100" title="Select First 100 Customers">
+                                        100
+                                    </button>
+                                    <span class="text-indigo-300 mx-0.5">|</span>
+                                    <button type="button" id="btn-custs-select-all" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer">
+                                        <i class="fa fa-check-square"></i> All
+                                    </button>
+                                    <button type="button" id="btn-custs-deselect-all" class="px-2.5 py-1 bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs font-bold transition-colors cursor-pointer">
                                         <i class="fa fa-square-o"></i> Clear
                                     </button>
                                 </div>
+                            </div>
+
+                            <!-- Smart Filter Tabs Bar for Customers -->
+                            <div class="flex items-center gap-1.5 flex-wrap pt-1">
+                                <button type="button" class="custs-tab-filter active px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-2xs transition cursor-pointer" data-filter="all">
+                                    🌟 All Customers
+                                </button>
+                                <button type="button" class="custs-tab-filter px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-gray-700 hover:bg-indigo-50 border border-gray-200 transition cursor-pointer" data-filter="never_sent">
+                                    📬 Uncontacted
+                                </button>
+                                <button type="button" class="custs-tab-filter px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-gray-700 hover:bg-indigo-50 border border-gray-200 transition cursor-pointer" data-filter="already_sent">
+                                    🔄 Already Contacted
+                                </button>
+                                <button type="button" class="custs-tab-filter px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-gray-700 hover:bg-indigo-50 border border-gray-200 transition cursor-pointer" data-filter="failed">
+                                    ⚠️ Failed (Retry)
+                                </button>
                             </div>
 
                             <!-- Customer Search Bar -->
@@ -551,6 +613,36 @@
                                     <input type="radio" name="dispatch_mode" value="queue" class="text-blue-600 focus:ring-blue-500">
                                     <span>Background Queue</span>
                                 </label>
+                            </div>
+                        </div>
+
+                        <!-- Campaign Outreach Purpose & Follow-Up Planner -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-indigo-50/50 border border-indigo-200/80 rounded-xl">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-800 mb-1 flex items-center gap-1.5">
+                                    <i class="fa fa-tag text-indigo-600"></i> Outreach Purpose / Stage
+                                </label>
+                                <select name="campaign_type" id="select-campaign-type" class="w-full px-3 py-2 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                    <option value="outreach" selected>🚀 Initial Outreach (First Pitch)</option>
+                                    <option value="followup_1">🔁 Follow-Up #1 (Gentle Reminder)</option>
+                                    <option value="followup_2">⚡ Follow-Up #2 (Last Call & Offer)</option>
+                                    <option value="retry">🛠️ Retry / Resend Failed Dispatches</option>
+                                    <option value="announcement">📢 Announcement / Product Update</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-800 mb-1 flex items-center gap-1.5">
+                                    <i class="fa fa-calendar text-indigo-600"></i> Schedule Next Follow-Up
+                                </label>
+                                <div class="flex items-center gap-1.5">
+                                    <select name="followup_schedule" id="select-followup-schedule" class="w-full px-3 py-2 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                        <option value="3" selected>After 3 Days (Standard)</option>
+                                        <option value="5">After 5 Days</option>
+                                        <option value="7">After 1 Week (7 Days)</option>
+                                        <option value="custom">Custom Date...</option>
+                                    </select>
+                                    <input type="date" name="custom_followup_date" id="input-custom-followup-date" class="hidden px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                </div>
                             </div>
                         </div>
 

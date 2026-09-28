@@ -423,6 +423,11 @@ class Leads extends MY_Controller {
     }
 
     public function update_status() {
+        $ids = $this->input->post('ids');
+        if (!empty($ids) && is_array($ids)) {
+            return $this->bulk_status();
+        }
+
         $id = (int)$this->input->post('id');
         $action = $this->input->post('action');
         switch($action){
@@ -430,9 +435,87 @@ class Leads extends MY_Controller {
             case 'deactivate': $this->Lead_model->deactivate($id); break;
             case 'delete':     $this->Lead_model->soft_delete($id); break;
             case 'restore':    $this->Lead_model->restore($id); break;
+            case 'permanent_delete':
+                if (!$this->is_manager()) $this->json_error('Only managers/admins can permanently delete.');
+                $this->db->where('lead_id', $id)->delete('crm_lead_activities');
+                $this->db->where('lead_id', $id)->delete('crm_bulk_mail_queue');
+                $this->db->where('id', $id)->delete('crm_leads');
+                break;
             default: $this->json_error('Invalid status action.');
         }
         $this->json_success([], 'Lead status updated.');
+    }
+
+    /**
+     * AJAX: Multi-Select Bulk Actions (Delete, Restore, Permanent Delete)
+     */
+    public function bulk_status() {
+        $ids = $this->input->post('ids');
+        $action = $this->input->post('action');
+
+        if (empty($ids) || !is_array($ids)) {
+            $this->json_error('Please select at least one lead.');
+        }
+
+        $clean_ids = array_filter(array_map('intval', $ids));
+        if (empty($clean_ids)) {
+            $this->json_error('Invalid lead IDs.');
+        }
+
+        $count = count($clean_ids);
+        switch($action) {
+            case 'delete':
+                $this->db->where_in('id', $clean_ids)->update('crm_leads', [
+                    'status'     => 'deleted',
+                    'is_deleted' => 1,
+                    'deleted_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+                $msg = "{$count} lead(s) moved to deleted.";
+                break;
+
+            case 'restore':
+                $this->db->where_in('id', $clean_ids)->update('crm_leads', [
+                    'status'     => 'active',
+                    'is_deleted' => 0,
+                    'deleted_at' => null,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+                $msg = "{$count} lead(s) restored successfully.";
+                break;
+
+            case 'permanent_delete':
+                if (!$this->is_manager()) {
+                    $this->json_error('Only managers/admins can permanently delete leads.');
+                }
+                $this->db->where_in('lead_id', $clean_ids)->delete('crm_lead_activities');
+                $this->db->where_in('lead_id', $clean_ids)->delete('crm_bulk_mail_queue');
+                $this->db->where_in('id', $clean_ids)->delete('crm_leads');
+                $msg = "{$count} lead(s) permanently deleted.";
+                break;
+
+            case 'activate':
+                $this->db->where_in('id', $clean_ids)->update('crm_leads', [
+                    'status'     => 'active',
+                    'is_deleted' => 0,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+                $msg = "{$count} lead(s) activated.";
+                break;
+
+            case 'deactivate':
+                $this->db->where_in('id', $clean_ids)->update('crm_leads', [
+                    'status'     => 'inactive',
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+                $msg = "{$count} lead(s) deactivated.";
+                break;
+
+            default:
+                $this->json_error('Invalid bulk action.');
+        }
+
+        $this->json_success(['count' => $count], $msg);
     }
 
     public function add_activity() {

@@ -218,6 +218,71 @@
 
     <!-- Leads Table Card -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <!-- Floating/Sliding Multi-Select Bulk Actions Bar -->
+        <div id="leads-bulk-bar" class="hidden px-5 py-3.5 bg-gradient-to-r from-rose-50 via-amber-50 to-rose-50 border-b border-rose-200 flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-200">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                    <i class="fa fa-check-square-o text-sm"></i>
+                </span>
+                <div>
+                    <span class="text-xs font-bold text-rose-900"><span class="selected-count-pill font-mono font-black text-sm">0</span> Lead(s) Selected</span>
+                    <p class="text-[11px] text-rose-700">Choose a bulk action to apply to all selected records:</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <!-- Delete Selected (Default for All, Active, Inactive tabs) -->
+                <button type="button" id="btn-banner-bulk-delete" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
+                    <i class="fa fa-trash"></i> Delete Selected (<span class="selected-count-pill font-mono">0</span>)
+                </button>
+
+                <!-- Deleted Tab Actions (Visible only when in Deleted Tab) -->
+                <button type="button" id="btn-banner-bulk-restore" class="hidden px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
+                    <i class="fa fa-undo"></i> Restore Selected (<span class="selected-count-pill font-mono">0</span>)
+                </button>
+                <button type="button" id="btn-banner-bulk-permanent-delete" class="hidden px-3.5 py-2 bg-red-800 hover:bg-red-900 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
+                    <i class="fa fa-trash-o"></i> Permanent Delete
+                </button>
+
+                <button type="button" id="btn-banner-bulk-clear" class="px-3 py-2 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-semibold rounded-xl shadow-2xs transition-all flex items-center gap-1 cursor-pointer">
+                    <i class="fa fa-times text-gray-400"></i> Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Card Top Bar: Quick Selectors & Delete Selected in red box area -->
+        <div class="px-5 pt-3.5 pb-2.5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/60">
+            <div class="flex items-center gap-2.5">
+                <span class="text-xs font-bold text-gray-700 uppercase tracking-wider">Leads Records</span>
+                <span id="badge-selection-indicator" class="hidden px-2.5 py-0.5 text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200 rounded-full font-mono">
+                    <span class="selected-count-pill font-bold">0</span> Selected
+                </span>
+            </div>
+
+            <!-- Red Box Positioned Action Controls -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <!-- Batch Quick Pickers -->
+                <div class="inline-flex rounded-xl shadow-2xs border border-gray-200 bg-white p-0.5 text-xs font-semibold text-gray-700">
+                    <button type="button" id="btn-select-page" class="px-2.5 py-1 rounded-lg hover:bg-gray-100 transition cursor-pointer" title="Select all on this page">Select Page</button>
+                    <button type="button" id="btn-select-25" class="px-2.5 py-1 rounded-lg hover:bg-gray-100 transition cursor-pointer" title="Select first 25">25</button>
+                    <button type="button" id="btn-select-50" class="px-2.5 py-1 rounded-lg hover:bg-gray-100 transition cursor-pointer" title="Select first 50">50</button>
+                    <button type="button" id="btn-select-none" class="px-2.5 py-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition cursor-pointer" title="Deselect all">Clear</button>
+                </div>
+
+                <!-- Primary Top Delete Button (Turns vibrant red when >=1 selected) -->
+                <button type="button" id="btn-top-bulk-delete" disabled class="px-3.5 py-1.5 bg-gray-100 text-gray-400 border border-gray-200 text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-not-allowed">
+                    <i class="fa fa-trash"></i> <span>Delete Selected</span> <span class="selected-count-container hidden font-mono">(<span class="selected-count-pill">0</span>)</span>
+                </button>
+
+                <!-- Deleted Tab Actions for Top Bar -->
+                <button type="button" id="btn-top-bulk-restore" class="hidden px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer">
+                    <i class="fa fa-undo"></i> Restore (<span class="selected-count-pill font-mono">0</span>)
+                </button>
+                <button type="button" id="btn-top-bulk-permanent-delete" class="hidden px-3.5 py-1.5 bg-red-800 hover:bg-red-900 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer">
+                    <i class="fa fa-trash-o"></i> Permanent Delete
+                </button>
+            </div>
+        </div>
+
         <div class="p-4 overflow-x-auto">
             <table id="leads-table" class="w-full text-left min-w-[1260px]" style="width:100%">
                 <thead>

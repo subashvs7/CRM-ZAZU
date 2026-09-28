@@ -328,6 +328,9 @@ $(function () {
     var custsLoaded = false;
     var contsLoaded = false;
 
+    var leadsReachFilter = 'all';
+    var custsReachFilter = 'all';
+
     function syncAudienceCardsUI() {
         $('.audience-card').each(function () {
             var forId = $(this).data('for');
@@ -393,7 +396,8 @@ $(function () {
         $.getJSON(BASE_URL + 'communications/get_audience_recipients_ajax', {
             recipient_types: ['leads'],
             product_id: pId,
-            lead_status: lStat
+            lead_status: lStat,
+            reach_filter: leadsReachFilter
         }, function (res) {
             if (res.status === 'success' && res.data) {
                 leadsData = res.data || [];
@@ -425,6 +429,19 @@ $(function () {
         var html = '';
         $.each(filtered, function (i, r) {
             var isChecked = selectedLeads.has(r.key);
+
+            var reachBadge = '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200">📬 Never Sent</span>';
+            if (r.reach_status === 'already_sent') {
+                var sentInfo = r.last_sent_at ? 'Sent: ' + r.last_sent_at : 'Contacted';
+                reachBadge = '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-50 text-purple-700 border border-purple-200" title="' + sentInfo + '">🔄 Contacted' + (r.outreach_count > 0 ? ' (' + r.outreach_count + ')' : '') + '</span>';
+            } else if (r.reach_status === 'failed') {
+                reachBadge = '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200">⚠️ Failed (Retry)</span>';
+            }
+
+            var dirBadge = r.direction === 'inbound'
+                ? '<span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-50 text-emerald-700 border border-emerald-200">📥 INBOUND</span>'
+                : '<span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-100 text-slate-600 border border-slate-200">📤 OUTBOUND</span>';
+
             html += '<label class="flex items-center justify-between p-2.5 hover:bg-emerald-50/60 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0 select-none">';
             html += '<div class="flex items-center gap-2.5">';
             html += '<input type="checkbox" name="selected_recipient_keys[]" class="lead-item-chk rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer" value="' + CRM.esc(r.key) + '" ' + (isChecked ? 'checked' : '') + '>';
@@ -436,7 +453,11 @@ $(function () {
             html += '<div class="text-[11px] text-gray-500 font-mono">' + CRM.esc(r.email) + (r.phone ? ' &bull; ' + CRM.esc(r.phone) : '') + '</div>';
             html += '</div>';
             html += '</div>';
-            html += '<span class="px-2 py-0.5 text-[10px] rounded font-bold bg-emerald-100 text-emerald-800 uppercase">' + CRM.esc(r.status || 'lead') + '</span>';
+            html += '<div class="flex items-center gap-1.5 flex-wrap justify-end">';
+            html += dirBadge;
+            html += reachBadge;
+            html += '<span class="px-2 py-0.5 text-[10px] rounded font-bold bg-gray-100 text-gray-700 uppercase">' + CRM.esc(r.status || 'lead') + '</span>';
+            html += '</div>';
             html += '</label>';
         });
 
@@ -465,6 +486,32 @@ $(function () {
         updateLeadsBadge();
     });
 
+    // Quick Batch Selection for Leads
+    $(document).on('click', '.btn-leads-select-batch', function () {
+        var count = parseInt($(this).data('count')) || 50;
+        selectedLeads.clear();
+        $('.lead-item-chk').prop('checked', false);
+
+        var added = 0;
+        $('.lead-item-chk').each(function () {
+            if (added < count) {
+                $(this).prop('checked', true);
+                selectedLeads.add($(this).val());
+                added++;
+            }
+        });
+        updateLeadsBadge();
+        CRM.toast('info', 'Selected first ' + added + ' leads.');
+    });
+
+    // Smart Filter Tabs for Leads
+    $(document).on('click', '.leads-tab-filter', function () {
+        $('.leads-tab-filter').removeClass('active bg-emerald-600 text-white shadow-2xs').addClass('bg-white text-gray-700 hover:bg-emerald-50 border border-gray-200');
+        $(this).addClass('active bg-emerald-600 text-white shadow-2xs').removeClass('bg-white text-gray-700 hover:bg-emerald-50 border border-gray-200');
+        leadsReachFilter = $(this).data('filter') || 'all';
+        loadLeads();
+    });
+
     $('#btn-leads-select-all').on('click', function () {
         $('.lead-item-chk').prop('checked', true);
         $.each(leadsData, function(i, r) { selectedLeads.add(r.key); });
@@ -491,7 +538,8 @@ $(function () {
         $('#custs-checklist-container').html('<div class="p-4 text-center text-gray-400 text-xs"><i class="fa fa-spinner fa-spin text-indigo-600 text-base mb-1 block"></i> Loading customers...</div>');
 
         $.getJSON(BASE_URL + 'communications/get_audience_recipients_ajax', {
-            recipient_types: ['customers']
+            recipient_types: ['customers'],
+            reach_filter: custsReachFilter
         }, function (res) {
             if (res.status === 'success' && res.data) {
                 customersData = res.data || [];
@@ -523,6 +571,15 @@ $(function () {
         var html = '';
         $.each(filtered, function (i, r) {
             var isChecked = selectedCustomers.has(r.key);
+
+            var reachBadge = '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200">📬 Uncontacted</span>';
+            if (r.reach_status === 'already_sent') {
+                var sentInfo = r.last_sent_at ? 'Sent: ' + r.last_sent_at : 'Contacted';
+                reachBadge = '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-50 text-purple-700 border border-purple-200" title="' + sentInfo + '">🔄 Contacted</span>';
+            } else if (r.reach_status === 'failed') {
+                reachBadge = '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200">⚠️ Failed</span>';
+            }
+
             html += '<label class="flex items-center justify-between p-2.5 hover:bg-indigo-50/60 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0 select-none">';
             html += '<div class="flex items-center gap-2.5">';
             html += '<input type="checkbox" name="selected_recipient_keys[]" class="cust-item-chk rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer" value="' + CRM.esc(r.key) + '" ' + (isChecked ? 'checked' : '') + '>';
@@ -534,7 +591,10 @@ $(function () {
             html += '<div class="text-[11px] text-gray-500 font-mono">' + CRM.esc(r.email) + (r.phone ? ' &bull; ' + CRM.esc(r.phone) : '') + '</div>';
             html += '</div>';
             html += '</div>';
+            html += '<div class="flex items-center gap-1.5 flex-wrap justify-end">';
+            html += reachBadge;
             html += '<span class="px-2 py-0.5 text-[10px] rounded font-bold bg-indigo-100 text-indigo-800 uppercase">' + CRM.esc(r.status || 'Customer') + '</span>';
+            html += '</div>';
             html += '</label>';
         });
 
@@ -563,6 +623,32 @@ $(function () {
         updateCustsBadge();
     });
 
+    // Quick Batch Selection for Customers
+    $(document).on('click', '.btn-custs-select-batch', function () {
+        var count = parseInt($(this).data('count')) || 50;
+        selectedCustomers.clear();
+        $('.cust-item-chk').prop('checked', false);
+
+        var added = 0;
+        $('.cust-item-chk').each(function () {
+            if (added < count) {
+                $(this).prop('checked', true);
+                selectedCustomers.add($(this).val());
+                added++;
+            }
+        });
+        updateCustsBadge();
+        CRM.toast('info', 'Selected first ' + added + ' customers.');
+    });
+
+    // Smart Filter Tabs for Customers
+    $(document).on('click', '.custs-tab-filter', function () {
+        $('.custs-tab-filter').removeClass('active bg-indigo-600 text-white shadow-2xs').addClass('bg-white text-gray-700 hover:bg-indigo-50 border border-gray-200');
+        $(this).addClass('active bg-indigo-600 text-white shadow-2xs').removeClass('bg-white text-gray-700 hover:bg-indigo-50 border border-gray-200');
+        custsReachFilter = $(this).data('filter') || 'all';
+        loadCustomers();
+    });
+
     $('#btn-custs-select-all').on('click', function () {
         $('.cust-item-chk').prop('checked', true);
         $.each(customersData, function(i, r) { selectedCustomers.add(r.key); });
@@ -577,6 +663,15 @@ $(function () {
 
     $('#custs-search-input').on('input', function () {
         renderCustomersList();
+    });
+
+    // Follow-up Schedule Custom Date Toggle
+    $('#select-followup-schedule').on('change', function () {
+        if ($(this).val() === 'custom') {
+            $('#input-custom-followup-date').removeClass('hidden').focus();
+        } else {
+            $('#input-custom-followup-date').addClass('hidden');
+        }
     });
 
 

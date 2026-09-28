@@ -41,16 +41,185 @@ $(function() {
         });
     }
 
-    // 2. Select All Checkbox Handler
+    // 2. MULTI-SELECT & BULK ACTIONS CONTROLLER FOR LEADS
+    function getSelectedLeadIds() {
+        var ids = [];
+        $('.lead-row-checkbox:checked').each(function() {
+            var val = parseInt($(this).val());
+            if (val && ids.indexOf(val) === -1) {
+                ids.push(val);
+            }
+        });
+        return ids;
+    }
+
+    function syncLeadSelectionUI() {
+        var ids = getSelectedLeadIds();
+        var count = ids.length;
+        var totalOnPage = $('.lead-row-checkbox').length;
+        var isDeletedTab = (window.currentStatusFilter === 'deleted');
+
+        $('.selected-count-pill').text(count);
+
+        if (count > 0) {
+            // Show badge indicator & floating bulk bar
+            $('#badge-selection-indicator').removeClass('hidden');
+            $('#leads-bulk-bar').removeClass('hidden');
+            $('.selected-count-container').removeClass('hidden');
+
+            if (isDeletedTab) {
+                // In deleted tab: hide normal delete, show restore and permanent delete
+                $('#btn-top-bulk-delete, #btn-banner-bulk-delete').addClass('hidden');
+                $('#btn-top-bulk-restore, #btn-banner-bulk-restore').removeClass('hidden');
+                $('#btn-top-bulk-permanent-delete, #btn-banner-bulk-permanent-delete').removeClass('hidden');
+            } else {
+                // In normal tabs: enable delete button and make it active red
+                $('#btn-top-bulk-restore, #btn-banner-bulk-restore').addClass('hidden');
+                $('#btn-top-bulk-permanent-delete, #btn-banner-bulk-permanent-delete').addClass('hidden');
+                $('#btn-top-bulk-delete, #btn-banner-bulk-delete')
+                    .removeClass('hidden bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed')
+                    .addClass('bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-xs')
+                    .prop('disabled', false);
+            }
+        } else {
+            // Hide badge indicator & floating bulk bar
+            $('#badge-selection-indicator').addClass('hidden');
+            $('#leads-bulk-bar').addClass('hidden');
+            $('.selected-count-container').addClass('hidden');
+
+            // Reset top delete button to disabled state
+            $('#btn-top-bulk-restore, #btn-banner-bulk-restore').addClass('hidden');
+            $('#btn-top-bulk-permanent-delete, #btn-banner-bulk-permanent-delete').addClass('hidden');
+            $('#btn-top-bulk-delete, #btn-banner-bulk-delete')
+                .removeClass('hidden bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-xs')
+                .addClass('bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed')
+                .prop('disabled', true);
+        }
+
+        // Header checkbox state
+        $('#check-all-leads').prop('checked', totalOnPage > 0 && count === totalOnPage);
+    }
+
+    function clearLeadSelection() {
+        $('.lead-row-checkbox, #check-all-leads').prop('checked', false);
+        syncLeadSelectionUI();
+    }
+
+    // Reset selection whenever DataTable redraws or page changes
+    if (window.mainTable) {
+        window.mainTable.on('draw', function() {
+            syncLeadSelectionUI();
+        });
+    }
+
+    // Checkbox events
     $(document).on('change', '#check-all-leads', function() {
         var checked = $(this).is(':checked');
         $('.lead-row-checkbox').prop('checked', checked);
+        syncLeadSelectionUI();
     });
 
     $(document).on('change', '.lead-row-checkbox', function() {
-        var total = $('.lead-row-checkbox').length;
-        var checked = $('.lead-row-checkbox:checked').length;
-        $('#check-all-leads').prop('checked', total > 0 && total === checked);
+        syncLeadSelectionUI();
+    });
+
+    // Quick selection helpers
+    $(document).on('click', '#btn-select-page', function() {
+        $('.lead-row-checkbox').prop('checked', true);
+        syncLeadSelectionUI();
+    });
+
+    $(document).on('click', '#btn-select-25', function() {
+        $('.lead-row-checkbox').prop('checked', false);
+        $('.lead-row-checkbox').slice(0, 25).prop('checked', true);
+        syncLeadSelectionUI();
+    });
+
+    $(document).on('click', '#btn-select-50', function() {
+        $('.lead-row-checkbox').prop('checked', false);
+        $('.lead-row-checkbox').slice(0, 50).prop('checked', true);
+        syncLeadSelectionUI();
+    });
+
+    $(document).on('click', '#btn-select-none, #btn-banner-bulk-clear', function() {
+        clearLeadSelection();
+    });
+
+    // Tab switch handler to refresh UI for Deleted tab vs Active tab
+    $(document).on('click', '#status-tabs a[data-status]', function() {
+        setTimeout(function() {
+            clearLeadSelection();
+        }, 150);
+    });
+
+    // Execute Bulk Action helper
+    function executeBulkAction(action, confirmMsg) {
+        var ids = getSelectedLeadIds();
+        if (!ids.length) {
+            CRM.toast('warning', 'Please select at least one lead.');
+            return;
+        }
+
+        if (confirmMsg && !confirm(confirmMsg)) {
+            return;
+        }
+
+        var $btn = $(this);
+        var origHtml = $btn.html();
+        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Processing...');
+
+        var postData = {
+            ids: ids,
+            action: action
+        };
+        if (typeof CI3_CSRF_NAME !== 'undefined') {
+            postData[CI3_CSRF_NAME] = CI3_CSRF_HASH;
+        }
+
+        $.ajax({
+            url: BASE_URL + 'leads/bulk_status',
+            type: 'POST',
+            dataType: 'json',
+            data: postData,
+            success: function(resp) {
+                $btn.prop('disabled', false).html(origHtml);
+                if (resp.status === 'success') {
+                    CRM.toast('success', resp.message || 'Bulk operation completed.');
+                    clearLeadSelection();
+                    if (window.mainTable && window.mainTable.ajax) {
+                        window.mainTable.ajax.reload(null, false);
+                    }
+                } else {
+                    CRM.toast('error', resp.message || 'Failed to complete bulk action.');
+                }
+            },
+            error: function(xhr) {
+                $btn.prop('disabled', false).html(origHtml);
+                var err = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Server error occurred during bulk operation.';
+                CRM.toast('error', err);
+            }
+        });
+    }
+
+    // Trigger Bulk Delete
+    $(document).on('click', '#btn-top-bulk-delete, #btn-banner-bulk-delete', function() {
+        var ids = getSelectedLeadIds();
+        if (!ids.length) return;
+        executeBulkAction.call(this, 'delete', 'Are you sure you want to delete ' + ids.length + ' selected lead(s)?');
+    });
+
+    // Trigger Bulk Restore
+    $(document).on('click', '#btn-top-bulk-restore, #btn-banner-bulk-restore', function() {
+        var ids = getSelectedLeadIds();
+        if (!ids.length) return;
+        executeBulkAction.call(this, 'restore', 'Restore ' + ids.length + ' selected lead(s) to Active?');
+    });
+
+    // Trigger Bulk Permanent Delete
+    $(document).on('click', '#btn-top-bulk-permanent-delete, #btn-banner-bulk-permanent-delete', function() {
+        var ids = getSelectedLeadIds();
+        if (!ids.length) return;
+        executeBulkAction.call(this, 'permanent_delete', 'WARNING: Are you sure you want to PERMANENTLY DELETE ' + ids.length + ' lead(s)? This will delete all associated activities and CANNOT be undone!');
     });
 
     // 3. Export Dropdown Menu Handler

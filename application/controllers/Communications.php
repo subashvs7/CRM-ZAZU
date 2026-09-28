@@ -85,11 +85,12 @@ class Communications extends MY_Controller {
      */
     public function delivery_logs_ajax() {
         $params = [
-            'from_date'    => $this->input->get('from_date'),
-            'to_date'      => $this->input->get('to_date'),
-            'sender_email' => $this->input->get('sender_email'),
-            'status'       => $this->input->get('status'),
-            'search'       => $this->input->get('search')
+            'from_date'     => $this->input->get('from_date'),
+            'to_date'       => $this->input->get('to_date'),
+            'sender_email'  => $this->input->get('sender_email'),
+            'status'        => $this->input->get('status'),
+            'campaign_type' => $this->input->get('campaign_type'),
+            'search'        => $this->input->get('search')
         ];
         $limit  = (int)($this->input->get('limit') ?: 50);
         $offset = (int)($this->input->get('offset') ?: 0);
@@ -197,11 +198,12 @@ class Communications extends MY_Controller {
             $recipient_types = $single ? (is_array($single) ? $single : explode(',', $single)) : ['All Leads'];
         }
 
-        $product_id     = (int)$this->input->get('product_id') ?: null;
-        $lead_status    = $this->input->get('lead_status') ?: null;
+        $product_id   = (int)$this->input->get('product_id') ?: null;
+        $lead_status  = $this->input->get('lead_status') ?: null;
+        $reach_filter = $this->input->get('reach_filter') ?: 'all';
 
-        $recipients = $this->Bulk_mail_model->get_recipients($recipient_types, $product_id, $lead_status, 15);
-        $totalCount = count($this->Bulk_mail_model->get_recipients($recipient_types, $product_id, $lead_status, 0));
+        $recipients = $this->Bulk_mail_model->get_recipients($recipient_types, $product_id, $lead_status, 15, $reach_filter);
+        $totalCount = count($this->Bulk_mail_model->get_recipients($recipient_types, $product_id, $lead_status, 0, $reach_filter));
 
         $this->json_success([
             'total'   => $totalCount,
@@ -219,10 +221,11 @@ class Communications extends MY_Controller {
             $recipient_types = $single ? (is_array($single) ? $single : explode(',', $single)) : ['leads', 'customers', 'contact_book'];
         }
 
-        $product_id  = (int)$this->input->get('product_id') ?: null;
-        $lead_status = $this->input->get('lead_status') ?: null;
+        $product_id   = (int)$this->input->get('product_id') ?: null;
+        $lead_status  = $this->input->get('lead_status') ?: null;
+        $reach_filter = $this->input->get('reach_filter') ?: 'all';
 
-        $recipients = $this->Bulk_mail_model->get_recipients($recipient_types, $product_id, $lead_status, 1000);
+        $recipients = $this->Bulk_mail_model->get_recipients($recipient_types, $product_id, $lead_status, 1500, $reach_filter);
         $this->json_success($recipients);
     }
 
@@ -452,20 +455,49 @@ class Communications extends MY_Controller {
         if ($isGranular) {
             $targetSummary .= ' (' . count($recipients) . ' Handpicked)';
         }
+
+        $campaign_type = $this->input->post('campaign_type') ?: 'outreach';
+        $valid_types   = ['outreach', 'followup_1', 'followup_2', 'retry', 'announcement'];
+        if (!in_array($campaign_type, $valid_types)) {
+            $campaign_type = 'outreach';
+        }
+
+        $followup_schedule = $this->input->post('followup_schedule') ?: '3';
+        if ($followup_schedule === 'custom') {
+            $custom_date = $this->input->post('custom_followup_date');
+            $next_followup_date = !empty($custom_date) ? $custom_date : date('Y-m-d', strtotime('+3 days'));
+            $next_followup_days = 3;
+        } else {
+            $days = (int)$followup_schedule ?: 3;
+            $next_followup_days = $days;
+            $next_followup_date = date('Y-m-d', strtotime("+{$days} days"));
+        }
+
+        $typeLabels = [
+            'outreach'     => 'Initial Outreach',
+            'followup_1'   => 'Follow-Up #1',
+            'followup_2'   => 'Follow-Up #2',
+            'retry'        => 'Retry Resend',
+            'announcement' => 'Announcement'
+        ];
+        $typeTitle = $typeLabels[$campaign_type] ?? 'Outreach';
+
         $campaign_data = [
-            'subject'          => $subject,
-            'message'          => $message,
-            'recipient_type'   => $targetSummary . ($product_id ? ' (Product #' . $product_id . ')' : '') . ($forcedSmtp ? ' [Sender: ' . $forcedSmtp['sender_email'] . ']' : ''),
-            'product_id'       => $product_id,
-            'template_id'      => $template_id,
-            'total_recipients' => count($recipients),
-            'status'           => ($dispatch_mode === 'instant') ? 'completed' : 'pending',
-            'created_at'       => date('Y-m-d H:i:s'),
-            'updated_at'       => date('Y-m-d H:i:s')
+            'subject'             => $subject,
+            'message'             => $message,
+            'recipient_type'      => $targetSummary . ($product_id ? ' (Product #' . $product_id . ')' : '') . ($forcedSmtp ? ' [Sender: ' . $forcedSmtp['sender_email'] . ']' : ''),
+            'campaign_type'       => $campaign_type,
+            'next_followup_days'  => $next_followup_days,
+            'product_id'          => $product_id,
+            'template_id'         => $template_id,
+            'total_recipients'    => count($recipients),
+            'status'              => ($dispatch_mode === 'instant') ? 'completed' : 'pending',
+            'created_at'          => date('Y-m-d H:i:s'),
+            'updated_at'          => date('Y-m-d H:i:s')
         ];
 
         $campaign_id = $this->Bulk_mail_model->create_campaign($campaign_data);
-        $this->Bulk_mail_model->add_to_queue($campaign_id, $recipients);
+        $this->Bulk_mail_model->add_to_queue($campaign_id, $recipients, $campaign_type, $next_followup_date);
 
         $sentCount    = 0;
         $failedCount  = 0;
@@ -576,7 +608,7 @@ class Communications extends MY_Controller {
                         'lead_id'       => (int)$item['lead_id'],
                         'user_id'       => $currentUserId,
                         'activity_type' => 'email',
-                        'notes'         => "Bulk Outreach Dispatched via {$fromEmail} [Ref: #{$anti_spam_hash}]: \"{$subject}\" (Campaign #{$campaign_id}). Next follow-up on {$next_followup_date}.",
+                        'notes'         => "{$typeTitle} Dispatched via {$fromEmail} [Ref: #{$anti_spam_hash}]: \"{$subject}\" (Campaign #{$campaign_id}). Next follow-up on {$next_followup_date}.",
                         'occurred_at'   => date('Y-m-d H:i:s'),
                         'status'        => 'active',
                         'is_deleted'    => 0,
@@ -794,11 +826,23 @@ class Communications extends MY_Controller {
 
             // Lead activity logging
             if (!empty($item['lead_id'])) {
+                $typeTitle = 'Outreach';
+                if (!empty($item['campaign_type'])) {
+                    $typeLabels = [
+                        'outreach'     => 'Initial Outreach',
+                        'followup_1'   => 'Follow-Up #1',
+                        'followup_2'   => 'Follow-Up #2',
+                        'retry'        => 'Retry Resend',
+                        'announcement' => 'Announcement'
+                    ];
+                    $typeTitle = $typeLabels[$item['campaign_type']] ?? 'Outreach';
+                }
+
                 $this->db->insert('crm_lead_activities', [
                     'lead_id'       => (int)$item['lead_id'],
                     'user_id'       => 1, // System / Cron
                     'activity_type' => 'email',
-                    'notes'         => "Queued Outreach Dispatched via {$fromEmail} [Ref: #{$anti_spam_hash}]. Next follow-up suggested on {$next_followup_date}.",
+                    'notes'         => "Queued {$typeTitle} Dispatched via {$fromEmail} [Ref: #{$anti_spam_hash}]. Next follow-up on {$next_followup_date}.",
                     'occurred_at'   => date('Y-m-d H:i:s'),
                     'status'        => 'active',
                     'is_deleted'    => 0,

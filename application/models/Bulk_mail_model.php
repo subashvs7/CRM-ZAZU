@@ -83,8 +83,9 @@ class Bulk_mail_model extends CI_Model {
     /**
      * Query audience recipients dynamically based on group and filters
      * Supports single or multi-audience selection with automatic email deduplication
+     * and reach filters (all, never_sent, already_sent, failed, inbound, outbound)
      */
-    public function get_recipients($recipient_types, $product_id = null, $lead_status = null, $limit = 2000) {
+    public function get_recipients($recipient_types, $product_id = null, $lead_status = null, $limit = 2000, $reach_filter = 'all') {
         $recipients = [];
         $seenEmails = [];
 
@@ -115,12 +116,18 @@ class Bulk_mail_model extends CI_Model {
             }
         }
 
+        $reach_filter = strtolower(trim($reach_filter ?: 'all'));
+
         // 1. Process Leads
         if ($hasLeads) {
             $this->db->select("l.id AS lead_id, l.email, 
                 TRIM(CONCAT(COALESCE(l.first_name, ''), ' ', COALESCE(l.last_name, ''))) AS full_name,
                 l.first_name, l.last_name, l.company_name, l.title, l.corporate_phone AS phone,
-                l.product_id, p.name AS product_name, p.price AS product_price, l.lead_status")
+                l.product_id, p.name AS product_name, p.price AS product_price, l.lead_status,
+                l.source AS lead_source, l.email_sent, l.email_bounced,
+                (SELECT q.status FROM crm_bulk_mail_queue q WHERE q.lead_id = l.id ORDER BY q.id DESC LIMIT 1) AS last_delivery_status,
+                (SELECT q.sent_at FROM crm_bulk_mail_queue q WHERE q.lead_id = l.id AND q.status = 'sent' ORDER BY q.id DESC LIMIT 1) AS last_sent_at,
+                (SELECT COUNT(q.id) FROM crm_bulk_mail_queue q WHERE q.lead_id = l.id AND q.status = 'sent') AS outreach_count")
                 ->from('crm_leads l')
                 ->join('crm_products p', 'p.id = l.product_id', 'left')
                 ->where('l.is_deleted', 0)
@@ -135,6 +142,19 @@ class Bulk_mail_model extends CI_Model {
                 $this->db->where('l.lead_status', $lead_status);
             }
 
+            // Apply Reach & Direction Filters
+            if ($reach_filter === 'never_sent' || $reach_filter === 'unsent') {
+                $this->db->where("( (l.email_sent IS NULL OR l.email_sent != 'Yes') AND NOT EXISTS (SELECT 1 FROM crm_bulk_mail_queue q WHERE q.lead_id = l.id AND q.status = 'sent') )", null, false);
+            } elseif ($reach_filter === 'already_sent' || $reach_filter === 'followup') {
+                $this->db->where("( (l.email_sent = 'Yes') OR EXISTS (SELECT 1 FROM crm_bulk_mail_queue q WHERE q.lead_id = l.id AND q.status = 'sent') )", null, false);
+            } elseif ($reach_filter === 'failed' || $reach_filter === 'retry') {
+                $this->db->where("( (l.email_bounced = 'Yes') OR EXISTS (SELECT 1 FROM crm_bulk_mail_queue q WHERE q.lead_id = l.id AND q.status = 'failed') )", null, false);
+            } elseif ($reach_filter === 'inbound') {
+                $this->db->where_in('l.source', ['walk_in', 'call', 'online']);
+            } elseif ($reach_filter === 'outbound') {
+                $this->db->where("(l.source IN ('field', 'referral') OR l.source IS NULL)", null, false);
+            }
+
             $this->db->order_by('l.id', 'DESC');
             if ($limit > 0) $this->db->limit($limit);
 
@@ -144,30 +164,48 @@ class Bulk_mail_model extends CI_Model {
                 if (!isset($seenEmails[$email])) {
                     $seenEmails[$email] = true;
                     $name = !empty($r['full_name']) ? $r['full_name'] : ($r['title'] ?: ($r['company_name'] ?: 'Lead #' . $r['lead_id']));
+
+                    $reach = 'never_sent';
+                    if ($r['last_delivery_status'] === 'failed' || (!empty($r['email_bounced']) && $r['email_bounced'] === 'Yes')) {
+                        $reach = 'failed';
+                    } elseif ($r['last_delivery_status'] === 'sent' || (!empty($r['email_sent']) && $r['email_sent'] === 'Yes')) {
+                        $reach = 'already_sent';
+                    }
+
+                    $direction = (!empty($r['lead_source']) && in_array($r['lead_source'], ['walk_in', 'call', 'online'])) ? 'inbound' : 'outbound';
+
                     $recipients[] = [
-                        'key'           => 'lead_' . $r['lead_id'],
-                        'type'          => 'lead',
-                        'source_type'   => 'Lead',
-                        'lead_id'       => (int)$r['lead_id'],
-                        'customer_id'   => null,
-                        'email'         => trim($r['email']),
-                        'name'          => $name,
-                        'first_name'    => $r['first_name'] ?: $name,
-                        'last_name'     => $r['last_name'] ?? '',
-                        'company'       => $r['company_name'] ?? '',
-                        'phone'         => $r['phone'] ?? '',
-                        'product_id'    => $r['product_id'],
-                        'product_name'  => $r['product_name'] ?? '',
-                        'product_price' => $r['product_price'] ? format_inr($r['product_price']) : '',
-                        'status'        => $r['lead_status'] ?? 'new'
+                        'key'             => 'lead_' . $r['lead_id'],
+                        'type'            => 'lead',
+                        'source_type'     => 'Lead',
+                        'lead_id'         => (int)$r['lead_id'],
+                        'customer_id'     => null,
+                        'email'           => trim($r['email']),
+                        'name'            => $name,
+                        'first_name'      => $r['first_name'] ?: $name,
+                        'last_name'       => $r['last_name'] ?? '',
+                        'company'         => $r['company_name'] ?? '',
+                        'phone'           => $r['phone'] ?? '',
+                        'product_id'      => $r['product_id'],
+                        'product_name'    => $r['product_name'] ?? '',
+                        'product_price'   => $r['product_price'] ? format_inr($r['product_price']) : '',
+                        'status'          => $r['lead_status'] ?? 'new',
+                        'reach_status'    => $reach,
+                        'direction'       => $direction,
+                        'lead_source'     => $r['lead_source'] ?: 'Manual Lead',
+                        'outreach_count'  => (int)($r['outreach_count'] ?? 0),
+                        'last_sent_at'    => $r['last_sent_at'] ? date('d M Y', strtotime($r['last_sent_at'])) : null
                     ];
                 }
             }
         }
 
         // 2. Process Customers
-        if ($hasCustomers) {
-            $this->db->select("c.id AS customer_id, c.email, c.customer_name, c.customer_org_name, c.phone, c.status")
+        if ($hasCustomers && $reach_filter !== 'inbound') {
+            $this->db->select("c.id AS customer_id, c.email, c.customer_name, c.customer_org_name, c.phone, c.status,
+                (SELECT q.status FROM crm_bulk_mail_queue q WHERE q.customer_id = c.id ORDER BY q.id DESC LIMIT 1) AS last_delivery_status,
+                (SELECT q.sent_at FROM crm_bulk_mail_queue q WHERE q.customer_id = c.id AND q.status = 'sent' ORDER BY q.id DESC LIMIT 1) AS last_sent_at,
+                (SELECT COUNT(q.id) FROM crm_bulk_mail_queue q WHERE q.customer_id = c.id AND q.status = 'sent') AS outreach_count")
                 ->from('crm_customers c')
                 ->where('c.is_deleted', 0)
                 ->where('c.email IS NOT NULL', null, false)
@@ -175,6 +213,14 @@ class Bulk_mail_model extends CI_Model {
 
             if ($activeCustOnly) {
                 $this->db->where('c.status', 'active');
+            }
+
+            if ($reach_filter === 'never_sent' || $reach_filter === 'unsent') {
+                $this->db->where("NOT EXISTS (SELECT 1 FROM crm_bulk_mail_queue q WHERE q.customer_id = c.id AND q.status = 'sent')", null, false);
+            } elseif ($reach_filter === 'already_sent' || $reach_filter === 'followup') {
+                $this->db->where("EXISTS (SELECT 1 FROM crm_bulk_mail_queue q WHERE q.customer_id = c.id AND q.status = 'sent')", null, false);
+            } elseif ($reach_filter === 'failed' || $reach_filter === 'retry') {
+                $this->db->where("EXISTS (SELECT 1 FROM crm_bulk_mail_queue q WHERE q.customer_id = c.id AND q.status = 'failed')", null, false);
             }
 
             $this->db->order_by('c.id', 'DESC');
@@ -186,29 +232,42 @@ class Bulk_mail_model extends CI_Model {
                 if (!isset($seenEmails[$email])) {
                     $seenEmails[$email] = true;
                     $name = !empty($r['customer_name']) ? $r['customer_name'] : ($r['customer_org_name'] ?: 'Customer #' . $r['customer_id']);
+
+                    $reach = 'never_sent';
+                    if ($r['last_delivery_status'] === 'failed') {
+                        $reach = 'failed';
+                    } elseif ($r['last_delivery_status'] === 'sent') {
+                        $reach = 'already_sent';
+                    }
+
                     $recipients[] = [
-                        'key'           => 'customer_' . $r['customer_id'],
-                        'type'          => 'customer',
-                        'source_type'   => 'Customer',
-                        'lead_id'       => null,
-                        'customer_id'   => (int)$r['customer_id'],
-                        'email'         => trim($r['email']),
-                        'name'          => $name,
-                        'first_name'    => $name,
-                        'last_name'     => '',
-                        'company'       => $r['customer_org_name'] ?? '',
-                        'phone'         => $r['phone'] ?? '',
-                        'product_id'    => null,
-                        'product_name'  => '',
-                        'product_price' => '',
-                        'status'        => $r['status'] ?? 'active'
+                        'key'             => 'customer_' . $r['customer_id'],
+                        'type'            => 'customer',
+                        'source_type'     => 'Customer',
+                        'lead_id'         => null,
+                        'customer_id'     => (int)$r['customer_id'],
+                        'email'           => trim($r['email']),
+                        'name'            => $name,
+                        'first_name'      => $name,
+                        'last_name'       => '',
+                        'company'         => $r['customer_org_name'] ?? '',
+                        'phone'           => $r['phone'] ?? '',
+                        'product_id'      => null,
+                        'product_name'    => '',
+                        'product_price'   => '',
+                        'status'          => $r['status'] ?? 'active',
+                        'reach_status'    => $reach,
+                        'direction'       => 'outbound',
+                        'lead_source'     => 'Customer Account',
+                        'outreach_count'  => (int)($r['outreach_count'] ?? 0),
+                        'last_sent_at'    => $r['last_sent_at'] ? date('d M Y', strtotime($r['last_sent_at'])) : null
                     ];
                 }
             }
         }
 
         // 3. Process Contact Book
-        if ($hasContactBook) {
+        if ($hasContactBook && in_array($reach_filter, ['all', 'never_sent', 'outbound'])) {
             $this->db->select("cb.id AS contact_id, cb.email, cb.name, cb.company_name, cb.phone, cb.job_title")
                 ->from('crm_contact_book cb')
                 ->where('cb.is_deleted', 0)
@@ -224,22 +283,27 @@ class Bulk_mail_model extends CI_Model {
                 if (!isset($seenEmails[$email])) {
                     $seenEmails[$email] = true;
                     $recipients[] = [
-                        'key'           => 'contact_' . $r['contact_id'],
-                        'type'          => 'contact_book',
-                        'source_type'   => 'Contact Book',
-                        'lead_id'       => null,
-                        'customer_id'   => null,
-                        'contact_id'    => (int)$r['contact_id'],
-                        'email'         => trim($r['email']),
-                        'name'          => $r['name'],
-                        'first_name'    => $r['name'],
-                        'last_name'     => '',
-                        'company'       => $r['company_name'] ?? '',
-                        'phone'         => $r['phone'] ?? '',
-                        'product_id'    => null,
-                        'product_name'  => '',
-                        'product_price' => '',
-                        'status'        => 'active'
+                        'key'             => 'contact_' . $r['contact_id'],
+                        'type'            => 'contact_book',
+                        'source_type'     => 'Contact Book',
+                        'lead_id'         => null,
+                        'customer_id'     => null,
+                        'contact_id'      => (int)$r['contact_id'],
+                        'email'           => trim($r['email']),
+                        'name'            => $r['name'],
+                        'first_name'      => $r['name'],
+                        'last_name'       => '',
+                        'company'         => $r['company_name'] ?? '',
+                        'phone'           => $r['phone'] ?? '',
+                        'product_id'      => null,
+                        'product_name'    => '',
+                        'product_price'   => '',
+                        'status'          => 'active',
+                        'reach_status'    => 'never_sent',
+                        'direction'       => 'outbound',
+                        'lead_source'     => 'Contact Book',
+                        'outreach_count'  => 0,
+                        'last_sent_at'    => null
                     ];
                 }
             }
@@ -256,19 +320,21 @@ class Bulk_mail_model extends CI_Model {
         return $this->db->insert_id();
     }
 
-    public function add_to_queue($campaign_id, $recipients) {
+    public function add_to_queue($campaign_id, $recipients, $campaign_type = 'outreach', $next_followup_date = null) {
         if (empty($recipients)) return false;
 
         $batch_data = [];
         foreach ($recipients as $r) {
             $batch_data[] = [
-                'campaign_id'     => $campaign_id,
-                'recipient_email' => $r['email'],
-                'recipient_name'  => $r['name'] ?? '',
-                'lead_id'         => $r['lead_id'] ?? null,
-                'customer_id'     => $r['customer_id'] ?? null,
-                'status'          => 'queued',
-                'created_at'      => date('Y-m-d H:i:s')
+                'campaign_id'        => $campaign_id,
+                'campaign_type'      => $campaign_type,
+                'recipient_email'    => $r['email'],
+                'recipient_name'     => $r['name'] ?? '',
+                'lead_id'            => $r['lead_id'] ?? null,
+                'customer_id'        => $r['customer_id'] ?? null,
+                'next_followup_date' => $next_followup_date,
+                'status'             => 'queued',
+                'created_at'         => date('Y-m-d H:i:s')
             ];
         }
 
@@ -416,7 +482,7 @@ class Bulk_mail_model extends CI_Model {
      * Get detailed delivery logs with filters for History page
      */
     public function get_delivery_logs($params = [], $limit = 50, $offset = 0) {
-        $this->db->select('q.*, c.subject AS campaign_subject, c.recipient_type, p.name AS product_name, p.sku AS product_sku, sa.name AS sender_mailbox_name')
+        $this->db->select('q.*, c.subject AS campaign_subject, c.recipient_type, COALESCE(q.campaign_type, c.campaign_type) AS campaign_type, p.name AS product_name, p.sku AS product_sku, sa.name AS sender_mailbox_name')
             ->from('crm_bulk_mail_queue q')
             ->join('crm_bulk_mail_campaigns c', 'c.id = q.campaign_id', 'left')
             ->join('crm_products p', 'p.id = c.product_id', 'left')
@@ -425,6 +491,11 @@ class Bulk_mail_model extends CI_Model {
         // Filter: Status
         if (!empty($params['status']) && $params['status'] !== 'all') {
             $this->db->where('q.status', $params['status']);
+        }
+
+        // Filter: Campaign Type
+        if (!empty($params['campaign_type']) && $params['campaign_type'] !== 'all') {
+            $this->db->where('COALESCE(q.campaign_type, c.campaign_type)', $params['campaign_type']);
         }
 
         // Filter: Sender Mailbox

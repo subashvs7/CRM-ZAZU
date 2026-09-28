@@ -1,29 +1,23 @@
+<?php
+if (!function_exists('render_campaign_type_badge')) {
+    function render_campaign_type_badge($type) {
+        switch ($type) {
+            case 'followup_1':
+                return '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">Follow-Up #1</span>';
+            case 'followup_2':
+                return '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">Follow-Up #2</span>';
+            case 'retry':
+                return '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">Retry Resend</span>';
+            case 'announcement':
+                return '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">Announcement</span>';
+            case 'outreach':
+            default:
+                return '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 whitespace-nowrap">Outreach</span>';
+        }
+    }
+}
+?>
 <div class="space-y-6">
-    <!-- Top Header Bar -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
-        <div class="flex items-center gap-3.5">
-            <div class="w-12 h-12 bg-gradient-to-tr from-indigo-600 to-blue-600 text-white rounded-2xl flex items-center justify-center shadow-md shadow-indigo-500/20 flex-shrink-0">
-                <i class="fa fa-history text-xl"></i>
-            </div>
-            <div>
-                <div class="flex items-center gap-2">
-                    <h1 class="text-xl font-bold text-gray-900">Mail Dispatch History & Delivery Logs</h1>
-                    <span class="px-2 py-0.5 text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full font-mono"><?= number_format($stats['campaigns'] ?? 0) ?> Campaigns</span>
-                </div>
-                <p class="text-xs text-gray-500 mt-0.5">Audit outgoing email dispatches, check recipient deliverability, and review follow-up logs.</p>
-            </div>
-        </div>
-
-        <div class="flex items-center gap-2 flex-wrap">
-            <a href="<?= base_url('communications/bulk_mail') ?>" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5">
-                <i class="fa fa-paper-plane"></i> Send Bulk Mail
-            </a>
-            <button type="button" id="btn-refresh-history" class="px-3.5 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer">
-                <i class="fa fa-refresh text-indigo-600"></i> Refresh Logs
-            </button>
-        </div>
-    </div>
-
     <!-- Top Header Bar -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
         <div class="flex items-center gap-3.5">
@@ -137,7 +131,7 @@
     <div id="tab-content-delivery-logs" class="space-y-4">
         <!-- Filter Toolbar -->
         <div class="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs">
-            <form id="filter-logs-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <form id="filter-logs-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
                 <!-- From Date -->
                 <div>
                     <label class="block text-[11px] font-semibold text-gray-600 mb-1">From Date</label>
@@ -148,6 +142,19 @@
                 <div>
                     <label class="block text-[11px] font-semibold text-gray-600 mb-1">To Date</label>
                     <input type="date" id="filter-to-date" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+
+                <!-- Campaign Purpose Filter -->
+                <div>
+                    <label class="block text-[11px] font-semibold text-gray-600 mb-1">Purpose / Stage</label>
+                    <select id="filter-campaign-type" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <option value="all">All Purposes</option>
+                        <option value="outreach">Initial Outreach</option>
+                        <option value="followup_1">Follow-Up #1</option>
+                        <option value="followup_2">Follow-Up #2</option>
+                        <option value="retry">Retry Resend</option>
+                        <option value="announcement">Announcement</option>
+                    </select>
                 </div>
 
                 <!-- Sender Mailbox Filter -->
@@ -195,6 +202,7 @@
                     <thead>
                         <tr class="bg-gray-50/80 text-gray-500 uppercase tracking-wider font-semibold border-b border-gray-200">
                             <th class="py-3 px-3">RECIPIENT</th>
+                            <th class="py-3 px-3">PURPOSE</th>
                             <th class="py-3 px-3">CAMPAIGN / SUBJECT</th>
                             <th class="py-3 px-3">SENDER MAILBOX</th>
                             <th class="py-3 px-3 text-center">ANTI-SPAM REF</th>
@@ -213,6 +221,9 @@
                             <td class="py-3 px-3">
                                 <span class="font-bold text-gray-900 block"><?= esc_html($log['recipient_name'] ?: 'Customer') ?></span>
                                 <span class="text-[11px] text-gray-500 font-mono"><?= esc_html($log['recipient_email']) ?></span>
+                            </td>
+                            <td class="py-3 px-3">
+                                <?= render_campaign_type_badge($log['campaign_type'] ?? 'outreach') ?>
                             </td>
                             <td class="py-3 px-3 max-w-xs truncate">
                                 <span class="font-medium text-gray-800 block truncate" title="<?= esc_html($log['campaign_subject'] ?? '') ?>"><?= esc_html($log['campaign_subject'] ?? 'Direct Outreach') ?></span>
@@ -261,7 +272,7 @@
                         </tr>
                         <?php endforeach; else: ?>
                         <tr id="empty-logs-row">
-                            <td colspan="7" class="py-8 text-center text-gray-400 text-xs">
+                            <td colspan="8" class="py-8 text-center text-gray-400 text-xs">
                                 <i class="fa fa-inbox text-3xl block mb-2 opacity-50"></i>
                                 No delivery logs found matching the selected filters.
                             </td>
@@ -294,6 +305,7 @@
                 <thead>
                     <tr class="bg-gray-50/80 text-gray-500 uppercase tracking-wider font-semibold border-b border-gray-200">
                         <th class="py-3 px-3">CAMPAIGN ID</th>
+                        <th class="py-3 px-3">PURPOSE</th>
                         <th class="py-3 px-3">SUBJECT & TEMPLATE</th>
                         <th class="py-3 px-3">AUDIENCE / PRODUCT</th>
                         <th class="py-3 px-3 text-center">DELIVERED</th>
@@ -312,6 +324,12 @@
                     ?>
                     <tr class="hover:bg-gray-50/60 transition-colors history-table-row">
                         <td class="py-3 px-3 font-mono font-bold text-gray-800">#<?= $camp['id'] ?></td>
+                        <td class="py-3 px-3">
+                            <?= render_campaign_type_badge($camp['campaign_type'] ?? 'outreach') ?>
+                            <?php if(!empty($camp['next_followup_days'])): ?>
+                            <span class="block text-[10px] text-gray-400 mt-0.5 font-sans">+<?= (int)$camp['next_followup_days'] ?>d cadence</span>
+                            <?php endif; ?>
+                        </td>
                         <td class="py-3 px-3">
                             <span class="font-bold text-gray-900 block"><?= esc_html($camp['subject']) ?></span>
                             <span class="text-[11px] text-gray-400"><?= esc_html($camp['template_name'] ?: 'Custom Compose') ?></span>
@@ -339,7 +357,7 @@
                     </tr>
                     <?php endforeach; else: ?>
                     <tr>
-                        <td colspan="9" class="py-8 text-center text-gray-400 text-xs">
+                        <td colspan="10" class="py-8 text-center text-gray-400 text-xs">
                             <i class="fa fa-paper-plane-o text-2xl block mb-2 opacity-50"></i>
                             No campaign dispatches found yet.
                         </td>
@@ -368,7 +386,7 @@
 
         <div class="p-6 overflow-y-auto space-y-5 flex-grow">
             <!-- Summary Header Box -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs bg-gray-50 p-4 rounded-xl border border-gray-200">
                 <div>
                     <span class="text-gray-400 block text-[10px] font-bold uppercase">Audience Group</span>
                     <span id="detail-recipient-type" class="font-bold text-gray-800">-</span>
@@ -376,6 +394,14 @@
                 <div>
                     <span class="text-gray-400 block text-[10px] font-bold uppercase">Target Product</span>
                     <span id="detail-product-name" class="font-bold text-purple-700">-</span>
+                </div>
+                <div>
+                    <span class="text-gray-400 block text-[10px] font-bold uppercase">Campaign Purpose</span>
+                    <span id="detail-campaign-type" class="font-bold text-indigo-700">-</span>
+                </div>
+                <div>
+                    <span class="text-gray-400 block text-[10px] font-bold uppercase">Follow-up Cadence</span>
+                    <span id="detail-followup-schedule" class="font-bold text-blue-700">-</span>
                 </div>
                 <div>
                     <span class="text-gray-400 block text-[10px] font-bold uppercase">Total Recipients</span>
@@ -426,6 +452,15 @@
 
 <script>
 $(function() {
+    // Helper function for rendering campaign type badges in JS
+    function renderTypeBadge(type) {
+        if (type === 'followup_1') return '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">Follow-Up #1</span>';
+        if (type === 'followup_2') return '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">Follow-Up #2</span>';
+        if (type === 'retry') return '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">Retry Resend</span>';
+        if (type === 'announcement') return '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">Announcement</span>';
+        return '<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 whitespace-nowrap">Outreach</span>';
+    }
+
     // Tab Switching
     $('#tab-btn-delivery-logs').on('click', function() {
         $('.history-tab-btn').removeClass('active border-indigo-600 text-indigo-600').addClass('border-transparent text-gray-500');
@@ -446,12 +481,13 @@ $(function() {
         var params = {
             from_date: $('#filter-from-date').val(),
             to_date: $('#filter-to-date').val(),
+            campaign_type: $('#filter-campaign-type').val(),
             sender_email: $('#filter-sender-email').val(),
             status: $('#filter-status').val(),
             search: $('#filter-search').val()
         };
 
-        $('#delivery-logs-body').html('<tr><td colspan="7" class="py-6 text-center text-gray-400 text-xs"><i class="fa fa-spinner fa-spin mr-1"></i> Filtering delivery logs...</td></tr>');
+        $('#delivery-logs-body').html('<tr><td colspan="8" class="py-6 text-center text-gray-400 text-xs"><i class="fa fa-spinner fa-spin mr-1"></i> Filtering delivery logs...</td></tr>');
 
         $.getJSON(BASE_URL + 'communications/delivery_logs_ajax', params, function(resp) {
             if (resp.status === 'success' && resp.data) {
@@ -459,7 +495,7 @@ $(function() {
                 $('#badge-total-logs').text(resp.data.total);
 
                 if (!rows || rows.length === 0) {
-                    $('#delivery-logs-body').html('<tr><td colspan="7" class="py-8 text-center text-gray-400 text-xs"><i class="fa fa-inbox text-3xl block mb-2 opacity-50"></i> No delivery logs found matching the selected filters.</td></tr>');
+                    $('#delivery-logs-body').html('<tr><td colspan="8" class="py-8 text-center text-gray-400 text-xs"><i class="fa fa-inbox text-3xl block mb-2 opacity-50"></i> No delivery logs found matching the selected filters.</td></tr>');
                     return;
                 }
 
@@ -467,7 +503,7 @@ $(function() {
                 rows.forEach(function(log) {
                     var stBadge = 'bg-emerald-50 text-emerald-700 border-emerald-200';
                     if (log.status === 'queued') stBadge = 'bg-amber-50 text-amber-700 border-amber-200';
-                    elseif (log.status === 'failed') stBadge = 'bg-rose-50 text-rose-700 border-rose-200';
+                    else if (log.status === 'failed') stBadge = 'bg-rose-50 text-rose-700 border-rose-200';
 
                     var pBadge = log.product_name ? '<span class="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200 ml-1">' + $('<div>').text(log.product_name).html() + '</span>' : '';
                     var senderHtml = log.sender_email ? '<span class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-800"><i class="fa fa-envelope-o text-indigo-500"></i> ' + $('<div>').text(log.sender_email).html() + '</span>' : '<span class="text-gray-400 italic text-[11px]">Auto-assign on send</span>';
@@ -477,6 +513,7 @@ $(function() {
 
                     html += '<tr class="hover:bg-gray-50/60 transition-colors">';
                     html += '<td class="py-3 px-3"><span class="font-bold text-gray-900 block">' + $('<div>').text(log.recipient_name || 'Customer').html() + '</span><span class="text-[11px] text-gray-500 font-mono">' + $('<div>').text(log.recipient_email).html() + '</span></td>';
+                    html += '<td class="py-3 px-3">' + renderTypeBadge(log.campaign_type || 'outreach') + '</td>';
                     html += '<td class="py-3 px-3 max-w-xs truncate"><span class="font-medium text-gray-800 block truncate">' + $('<div>').text(log.campaign_subject || 'Direct Outreach').html() + '</span>' + pBadge + '</td>';
                     html += '<td class="py-3 px-3">' + senderHtml + '</td>';
                     html += '<td class="py-3 px-3 text-center">' + hashHtml + '</td>';
@@ -498,6 +535,7 @@ $(function() {
     $('#btn-reset-filters').on('click', function() {
         $('#filter-from-date').val('');
         $('#filter-to-date').val('');
+        $('#filter-campaign-type').val('all');
         $('#filter-sender-email').val('all');
         $('#filter-status').val('all');
         $('#filter-search').val('');
@@ -548,6 +586,17 @@ $(function() {
                 $('#detail-modal-title').text('Campaign #' + c.id + ' — ' + c.subject);
                 $('#detail-recipient-type').text(c.recipient_type);
                 $('#detail-product-name').text(c.product_name || 'General (All)');
+                
+                var typeLabel = 'Initial Outreach';
+                if (c.campaign_type === 'followup_1') typeLabel = 'Follow-Up #1';
+                else if (c.campaign_type === 'followup_2') typeLabel = 'Follow-Up #2';
+                else if (c.campaign_type === 'retry') typeLabel = 'Retry Resend';
+                else if (c.campaign_type === 'announcement') typeLabel = 'Announcement';
+                $('#detail-campaign-type').text(typeLabel);
+
+                var cadence = c.next_followup_days ? '+' + c.next_followup_days + ' Days' : 'Immediate';
+                $('#detail-followup-schedule').text(cadence);
+
                 $('#detail-total-recipients').text(c.total_recipients);
                 $('#detail-created-at').text(c.created_at);
                 $('#detail-subject').text(c.subject);

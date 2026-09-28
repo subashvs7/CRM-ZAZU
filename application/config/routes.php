@@ -22,6 +22,7 @@ $route['leads/save']              = 'Leads/save';
 $route['leads/get/(:num)']        = 'Leads/get/$1';
 $route['leads/detail/(:num)']     = 'Leads/detail/$1';
 $route['leads/status']            = 'Leads/update_status';
+$route['leads/bulk_status']       = 'Leads/bulk_status';
 $route['leads/add_activity']      = 'Leads/add_activity';
 $route['leads/activities/(:num)'] = 'Leads/activities/$1';
 $route['leads/import']            = 'Leads/import';

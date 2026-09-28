@@ -1,7 +1,7 @@
 -- =========================================================================
 -- CRM-ZAZU COMPLETE PRODUCTION DATABASE SCHEMA & SEED DATA
 -- Target Database: u206223007_crmdb
--- Exported: 2026-09-28 12:22:28
+-- Exported: 2026-09-28 14:13:48
 -- =========================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -90,6 +90,8 @@ CREATE TABLE `crm_bulk_mail_campaigns` (
   `subject` varchar(255) NOT NULL,
   `message` text NOT NULL,
   `recipient_type` varchar(50) NOT NULL,
+  `campaign_type` varchar(50) NOT NULL DEFAULT 'outreach',
+  `next_followup_days` int(5) NOT NULL DEFAULT 3,
   `product_id` int(10) unsigned DEFAULT NULL,
   `template_id` int(10) unsigned DEFAULT NULL,
   `total_recipients` int(11) DEFAULT 0,
@@ -106,6 +108,7 @@ DROP TABLE IF EXISTS `crm_bulk_mail_queue`;
 CREATE TABLE `crm_bulk_mail_queue` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `campaign_id` int(11) DEFAULT NULL,
+  `campaign_type` varchar(50) NOT NULL DEFAULT 'outreach',
   `recipient_email` varchar(255) NOT NULL,
   `recipient_name` varchar(255) DEFAULT NULL,
   `sender_email` varchar(150) DEFAULT NULL,
