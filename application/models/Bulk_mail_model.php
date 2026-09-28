@@ -145,6 +145,7 @@ class Bulk_mail_model extends CI_Model {
                     $seenEmails[$email] = true;
                     $name = !empty($r['full_name']) ? $r['full_name'] : ($r['title'] ?: ($r['company_name'] ?: 'Lead #' . $r['lead_id']));
                     $recipients[] = [
+                        'key'           => 'lead_' . $r['lead_id'],
                         'type'          => 'lead',
                         'source_type'   => 'Lead',
                         'lead_id'       => (int)$r['lead_id'],
@@ -186,6 +187,7 @@ class Bulk_mail_model extends CI_Model {
                     $seenEmails[$email] = true;
                     $name = !empty($r['customer_name']) ? $r['customer_name'] : ($r['customer_org_name'] ?: 'Customer #' . $r['customer_id']);
                     $recipients[] = [
+                        'key'           => 'customer_' . $r['customer_id'],
                         'type'          => 'customer',
                         'source_type'   => 'Customer',
                         'lead_id'       => null,
@@ -222,10 +224,12 @@ class Bulk_mail_model extends CI_Model {
                 if (!isset($seenEmails[$email])) {
                     $seenEmails[$email] = true;
                     $recipients[] = [
+                        'key'           => 'contact_' . $r['contact_id'],
                         'type'          => 'contact_book',
                         'source_type'   => 'Contact Book',
                         'lead_id'       => null,
                         'customer_id'   => null,
+                        'contact_id'    => (int)$r['contact_id'],
                         'email'         => trim($r['email']),
                         'name'          => $r['name'],
                         'first_name'    => $r['name'],

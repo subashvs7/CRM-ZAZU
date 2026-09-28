@@ -163,10 +163,23 @@
 
         <!-- Communications -->
         <p class="px-3 pt-3 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest sidebar-text">Communications</p>
-        <a href="<?= base_url('communications/bulk_mail') ?>" class="<?= tw_active('communications') ? $lnk_on : $lnk ?>">
+        <button type="button" onclick="toggleSubmenu('communications-sub',this)"
+                class="<?= $lnk ?> sidebar-text w-[calc(100%-1.5rem)]">
             <i class="fa fa-envelope-open-o <?= $ic ?>"></i>
-            <span class="sidebar-text">Bulk Mail Hub</span>
-        </a>
+            <span class="flex-1 sidebar-text text-left">Bulk Mail</span>
+            <i class="fa fa-angle-right text-xs sub-arrow sidebar-text transition-transform duration-200 <?= $seg1==='communications'?'rotate-90':'' ?>"></i>
+        </button>
+        <div id="communications-sub" class="crm-submenu <?= $seg1==='communications'?'open':'' ?>">
+            <a href="<?= base_url('communications/bulk_mail') ?>" class="sub-link sidebar-text<?= ($seg1==='communications' && ($seg2==='bulk_mail' || $seg2==='')) ?' active':'' ?>">
+                <i class="fa fa-paper-plane w-4 text-center"></i> Send Mail
+            </a>
+            <a href="<?= base_url('communications/bulk_mail#tab-history') ?>" class="sub-link sidebar-text">
+                <i class="fa fa-history w-4 text-center"></i> Mail History
+            </a>
+            <a href="<?= base_url('communications/smtp_settings') ?>" class="sub-link sidebar-text<?= ($seg1==='communications' && $seg2==='smtp_settings') ?' active':'' ?>">
+                <i class="fa fa-sliders w-4 text-center"></i> SMTP Settings
+            </a>
+        </div>
 
         <?php if (has_module_access('admin')): ?>
         <!-- Admin submenu -->

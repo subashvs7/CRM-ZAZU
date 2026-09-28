@@ -113,11 +113,9 @@
                         <div id="bm-pool-progress" class="bg-blue-400 h-1.5 rounded-full" style="width: <?= $smtp_pool['percent_remaining'] ?? 100 ?>%"></div>
                     </div>
                 </div>
-                <?php if (has_module_access('admin')): ?>
-                <a href="<?= base_url('admin/settings#tab-smtp') ?>" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 transition-all flex items-center gap-1.5 flex-shrink-0">
+                <a href="<?= base_url('communications/smtp_settings') ?>" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 transition-all flex items-center gap-1.5 flex-shrink-0">
                     <i class="fa fa-sliders"></i> SMTP Settings
                 </a>
-                <?php endif; ?>
             </div>
         </div>
 
@@ -231,55 +229,203 @@
                             </label>
                         </div>
 
-                        <!-- Granular Filters for Leads & Customers -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                            <div id="wrapper-lead-status">
-                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">Lead Stage Filter</label>
-                                <select name="lead_status" id="select-lead-status" class="w-full px-3 py-2 bg-gray-50/70 border border-gray-200 rounded-xl text-xs font-medium text-gray-800 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                                    <option value="all" selected>All Stages (Any Status)</option>
-                                    <option value="new">New Inquiries</option>
-                                    <option value="contacted">Contacted</option>
-                                    <option value="qualified">Qualified</option>
-                                    <option value="proposal">Proposal / Quotation Sent</option>
-                                    <option value="negotiation">Negotiation</option>
-                                    <option value="won">Closed / Won</option>
-                                </select>
+                        <!-- Deduplication Badge -->
+                        <div class="px-3.5 py-2 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center justify-between">
+                            <span class="flex items-center gap-2">
+                                <i class="fa fa-check-circle text-emerald-600"></i>
+                                <span><strong>Deduplication Engine Active:</strong> Duplicate emails across groups are automatically merged.</span>
+                            </span>
+                            <span class="text-[11px] text-gray-500 font-mono hidden sm:inline">1 email per contact</span>
+                        </div>
+
+                        <!-- ============================================================= -->
+                        <!-- 1. LEADS SELECTION PANEL (Shown ONLY if All Leads is Checked) -->
+                        <!-- ============================================================= -->
+                        <div id="section-leads-config" class="p-4 bg-emerald-50/50 border border-emerald-200/80 rounded-2xl space-y-3 shadow-2xs transition-all">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-emerald-100">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs shadow-xs">
+                                        <i class="fa fa-users"></i>
+                                    </div>
+                                    <span class="text-xs font-bold text-gray-900 uppercase tracking-wide">Leads Multi-Select</span>
+                                    <span id="badge-leads-count" class="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-mono font-bold">
+                                        All Leads Selected
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <button type="button" id="btn-leads-select-all" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors shadow-2xs">
+                                        <i class="fa fa-check-square"></i> Select All
+                                    </button>
+                                    <button type="button" id="btn-leads-deselect-all" class="px-2.5 py-1 bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-lg text-xs font-bold transition-colors">
+                                        <i class="fa fa-square-o"></i> Clear
+                                    </button>
+                                </div>
                             </div>
 
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">Recipient Deduplication Engine</label>
-                                <div class="px-3 py-2 bg-emerald-50/60 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2">
-                                    <i class="fa fa-check-circle text-emerald-600"></i>
-                                    <span>Emails deduplicated across selected audiences</span>
+                            <!-- Stage Filter & Search Row -->
+                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                                <div class="sm:col-span-5">
+                                    <label class="block text-[11px] font-bold text-gray-600 mb-1">Lead Stage Filter</label>
+                                    <select name="lead_status" id="select-lead-status" class="w-full px-2.5 py-1.5 bg-white border border-emerald-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                        <option value="all" selected>All Stages (Any Status)</option>
+                                        <option value="new">New Inquiries</option>
+                                        <option value="contacted">Contacted</option>
+                                        <option value="qualified">Qualified</option>
+                                        <option value="proposal">Proposal / Quotation Sent</option>
+                                        <option value="negotiation">Negotiation</option>
+                                        <option value="won">Closed / Won</option>
+                                    </select>
+                                </div>
+                                <div class="sm:col-span-7">
+                                    <label class="block text-[11px] font-bold text-gray-600 mb-1">Search Leads</label>
+                                    <div class="relative">
+                                        <i class="fa fa-search absolute left-2.5 top-2 text-gray-400 text-xs"></i>
+                                        <input type="text" id="leads-search-input" placeholder="Search by lead name, company, email..." class="w-full pl-7 pr-3 py-1.5 bg-white border border-emerald-200 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Scrollable Lead Items List -->
+                            <div class="max-h-60 overflow-y-auto border border-emerald-200 bg-white rounded-xl divide-y divide-gray-100" id="leads-checklist-container">
+                                <div class="p-4 text-center text-gray-400 text-xs">
+                                    <i class="fa fa-spinner fa-spin text-emerald-600 text-base mb-1 block"></i> Loading leads...
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Audience Preview Trigger -->
-                        <div class="pt-1 flex items-center justify-between text-xs text-gray-500 border-t border-gray-100">
-                            <span class="text-[11px] text-gray-400"><i class="fa fa-shield text-blue-500 mr-1"></i> Invalid or duplicate emails are safely filtered out.</span>
-                            <button type="button" id="btn-toggle-audience-drawer" class="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                                <i class="fa fa-list"></i> Inspect Recipients List
-                            </button>
+                        <!-- ================================================================= -->
+                        <!-- 2. CUSTOMERS SELECTION PANEL (Shown ONLY if Customers is Checked) -->
+                        <!-- ================================================================= -->
+                        <div id="section-customers-config" class="hidden p-4 bg-indigo-50/50 border border-indigo-200/80 rounded-2xl space-y-3 shadow-2xs transition-all">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-indigo-100">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs shadow-xs">
+                                        <i class="fa fa-building"></i>
+                                    </div>
+                                    <span class="text-xs font-bold text-gray-900 uppercase tracking-wide">Customers Multi-Select</span>
+                                    <span id="badge-custs-count" class="px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-mono font-bold">
+                                        All Customers Selected
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <button type="button" id="btn-custs-select-all" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-colors shadow-2xs">
+                                        <i class="fa fa-check-square"></i> Select All
+                                    </button>
+                                    <button type="button" id="btn-custs-deselect-all" class="px-2.5 py-1 bg-white hover:bg-indigo-100 border border-indigo-300 text-indigo-800 rounded-lg text-xs font-bold transition-colors">
+                                        <i class="fa fa-square-o"></i> Clear
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Customer Search Bar -->
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 mb-1">Search Customers</label>
+                                <div class="relative">
+                                    <i class="fa fa-search absolute left-2.5 top-2 text-gray-400 text-xs"></i>
+                                    <input type="text" id="custs-search-input" placeholder="Search by customer name, company, email..." class="w-full pl-7 pr-3 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                </div>
+                            </div>
+
+                            <!-- Scrollable Customer Items List -->
+                            <div class="max-h-60 overflow-y-auto border border-indigo-200 bg-white rounded-xl divide-y divide-gray-100" id="custs-checklist-container">
+                                <div class="p-4 text-center text-gray-400 text-xs">
+                                    <i class="fa fa-spinner fa-spin text-indigo-600 text-base mb-1 block"></i> Loading customers...
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Dropdown Audience Preview Table Drawer -->
-                        <div id="audience-preview-drawer" class="hidden mt-2 p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs space-y-2 max-h-56 overflow-y-auto">
-                            <div class="font-bold text-gray-700 text-[11px] uppercase tracking-wide flex justify-between">
-                                <span>Previewing First 15 Verified Recipients:</span>
-                                <span id="audience-preview-total" class="text-blue-600">0 found</span>
+                        <!-- ==================================================================== -->
+                        <!-- 3. CONTACT BOOK SELECTION PANEL (Shown ONLY if Contact Book Checked) -->
+                        <!-- ==================================================================== -->
+                        <div id="section-contacts-config" class="hidden p-4 bg-amber-50/50 border border-amber-200/80 rounded-2xl space-y-3 shadow-2xs transition-all">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-amber-100">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-lg bg-amber-600 text-white flex items-center justify-center text-xs shadow-xs">
+                                        <i class="fa fa-address-book"></i>
+                                    </div>
+                                    <span class="text-xs font-bold text-gray-900 uppercase tracking-wide">Contact Book Multi-Select</span>
+                                    <span id="badge-contacts-count" class="px-2 py-0.5 rounded-full bg-amber-600 text-white text-[10px] font-mono font-bold">
+                                        All Contacts Selected
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <button type="button" id="btn-contacts-select-all" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-colors shadow-2xs">
+                                        <i class="fa fa-check-square"></i> Select All
+                                    </button>
+                                    <button type="button" id="btn-contacts-deselect-all" class="px-2.5 py-1 bg-white hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-lg text-xs font-bold transition-colors">
+                                        <i class="fa fa-square-o"></i> Clear
+                                    </button>
+                                </div>
                             </div>
-                            <div id="audience-preview-list" class="divide-y divide-gray-200/70">
-                                <!-- Loaded dynamically via AJAX -->
+
+                            <!-- Contact Search Bar -->
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 mb-1">Search Contacts</label>
+                                <div class="relative">
+                                    <i class="fa fa-search absolute left-2.5 top-2 text-gray-400 text-xs"></i>
+                                    <input type="text" id="contacts-search-input" placeholder="Search by name, company, email..." class="w-full pl-7 pr-3 py-1.5 bg-white border border-amber-200 rounded-lg text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                                </div>
+                            </div>
+
+                            <!-- Scrollable Contacts Items List -->
+                            <div class="max-h-60 overflow-y-auto border border-amber-200 bg-white rounded-xl divide-y divide-gray-100" id="contacts-checklist-container">
+                                <div class="p-4 text-center text-gray-400 text-xs">
+                                    <i class="fa fa-spinner fa-spin text-amber-600 text-base mb-1 block"></i> Loading contacts...
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- 2. Instant Sender Mailbox Switcher Card -->
+                    <div class="bg-white rounded-2xl border border-blue-200/80 bg-gradient-to-r from-blue-50/40 via-indigo-50/20 to-white p-5 shadow-xs space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-gray-100">
+                            <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2">
+                                <span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">
+                                    <i class="fa fa-envelope"></i>
+                                </span>
+                                Instant Sender Mailbox Switcher
+                            </h3>
+                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-md bg-blue-100 text-blue-800 font-mono">
+                                <?= count($smtp_pool['accounts'] ?? []) ?> Mailbox<?= count($smtp_pool['accounts'] ?? []) === 1 ? '' : 'es' ?> Connected
+                            </span>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
+                                <span>Send Outbound Campaign From:</span>
+                                <span class="text-[11px] text-blue-600 font-normal">Switch sender instantly anytime</span>
+                            </label>
+                            <select name="sender_smtp_id" id="select-sender-smtp" class="w-full px-3.5 py-2.5 bg-white border border-blue-300 rounded-xl text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-xs">
+                                <option value="auto" data-sender="Auto-Rotated Pool" data-email="Smart Fair-Share Mailbox Pool">
+                                    🔄 Auto-Rotate Pool (Smart Fair-Share Load Balancing across all 100-limit mailboxes)
+                                </option>
+                                <?php foreach (($smtp_pool['accounts'] ?? []) as $acc): 
+                                    $remQuota = max(0, (int)$acc['daily_limit'] - (int)$acc['sent_today']);
+                                    $isExhausted = ($acc['status'] === 'limit_reached' || $remQuota === 0 || $acc['status'] === 'disabled');
+                                ?>
+                                <option value="<?= $acc['id'] ?>" 
+                                        data-sender="<?= esc_html($acc['sender_name'] ?: $acc['name']) ?>" 
+                                        data-email="<?= esc_html($acc['sender_email']) ?>"
+                                        data-remaining="<?= $remQuota ?>"
+                                        <?= $isExhausted ? 'disabled' : '' ?>>
+                                    ✉️ <?= esc_html($acc['sender_name'] ?: $acc['name']) ?> &lt;<?= esc_html($acc['sender_email']) ?>&gt; &bull; <?= $remQuota ?> left today (<?= $acc['status'] ?>)
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="flex items-center justify-between mt-1 text-[11px] text-gray-500">
+                                <span><i class="fa fa-info-circle text-blue-500 mr-1"></i> Pick a specific mailbox or leave on Auto-Rotate.</span>
+                                <a href="<?= base_url('communications/smtp_settings') ?>" class="text-blue-600 hover:underline font-semibold flex items-center gap-1">
+                                    <i class="fa fa-sliders"></i> Open SMTP Settings
+                                </a>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 2. Dynamic Product & Template Selector Card -->
+                    <!-- 3. Dynamic Product & Template Selector Card -->
                     <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs space-y-4">
                         <div class="flex items-center justify-between pb-3 border-b border-gray-100">
                             <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2">
-                                <span class="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px]">2</span>
+                                <span class="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px]">3</span>
                                 Product & Dynamic Template
                             </h3>
                             <button type="button" id="btn-quick-new-template" class="text-xs font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1">
@@ -341,11 +487,11 @@
                         </div>
                     </div>
 
-                    <!-- 3. Subject & Dynamic Merge Tags Toolbar -->
+                    <!-- 4. Subject & Dynamic Merge Tags Toolbar -->
                     <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs space-y-4">
                         <div class="flex items-center justify-between pb-3 border-b border-gray-100">
                             <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2">
-                                <span class="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px]">3</span>
+                                <span class="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px]">4</span>
                                 Email Subject Line
                             </h3>
                             <span class="text-[11px] text-gray-400 font-mono" id="subject-char-count">0 chars</span>
@@ -376,11 +522,11 @@
                         </div>
                     </div>
 
-                    <!-- 4. Summernote WYSIWYG Editor with Image Drag-and-Drop Card -->
+                    <!-- 5. Summernote WYSIWYG Editor with Image Drag-and-Drop Card -->
                     <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs space-y-4">
                         <div class="flex items-center justify-between pb-3 border-b border-gray-100">
                             <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2">
-                                <span class="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px]">4</span>
+                                <span class="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px]">5</span>
                                 Email Content (Summernote WYSIWYG & Image Drag & Drop)
                             </h3>
                             <span class="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
@@ -394,11 +540,11 @@
                         </div>
                     </div>
 
-                    <!-- 5. Dispatch Action & Test Send Controls Card -->
+                    <!-- 6. Dispatch Action & Test Send Controls Card -->
                     <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs space-y-4">
                         <div class="flex items-center justify-between pb-3 border-b border-gray-100">
                             <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2">
-                                <span class="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px]">5</span>
+                                <span class="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px]">6</span>
                                 Review & Campaign Dispatch
                             </h3>
                             <div class="flex items-center gap-2">
@@ -459,7 +605,7 @@
                         <div class="bg-gray-50 border border-gray-200/70 rounded-xl p-3 text-xs space-y-1.5 font-sans">
                             <div class="flex items-center text-gray-600">
                                 <span class="w-16 font-semibold text-gray-400">From:</span>
-                                <span class="font-medium text-gray-800 truncate">CRM-ZAZU Outreach &lt;outreach@crm-zazu.local&gt;</span>
+                                <span class="font-medium text-gray-800 truncate" id="preview-header-from">Auto-Rotated Pool &lt;Smart Fair-Share Mailbox Pool&gt;</span>
                             </div>
                             <div class="flex items-center text-gray-600">
                                 <span class="w-16 font-semibold text-gray-400">To:</span>

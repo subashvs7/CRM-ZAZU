@@ -130,7 +130,20 @@ $(function () {
         if (targetTab === 'tab-history') {
             loadCampaignHistory();
         }
+
+        if (location.hash !== '#' + targetTab) {
+            history.replaceState(null, null, '#' + targetTab);
+        }
     });
+
+    // Check hash on load (e.g. #tab-history or #tab-templates)
+    if (location.hash) {
+        var hashTab = location.hash.replace('#', '');
+        var $targetBtn = $('.tab-nav-btn[data-tab="' + hashTab + '"]');
+        if ($targetBtn.length) {
+            $targetBtn.trigger('click');
+        }
+    }
 
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -298,6 +311,18 @@ $(function () {
         return types;
     }
 
+    var leadsData = [];
+    var customersData = [];
+    var contactsData = [];
+
+    var selectedLeads = new Set();
+    var selectedCustomers = new Set();
+    var selectedContacts = new Set();
+
+    var leadsLoaded = false;
+    var custsLoaded = false;
+    var contsLoaded = false;
+
     function syncAudienceCardsUI() {
         $('.audience-card').each(function () {
             var forId = $(this).data('for');
@@ -311,105 +336,447 @@ $(function () {
             }
         });
 
-        // If leads selected, enable lead stage filter; else mute it
+        // 1. Leads Section Visibility
         var hasLeads = $('#aud-chk-leads').is(':checked');
         if (hasLeads) {
-            $('#wrapper-lead-status').removeClass('opacity-40 pointer-events-none');
+            $('#section-leads-config').removeClass('hidden');
+            $('#section-leads-config input, #section-leads-config select').prop('disabled', false);
+            if (!leadsLoaded) {
+                loadLeads();
+            }
         } else {
-            $('#wrapper-lead-status').addClass('opacity-40 pointer-events-none');
+            $('#section-leads-config').addClass('hidden');
+            $('#section-leads-config input, #section-leads-config select').prop('disabled', true);
         }
+
+        // 2. Customers Section Visibility
+        var hasCusts = $('#aud-chk-custs').is(':checked');
+        if (hasCusts) {
+            $('#section-customers-config').removeClass('hidden');
+            $('#section-customers-config input').prop('disabled', false);
+            if (!custsLoaded) {
+                loadCustomers();
+            }
+        } else {
+            $('#section-customers-config').addClass('hidden');
+            $('#section-customers-config input').prop('disabled', true);
+        }
+
+        // 3. Contact Book Section Visibility
+        var hasContacts = $('#aud-chk-contacts').is(':checked');
+        if (hasContacts) {
+            $('#section-contacts-config').removeClass('hidden');
+            $('#section-contacts-config input').prop('disabled', false);
+            if (!contsLoaded) {
+                loadContacts();
+            }
+        } else {
+            $('#section-contacts-config').addClass('hidden');
+            $('#section-contacts-config input').prop('disabled', true);
+        }
+
+        updateOverallAudienceSummary();
     }
 
-    function updateAudienceCount() {
-        syncAudienceCardsUI();
-        var types = getSelectedAudiences();
+    // ── LEADS LOADER & RENDERER ─────────────────────────────────────────────
+    function loadLeads() {
         var pId   = $('#select-product').val();
         var lStat = $('#select-lead-status').val();
 
-        if (types.length === 0) {
-            $('#badge-audience-count').text('0 Selected (Check at least 1 audience)');
+        $('#leads-checklist-container').html('<div class="p-4 text-center text-gray-400 text-xs"><i class="fa fa-spinner fa-spin text-emerald-600 text-base mb-1 block"></i> Loading leads...</div>');
+
+        $.getJSON(BASE_URL + 'communications/get_audience_recipients_ajax', {
+            recipient_types: ['leads'],
+            product_id: pId,
+            lead_status: lStat
+        }, function (res) {
+            if (res.status === 'success' && res.data) {
+                leadsData = res.data || [];
+                leadsLoaded = true;
+                selectedLeads.clear();
+                $.each(leadsData, function (i, r) {
+                    selectedLeads.add(r.key);
+                });
+                renderLeadsList();
+            } else {
+                $('#leads-checklist-container').html('<div class="p-4 text-center text-rose-500 text-xs">Failed to load leads list.</div>');
+            }
+        });
+    }
+
+    function renderLeadsList() {
+        var q = ($('#leads-search-input').val() || '').toLowerCase().trim();
+        var filtered = $.grep(leadsData, function (r) {
+            if (!q) return true;
+            return ((r.name || '') + ' ' + (r.company || '') + ' ' + (r.email || '')).toLowerCase().indexOf(q) !== -1;
+        });
+
+        if (filtered.length === 0) {
+            $('#leads-checklist-container').html('<div class="p-4 text-center text-gray-400 text-xs">No leads found matching query.</div>');
+            updateLeadsBadge();
+            return;
+        }
+
+        var html = '';
+        $.each(filtered, function (i, r) {
+            var isChecked = selectedLeads.has(r.key);
+            html += '<label class="flex items-center justify-between p-2.5 hover:bg-emerald-50/60 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0 select-none">';
+            html += '<div class="flex items-center gap-2.5">';
+            html += '<input type="checkbox" name="selected_recipient_keys[]" class="lead-item-chk rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer" value="' + CRM.esc(r.key) + '" ' + (isChecked ? 'checked' : '') + '>';
+            html += '<div>';
+            html += '<div class="font-bold text-gray-900 text-xs flex items-center gap-1.5">';
+            html += '<span>' + CRM.esc(r.name) + '</span>';
+            if (r.company) html += '<span class="text-gray-400 font-normal">(' + CRM.esc(r.company) + ')</span>';
+            html += '</div>';
+            html += '<div class="text-[11px] text-gray-500 font-mono">' + CRM.esc(r.email) + (r.phone ? ' &bull; ' + CRM.esc(r.phone) : '') + '</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '<span class="px-2 py-0.5 text-[10px] rounded font-bold bg-emerald-100 text-emerald-800 uppercase">' + CRM.esc(r.status || 'lead') + '</span>';
+            html += '</label>';
+        });
+
+        $('#leads-checklist-container').html(html);
+        updateLeadsBadge();
+    }
+
+    function updateLeadsBadge() {
+        var count = selectedLeads.size;
+        var total = leadsData.length;
+        if (count === total && total > 0) {
+            $('#badge-leads-count').text('All (' + total + ') Selected');
+        } else {
+            $('#badge-leads-count').text(count + ' of ' + total + ' Selected');
+        }
+        updateOverallAudienceSummary();
+    }
+
+    $(document).on('change', '.lead-item-chk', function () {
+        var key = $(this).val();
+        if ($(this).is(':checked')) {
+            selectedLeads.add(key);
+        } else {
+            selectedLeads.delete(key);
+        }
+        updateLeadsBadge();
+    });
+
+    $('#btn-leads-select-all').on('click', function () {
+        $('.lead-item-chk').prop('checked', true);
+        $.each(leadsData, function(i, r) { selectedLeads.add(r.key); });
+        updateLeadsBadge();
+    });
+
+    $('#btn-leads-deselect-all').on('click', function () {
+        $('.lead-item-chk').prop('checked', false);
+        selectedLeads.clear();
+        updateLeadsBadge();
+    });
+
+    $('#leads-search-input').on('input', function () {
+        renderLeadsList();
+    });
+
+    $('#select-lead-status').on('change', function () {
+        loadLeads();
+    });
+
+
+    // ── CUSTOMERS LOADER & RENDERER ─────────────────────────────────────────
+    function loadCustomers() {
+        $('#custs-checklist-container').html('<div class="p-4 text-center text-gray-400 text-xs"><i class="fa fa-spinner fa-spin text-indigo-600 text-base mb-1 block"></i> Loading customers...</div>');
+
+        $.getJSON(BASE_URL + 'communications/get_audience_recipients_ajax', {
+            recipient_types: ['customers']
+        }, function (res) {
+            if (res.status === 'success' && res.data) {
+                customersData = res.data || [];
+                custsLoaded = true;
+                selectedCustomers.clear();
+                $.each(customersData, function (i, r) {
+                    selectedCustomers.add(r.key);
+                });
+                renderCustomersList();
+            } else {
+                $('#custs-checklist-container').html('<div class="p-4 text-center text-rose-500 text-xs">Failed to load customers list.</div>');
+            }
+        });
+    }
+
+    function renderCustomersList() {
+        var q = ($('#custs-search-input').val() || '').toLowerCase().trim();
+        var filtered = $.grep(customersData, function (r) {
+            if (!q) return true;
+            return ((r.name || '') + ' ' + (r.company || '') + ' ' + (r.email || '')).toLowerCase().indexOf(q) !== -1;
+        });
+
+        if (filtered.length === 0) {
+            $('#custs-checklist-container').html('<div class="p-4 text-center text-gray-400 text-xs">No customers found matching query.</div>');
+            updateCustsBadge();
+            return;
+        }
+
+        var html = '';
+        $.each(filtered, function (i, r) {
+            var isChecked = selectedCustomers.has(r.key);
+            html += '<label class="flex items-center justify-between p-2.5 hover:bg-indigo-50/60 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0 select-none">';
+            html += '<div class="flex items-center gap-2.5">';
+            html += '<input type="checkbox" name="selected_recipient_keys[]" class="cust-item-chk rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer" value="' + CRM.esc(r.key) + '" ' + (isChecked ? 'checked' : '') + '>';
+            html += '<div>';
+            html += '<div class="font-bold text-gray-900 text-xs flex items-center gap-1.5">';
+            html += '<span>' + CRM.esc(r.name) + '</span>';
+            if (r.company) html += '<span class="text-gray-400 font-normal">(' + CRM.esc(r.company) + ')</span>';
+            html += '</div>';
+            html += '<div class="text-[11px] text-gray-500 font-mono">' + CRM.esc(r.email) + (r.phone ? ' &bull; ' + CRM.esc(r.phone) : '') + '</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '<span class="px-2 py-0.5 text-[10px] rounded font-bold bg-indigo-100 text-indigo-800 uppercase">' + CRM.esc(r.status || 'Customer') + '</span>';
+            html += '</label>';
+        });
+
+        $('#custs-checklist-container').html(html);
+        updateCustsBadge();
+    }
+
+    function updateCustsBadge() {
+        var count = selectedCustomers.size;
+        var total = customersData.length;
+        if (count === total && total > 0) {
+            $('#badge-custs-count').text('All (' + total + ') Selected');
+        } else {
+            $('#badge-custs-count').text(count + ' of ' + total + ' Selected');
+        }
+        updateOverallAudienceSummary();
+    }
+
+    $(document).on('change', '.cust-item-chk', function () {
+        var key = $(this).val();
+        if ($(this).is(':checked')) {
+            selectedCustomers.add(key);
+        } else {
+            selectedCustomers.delete(key);
+        }
+        updateCustsBadge();
+    });
+
+    $('#btn-custs-select-all').on('click', function () {
+        $('.cust-item-chk').prop('checked', true);
+        $.each(customersData, function(i, r) { selectedCustomers.add(r.key); });
+        updateCustsBadge();
+    });
+
+    $('#btn-custs-deselect-all').on('click', function () {
+        $('.cust-item-chk').prop('checked', false);
+        selectedCustomers.clear();
+        updateCustsBadge();
+    });
+
+    $('#custs-search-input').on('input', function () {
+        renderCustomersList();
+    });
+
+
+    // ── CONTACT BOOK LOADER & RENDERER ──────────────────────────────────────
+    function loadContacts() {
+        $('#contacts-checklist-container').html('<div class="p-4 text-center text-gray-400 text-xs"><i class="fa fa-spinner fa-spin text-amber-600 text-base mb-1 block"></i> Loading contacts...</div>');
+
+        $.getJSON(BASE_URL + 'communications/get_audience_recipients_ajax', {
+            recipient_types: ['contact_book']
+        }, function (res) {
+            if (res.status === 'success' && res.data) {
+                contactsData = res.data || [];
+                contsLoaded = true;
+                selectedContacts.clear();
+                $.each(contactsData, function (i, r) {
+                    selectedContacts.add(r.key);
+                });
+                renderContactsList();
+            } else {
+                $('#contacts-checklist-container').html('<div class="p-4 text-center text-rose-500 text-xs">Failed to load contacts list.</div>');
+            }
+        });
+    }
+
+    function renderContactsList() {
+        var q = ($('#contacts-search-input').val() || '').toLowerCase().trim();
+        var filtered = $.grep(contactsData, function (r) {
+            if (!q) return true;
+            return ((r.name || '') + ' ' + (r.company || '') + ' ' + (r.email || '')).toLowerCase().indexOf(q) !== -1;
+        });
+
+        if (filtered.length === 0) {
+            $('#contacts-checklist-container').html('<div class="p-4 text-center text-gray-400 text-xs">No contacts found matching query.</div>');
+            updateContactsBadge();
+            return;
+        }
+
+        var html = '';
+        $.each(filtered, function (i, r) {
+            var isChecked = selectedContacts.has(r.key);
+            html += '<label class="flex items-center justify-between p-2.5 hover:bg-amber-50/60 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0 select-none">';
+            html += '<div class="flex items-center gap-2.5">';
+            html += '<input type="checkbox" name="selected_recipient_keys[]" class="contact-item-chk rounded border-gray-300 text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer" value="' + CRM.esc(r.key) + '" ' + (isChecked ? 'checked' : '') + '>';
+            html += '<div>';
+            html += '<div class="font-bold text-gray-900 text-xs flex items-center gap-1.5">';
+            html += '<span>' + CRM.esc(r.name) + '</span>';
+            if (r.company) html += '<span class="text-gray-400 font-normal">(' + CRM.esc(r.company) + ')</span>';
+            html += '</div>';
+            html += '<div class="text-[11px] text-gray-500 font-mono">' + CRM.esc(r.email) + (r.phone ? ' &bull; ' + CRM.esc(r.phone) : '') + '</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '<span class="px-2 py-0.5 text-[10px] rounded font-bold bg-amber-100 text-amber-800 uppercase">Contact</span>';
+            html += '</label>';
+        });
+
+        $('#contacts-checklist-container').html(html);
+        updateContactsBadge();
+    }
+
+    function updateContactsBadge() {
+        var count = selectedContacts.size;
+        var total = contactsData.length;
+        if (count === total && total > 0) {
+            $('#badge-contacts-count').text('All (' + total + ') Selected');
+        } else {
+            $('#badge-contacts-count').text(count + ' of ' + total + ' Selected');
+        }
+        updateOverallAudienceSummary();
+    }
+
+    $(document).on('change', '.contact-item-chk', function () {
+        var key = $(this).val();
+        if ($(this).is(':checked')) {
+            selectedContacts.add(key);
+        } else {
+            selectedContacts.delete(key);
+        }
+        updateContactsBadge();
+    });
+
+    $('#btn-contacts-select-all').on('click', function () {
+        $('.contact-item-chk').prop('checked', true);
+        $.each(contactsData, function(i, r) { selectedContacts.add(r.key); });
+        updateContactsBadge();
+    });
+
+    $('#btn-contacts-deselect-all').on('click', function () {
+        $('.contact-item-chk').prop('checked', false);
+        selectedContacts.clear();
+        updateContactsBadge();
+    });
+
+    $('#contacts-search-input').on('input', function () {
+        renderContactsList();
+    });
+
+
+    // ── OVERALL AUDIENCE SUMMARY & PREVIEW ──────────────────────────────────
+    function updateOverallAudienceSummary() {
+        var hasLeads = $('#aud-chk-leads').is(':checked');
+        var hasCusts = $('#aud-chk-custs').is(':checked');
+        var hasConts = $('#aud-chk-contacts').is(':checked');
+
+        var totalCount = 0;
+        var sampleList = [];
+
+        if (hasLeads) {
+            totalCount += selectedLeads.size;
+            $.each(leadsData, function(i, r) {
+                if (selectedLeads.has(r.key) && sampleList.length < 5) sampleList.push(r);
+            });
+        }
+        if (hasCusts) {
+            totalCount += selectedCustomers.size;
+            $.each(customersData, function(i, r) {
+                if (selectedCustomers.has(r.key) && sampleList.length < 10) sampleList.push(r);
+            });
+        }
+        if (hasConts) {
+            totalCount += selectedContacts.size;
+            $.each(contactsData, function(i, r) {
+                if (selectedContacts.has(r.key) && sampleList.length < 15) sampleList.push(r);
+            });
+        }
+
+        if (!hasLeads && !hasCusts && !hasConts) {
+            $('#badge-audience-count').text('0 Selected (Check at least 1 audience group)');
             $('#audience-preview-total').text('0 recipients');
             $('#audience-preview-list').html('<div class="py-4 text-center text-rose-500 text-xs font-semibold">Please select at least one audience group (Leads, Customers, or Contact Book).</div>');
             return;
         }
 
-        $('#badge-audience-count').html('<i class="fa fa-spinner fa-spin"></i> Calculating unique recipients...');
+        $('#badge-audience-count').text(totalCount.toLocaleString() + ' Unique Contacts Selected');
+        $('#audience-preview-total').text(totalCount.toLocaleString() + ' recipients eligible');
 
-        $.getJSON(BASE_URL + 'communications/audience_count_ajax', {
-            recipient_types: types,
-            product_id: pId,
-            lead_status: lStat
-        }, function (res) {
-            if (res.status === 'success' && res.data) {
-                var total = res.data.total || 0;
-                var samples = res.data.samples || [];
-
-                $('#badge-audience-count').text(total.toLocaleString() + ' Unique Contacts Selected');
-                $('#audience-preview-total').text(total.toLocaleString() + ' recipients eligible');
-
-                var listHtml = '';
-                if (samples.length > 0) {
-                    $.each(samples, function (i, item) {
-                        var badgeColor = 'bg-gray-100 text-gray-700';
-                        var typeLabel = item.source_type || item.type || 'Contact';
-                        if (typeLabel.toLowerCase().indexOf('lead') !== -1) {
-                            badgeColor = 'bg-emerald-100 text-emerald-800';
-                        } else if (typeLabel.toLowerCase().indexOf('customer') !== -1) {
-                            badgeColor = 'bg-indigo-100 text-indigo-800';
-                        } else if (typeLabel.toLowerCase().indexOf('contact') !== -1) {
-                            badgeColor = 'bg-amber-100 text-amber-800';
-                        }
-
-                        listHtml += '<div class="py-2 flex items-center justify-between">';
-                        listHtml += '<div><strong class="text-gray-800 font-semibold">' + CRM.esc(item.name || item.first_name || 'Recipient') + '</strong> ';
-                        if (item.company) listHtml += '<span class="text-gray-400">(' + CRM.esc(item.company) + ')</span>';
-                        listHtml += '<span class="block text-gray-500 font-mono text-[11px]">' + CRM.esc(item.email) + '</span></div>';
-                        listHtml += '<span class="px-2 py-0.5 text-[10px] rounded font-bold ' + badgeColor + ' uppercase">' + CRM.esc(typeLabel) + '</span>';
-                        listHtml += '</div>';
-                    });
-                } else {
-                    listHtml = '<div class="py-4 text-center text-gray-400 text-xs">No verified recipients found matching the chosen audience filters.</div>';
+        var listHtml = '';
+        if (sampleList.length > 0) {
+            $.each(sampleList, function (i, item) {
+                var badgeColor = 'bg-gray-100 text-gray-700';
+                var typeLabel = item.source_type || item.type || 'Contact';
+                if (typeLabel.toLowerCase().indexOf('lead') !== -1) {
+                    badgeColor = 'bg-emerald-100 text-emerald-800';
+                } else if (typeLabel.toLowerCase().indexOf('customer') !== -1) {
+                    badgeColor = 'bg-indigo-100 text-indigo-800';
+                } else if (typeLabel.toLowerCase().indexOf('contact') !== -1) {
+                    badgeColor = 'bg-amber-100 text-amber-800';
                 }
-                $('#audience-preview-list').html(listHtml);
+
+                listHtml += '<div class="py-2 flex items-center justify-between border-b border-gray-100 last:border-b-0">';
+                listHtml += '<div><strong class="text-gray-800 font-semibold">' + CRM.esc(item.name || item.first_name || 'Recipient') + '</strong> ';
+                if (item.company) listHtml += '<span class="text-gray-400 font-normal">(' + CRM.esc(item.company) + ')</span>';
+                listHtml += '<span class="block text-gray-500 font-mono text-[11px]">' + CRM.esc(item.email) + '</span></div>';
+                listHtml += '<span class="px-2 py-0.5 text-[10px] rounded font-bold ' + badgeColor + ' uppercase">' + CRM.esc(typeLabel) + '</span>';
+                listHtml += '</div>';
+            });
+            if (totalCount > sampleList.length) {
+                listHtml += '<div class="py-2 text-center text-xs text-gray-400 font-medium">+ ' + (totalCount - sampleList.length) + ' more recipients</div>';
             }
-        });
+        } else {
+            listHtml = '<div class="py-4 text-center text-gray-400 text-xs">No recipients selected matching criteria.</div>';
+        }
+        $('#audience-preview-list').html(listHtml);
     }
 
     // Audience Checkbox Event Listeners
-    $(document).on('change', '.audience-chk, #select-lead-status', function () {
-        updateAudienceCount();
+    $(document).on('change', '.audience-chk', function () {
+        syncAudienceCardsUI();
     });
 
     // Quick Audience Selection Shortcut Buttons
     $('#btn-aud-select-all').on('click', function () {
         $('.audience-chk').prop('checked', true);
-        updateAudienceCount();
+        syncAudienceCardsUI();
     });
 
     $('#btn-aud-leads-only').on('click', function () {
         $('#aud-chk-leads').prop('checked', true);
         $('#aud-chk-custs, #aud-chk-contacts').prop('checked', false);
-        updateAudienceCount();
+        syncAudienceCardsUI();
     });
 
     $('#btn-aud-custs-only').on('click', function () {
         $('#aud-chk-custs').prop('checked', true);
         $('#aud-chk-leads, #aud-chk-contacts').prop('checked', false);
-        updateAudienceCount();
+        syncAudienceCardsUI();
     });
 
     $('#btn-aud-clear').on('click', function () {
         $('.audience-chk').prop('checked', false);
-        updateAudienceCount();
+        syncAudienceCardsUI();
     });
 
-    // Toggle Preview Drawer
-    $('#btn-toggle-audience-drawer').on('click', function () {
-        $('#audience-preview-drawer').toggleClass('hidden');
+    // ─────────────────────────────────────────────────────────────────────────
+    // Instant Sender Mailbox Switcher Handler
+    // ─────────────────────────────────────────────────────────────────────────
+    $('#select-sender-smtp').on('change', function () {
+        var $opt = $(this).find('option:selected');
+        var sName = $opt.data('sender') || 'Auto-Rotated Pool';
+        var sEmail = $opt.data('email') || 'Smart Fair-Share Mailbox Pool';
+        $('#preview-header-from').html(CRM.esc(sName) + ' &lt;' + CRM.esc(sEmail) + '&gt;');
     });
 
     // Initial sync and count calculation
-    updateAudienceCount();
+    syncAudienceCardsUI();
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // Live Hostinger SMTP Pool Status Polling & Updates
@@ -465,6 +832,7 @@ $(function () {
                 subject: subject,
                 body: body,
                 product_id: productId,
+                sender_smtp_id: $('#select-sender-smtp').val(),
                 [CI3_CSRF_NAME]: CI3_CSRF_HASH
             },
             success: function (res) {

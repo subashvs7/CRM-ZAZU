@@ -48,6 +48,22 @@ class MY_Controller extends CI_Controller {
         if (isset($map[$controller])) {
             $module = $map[$controller];
             if (!has_module_access($module)) {
+                // Allow non-admin staff to access Hostinger SMTP settings and its ajax actions
+                $method = strtolower($this->router->fetch_method());
+                $allowed_admin_methods = [
+                    'settings', 
+                    'save_smtp_account', 
+                    'delete_smtp_account', 
+                    'test_smtp_connection', 
+                    'send_test_smtp_email', 
+                    'reset_smtp_counter', 
+                    'smtp_pool_status_ajax', 
+                    'smtp_accounts_ajax'
+                ];
+                if ($controller === 'admin' && in_array($method, $allowed_admin_methods)) {
+                    return;
+                }
+
                 if ($this->input->is_ajax_request()) {
                     $this->json_error('Access denied. You do not have permission for this module.', 403);
                 } else {

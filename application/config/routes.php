@@ -230,10 +230,11 @@ $route['communications/get_template_ajax/(:num)']        = 'Communications/get_t
 $route['communications/save_template_ajax']           = 'Communications/save_template_ajax';
 $route['communications/delete_template_ajax']         = 'Communications/delete_template_ajax';
 $route['communications/audience_count_ajax']          = 'Communications/audience_count_ajax';
+$route['communications/get_audience_recipients_ajax'] = 'Communications/get_audience_recipients_ajax';
 $route['communications/upload_image']                 = 'Communications/upload_image';
 $route['communications/send_test_email']              = 'Communications/send_test_email';
 $route['communications/process_bulk_mail']            = 'Communications/process_bulk_mail';
 $route['communications/campaign_detail_ajax/(:num)']  = 'Communications/campaign_detail_ajax/$1';
 $route['communications/history_ajax']                 = 'Communications/history_ajax';
 $route['communications/smtp_pool_status']             = 'Communications/smtp_pool_status_ajax';
-
+$route['communications/smtp_settings']                = 'Communications/smtp_settings';

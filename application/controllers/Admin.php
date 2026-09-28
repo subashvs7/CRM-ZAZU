@@ -291,6 +291,9 @@ class Admin extends MY_Controller {
     }
 
     public function save_settings() {
+        if (!$this->is_admin()) {
+            $this->json_error('Access denied. Administrator privileges required.', 403);
+        }
         $post = $this->input->post();
         unset($post[$this->security->get_csrf_token_name()]);
         $this->App_setting_model->set_bulk($post);

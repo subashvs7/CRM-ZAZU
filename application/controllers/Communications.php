@@ -46,6 +46,18 @@ class Communications extends MY_Controller {
     }
 
     /**
+     * Dedicated Hostinger SMTP Settings Page (Accessible directly by staff and admin)
+     */
+    public function smtp_settings() {
+        $smtp_pool = $this->Smtp_account_model->get_pool_status();
+        $this->load_view('communications/smtp_settings', [
+            'page_title' => 'Hostinger SMTP Mail Pool',
+            'page_js'    => 'admin',
+            'smtp_pool'  => $smtp_pool
+        ]);
+    }
+
+    /**
      * AJAX: Get templates filtered by Product and/or Category
      */
     public function get_templates_ajax() {
@@ -146,6 +158,23 @@ class Communications extends MY_Controller {
     }
 
     /**
+     * AJAX: Get full recipients list for granular multi-select checkboxes
+     */
+    public function get_audience_recipients_ajax() {
+        $recipient_types = $this->input->get('recipient_types');
+        if (empty($recipient_types)) {
+            $single = $this->input->get('recipient_type');
+            $recipient_types = $single ? (is_array($single) ? $single : explode(',', $single)) : ['leads', 'customers', 'contact_book'];
+        }
+
+        $product_id  = (int)$this->input->get('product_id') ?: null;
+        $lead_status = $this->input->get('lead_status') ?: null;
+
+        $recipients = $this->Bulk_mail_model->get_recipients($recipient_types, $product_id, $lead_status, 1000);
+        $this->json_success($recipients);
+    }
+
+    /**
      * AJAX: Handle Summernote Image Drag & Drop / File Upload
      */
     public function upload_image() {
@@ -237,8 +266,15 @@ class Communications extends MY_Controller {
         $renderedSubject = str_replace(array_keys($replacements), array_values($replacements), $subject);
         $renderedBody    = str_replace(array_keys($replacements), array_values($replacements), $body);
 
-        // Fetch active SMTP account for test dispatch if configured
-        $smtp = $this->Smtp_account_model->get_next_available_account();
+        // Fetch selected or active SMTP account for test dispatch
+        $sender_smtp_id = $this->input->post('sender_smtp_id');
+        $smtp = null;
+        if (!empty($sender_smtp_id) && $sender_smtp_id !== 'auto') {
+            $smtp = $this->Smtp_account_model->get_by_id((int)$sender_smtp_id);
+        }
+        if (!$smtp) {
+            $smtp = $this->Smtp_account_model->get_next_available_account();
+        }
         $fromEmail = 'outreach@crm-zazu.local';
         $fromName  = $senderName . ' via ZAZU CRM';
 
@@ -309,6 +345,26 @@ class Communications extends MY_Controller {
 
         // Fetch deduplicated recipients from all selected audiences
         $recipients = $this->Bulk_mail_model->get_recipients($recipient_types, $product_id, $lead_status, 2000);
+
+        // Granular Filter: If user selected specific leads/customers via checkboxes
+        $selected_recipient_keys = $this->input->post('selected_recipient_keys');
+        $isGranular = false;
+        if (!empty($selected_recipient_keys)) {
+            if (is_string($selected_recipient_keys)) {
+                $selected_recipient_keys = array_filter(array_map('trim', explode(',', $selected_recipient_keys)));
+            }
+            if (is_array($selected_recipient_keys) && count($selected_recipient_keys) > 0) {
+                $filtered = [];
+                foreach ($recipients as $rec) {
+                    if (in_array($rec['key'], $selected_recipient_keys)) {
+                        $filtered[] = $rec;
+                    }
+                }
+                $recipients = $filtered;
+                $isGranular = true;
+            }
+        }
+
         if (empty($recipients)) {
             if ($this->input->is_ajax_request()) {
                 $this->json_error('No valid recipients with email addresses found for the selected criteria.');
@@ -333,11 +389,21 @@ class Communications extends MY_Controller {
         $senderPhone = $currentUser['phone'] ?? '+91 9876543210';
         $currentUserId = $this->get_user_id() ?: 1;
 
+        // Check if user chose an instant specific SMTP mailbox or auto-rotate pool
+        $sender_smtp_id = $this->input->post('sender_smtp_id');
+        $forcedSmtp = null;
+        if (!empty($sender_smtp_id) && $sender_smtp_id !== 'auto') {
+            $forcedSmtp = $this->Smtp_account_model->get_by_id((int)$sender_smtp_id);
+        }
+
         $targetSummary = is_array($recipient_types) ? implode(', ', $recipient_types) : $recipient_types;
+        if ($isGranular) {
+            $targetSummary .= ' (' . count($recipients) . ' Handpicked)';
+        }
         $campaign_data = [
             'subject'          => $subject,
             'message'          => $message,
-            'recipient_type'   => $targetSummary . ($product_id ? ' (Product #' . $product_id . ')' : ''),
+            'recipient_type'   => $targetSummary . ($product_id ? ' (Product #' . $product_id . ')' : '') . ($forcedSmtp ? ' [Sender: ' . $forcedSmtp['sender_email'] . ']' : ''),
             'product_id'       => $product_id,
             'template_id'      => $template_id,
             'total_recipients' => count($recipients),
@@ -358,14 +424,21 @@ class Communications extends MY_Controller {
             $queueItems = $this->db->where('campaign_id', $campaign_id)->get('bulk_mail_queue')->result_array();
 
             foreach ($queueItems as $idx => $item) {
-                // AUTO-SWITCH SMTP ENGINE: Fetch the next available SMTP account where sent_today < daily_limit (100)
-                $currentSmtp = $this->Smtp_account_model->get_next_available_account();
-
-                // If pool accounts exist but all have reached their 100 limit:
-                $poolStatus = $this->Smtp_account_model->get_pool_status();
-                if ($poolStatus['total_accounts'] > 0 && !$currentSmtp) {
-                    $quotaHalted = true;
-                    break; // Stop immediate sending; leave rest in queue!
+                // SENDER SELECTION: Use chosen specific mailbox OR auto-rotate fair-share pool
+                if ($forcedSmtp) {
+                    $rem = max(0, (int)$forcedSmtp['daily_limit'] - (int)$forcedSmtp['sent_today']);
+                    if ($rem <= 0) {
+                        $quotaHalted = true;
+                        break;
+                    }
+                    $currentSmtp = $forcedSmtp;
+                } else {
+                    $currentSmtp = $this->Smtp_account_model->get_next_available_account();
+                    $poolStatus = $this->Smtp_account_model->get_pool_status();
+                    if ($poolStatus['total_accounts'] > 0 && !$currentSmtp) {
+                        $quotaHalted = true;
+                        break;
+                    }
                 }
 
                 $fromEmail = 'outreach@crm-zazu.local';
