@@ -35,6 +35,9 @@ class App_setting_model extends MY_Model {
     }
 
     public function get_all_as_array() {
+        if (!$this->db->table_exists($this->table)) {
+            return [];
+        }
         $rows = $this->get_all();
         $out  = [];
         foreach ($rows as $r) $out[$r['setting_key']] = $r['setting_value'];

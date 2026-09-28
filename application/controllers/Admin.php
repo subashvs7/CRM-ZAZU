@@ -409,15 +409,27 @@ class Admin extends MY_Controller {
     }
 
     public function fetch_role_permissions() {
+        $all_modules = ['dashboard', 'customers', 'leads', 'orders', 'visits', 'tracking/live', 'geofence', 'attendance', 'shifts', 'leave', 'selfie/log', 'reports', 'admin'];
         $rows = $this->db->get('role_permissions')->result_array();
+
+        if (empty($rows)) {
+            // Auto-seed default permissions into DB if table is empty
+            $this->db->insert('role_permissions', ['role' => 'admin', 'module' => json_encode($all_modules)]);
+            $this->db->insert('role_permissions', ['role' => 'manager', 'module' => json_encode($all_modules)]);
+            $this->db->insert('role_permissions', ['role' => 'field_staff', 'module' => json_encode(['dashboard', 'customers', 'leads', 'orders', 'visits', 'attendance', 'leave'])]);
+            $rows = $this->db->get('role_permissions')->result_array();
+        }
+
         $perms = [
-            'admin' => [],
-            'manager' => [],
-            'field_staff' => []
+            'admin' => $all_modules,
+            'manager' => $all_modules,
+            'field_staff' => ['dashboard', 'customers', 'leads', 'orders', 'visits', 'attendance', 'leave']
         ];
         foreach ($rows as $r) {
             $modules = json_decode($r['module'], true);
-            $perms[$r['role']] = is_array($modules) ? $modules : [];
+            if (is_array($modules)) {
+                $perms[$r['role']] = $modules;
+            }
         }
         $this->json_success($perms);
     }
@@ -429,7 +441,12 @@ class Admin extends MY_Controller {
             $this->json_error('Invalid role.');
         }
 
-        $json_modules = json_encode($modules);
+        // Ensure admin always retains admin module access
+        if ($role === 'admin' && !in_array('admin', $modules)) {
+            $modules[] = 'admin';
+        }
+
+        $json_modules = json_encode(array_values($modules));
 
         $exists = $this->db->where('role', $role)->count_all_results('role_permissions');
         if ($exists) {

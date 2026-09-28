@@ -212,11 +212,41 @@ if (!function_exists('has_module_access')) {
         $role = $user['role'] ?? null;
         if (!$role) return false;
 
-        $row = $CI->db->where('role', $role)->get('role_permissions')->row_array();
-        if ($row && !empty($row['module'])) {
-            $allowed = json_decode($row['module'], true);
-            return is_array($allowed) && in_array($module, $allowed);
+        // Admin role has full, unrestricted access to all modules
+        if ($role === 'admin') {
+            return true;
         }
+
+        try {
+            $row = $CI->db->where('role', $role)->get('role_permissions')->row_array();
+            if ($row && !empty($row['module'])) {
+                $allowed = json_decode($row['module'], true);
+                if (is_array($allowed)) {
+                    return in_array($module, $allowed);
+                }
+            }
+        } catch (\Throwable $e) {
+            // If table does not exist or database error occurs, continue to default fallbacks
+        }
+
+        // Default fallbacks if role_permissions has not been explicitly configured in DB
+        if ($role === 'manager') {
+            $default_manager_modules = [
+                'dashboard', 'customers', 'leads', 'orders', 'visits',
+                'tracking/live', 'geofence', 'attendance', 'shifts',
+                'leave', 'selfie/log', 'reports', 'admin'
+            ];
+            return in_array($module, $default_manager_modules);
+        }
+
+        if ($role === 'field_staff') {
+            $default_staff_modules = [
+                'dashboard', 'customers', 'leads', 'orders', 'visits',
+                'attendance', 'leave'
+            ];
+            return in_array($module, $default_staff_modules);
+        }
+
         return false;
     }
 }

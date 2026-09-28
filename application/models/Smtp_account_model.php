@@ -13,6 +13,9 @@ class Smtp_account_model extends MY_Model {
      * Automatically reset daily sent counters at midnight
      */
     public function reset_daily_counters_if_needed() {
+        if (!$this->db->table_exists($this->table)) {
+            return;
+        }
         $today = date('Y-m-d');
         // Reset any accounts where last_reset_date is older than today
         $this->db->where('last_reset_date <', $today)
@@ -29,6 +32,9 @@ class Smtp_account_model extends MY_Model {
      * Get all active accounts in the pool
      */
     public function get_all_accounts() {
+        if (!$this->db->table_exists($this->table)) {
+            return [];
+        }
         $this->reset_daily_counters_if_needed();
         return $this->db->where('is_deleted', 0)
             ->order_by('id', 'ASC')

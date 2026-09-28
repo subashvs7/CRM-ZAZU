@@ -25,6 +25,10 @@ class MY_Controller extends CI_Controller {
     }
 
     protected function check_module_access() {
+        if ($this->is_admin()) {
+            return;
+        }
+
         $controller = strtolower($this->router->fetch_class());
         $map = [
             'dashboard'  => 'dashboard',

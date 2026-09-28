@@ -113,9 +113,11 @@
                         <div id="bm-pool-progress" class="bg-blue-400 h-1.5 rounded-full" style="width: <?= $smtp_pool['percent_remaining'] ?? 100 ?>%"></div>
                     </div>
                 </div>
+                <?php if (has_module_access('admin')): ?>
                 <a href="<?= base_url('admin/settings#tab-smtp') ?>" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 transition-all flex items-center gap-1.5 flex-shrink-0">
                     <i class="fa fa-sliders"></i> SMTP Settings
                 </a>
+                <?php endif; ?>
             </div>
         </div>
 

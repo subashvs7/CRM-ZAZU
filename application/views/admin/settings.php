@@ -443,8 +443,11 @@ $(function(){
     });
 
     // Check hash on load (e.g. #tab-smtp)
-    if(location.hash === '#tab-smtp') {
-        $('[data-target="#tab-smtp"]').trigger('click');
+    if (location.hash) {
+        var $hashTab = $('[data-target="' + location.hash + '"]');
+        if ($hashTab.length) {
+            $hashTab.trigger('click');
+        }
     }
 
     // ── General Settings Form Submit ──────────────────────────────────────────
