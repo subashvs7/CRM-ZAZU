@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Attendance_model extends MY_Model {
-    protected $table = 'attendance';
+    protected $table = 'crm_attendance';
 
     public function get_by_user_date($user_id, $date) {
         return $this->db->where(['user_id' => $user_id, 'date' => $date, 'is_deleted' => 0])
@@ -42,8 +42,8 @@ class Attendance_model extends MY_Model {
 
     public function datatable($params, $status_filter = null, $user_id = null, $role = null) {
         $this->db->select('a.id, a.date, u.name AS user_name, a.punch_in_at, a.punch_out_at, a.attendance_status, a.working_hours, a.face_verified, a.is_regularized, a.status')
-            ->from('attendance a')
-            ->join('users u', 'u.id = a.user_id', 'left');
+            ->from('crm_attendance a')
+            ->join('crm_user u', 'u.id = a.user_id', 'left');
 
         if ($status_filter === 'deleted') $this->db->where('a.is_deleted', 1);
         else                              $this->db->where('a.is_deleted', 0);

@@ -72,12 +72,17 @@ $(function () {
             onInit: function () {
                 // If template already selected, load it; else default greeting
                 if (!$('#summernote-editor').summernote('code') || $('#summernote-editor').summernote('isEmpty')) {
-                    var initialTplId = $('#select-template').val();
-                    if (initialTplId) {
-                        loadTemplateDetail(initialTplId);
-                    } else if ($('#select-template option').length > 1) {
-                        // Pick first template
-                        $('#select-template').prop('selectedIndex', 1).trigger('change');
+                    var urlParams = new URLSearchParams(window.location.search);
+                    var paramTplId = urlParams.get('template_id');
+                    if (paramTplId && $('#select-template option[value="' + paramTplId + '"]').length) {
+                        $('#select-template').val(paramTplId).trigger('change');
+                    } else {
+                        var initialTplId = $('#select-template').val();
+                        if (initialTplId) {
+                            loadTemplateDetail(initialTplId);
+                        } else if ($('#select-template option').length > 1) {
+                            $('#select-template').prop('selectedIndex', 1).trigger('change');
+                        }
                     }
                 }
                 updateLivePreview();
@@ -936,7 +941,13 @@ $(function () {
             return;
         }
 
+        $('#modal-summernote').val(body);
         var postData = $(this).serialize();
+        if (typeof CI3_CSRF_NAME !== 'undefined' && typeof CI3_CSRF_HASH !== 'undefined') {
+            if (postData.indexOf(encodeURIComponent(CI3_CSRF_NAME) + '=') === -1 && postData.indexOf(CI3_CSRF_NAME + '=') === -1) {
+                postData += (postData ? '&' : '') + encodeURIComponent(CI3_CSRF_NAME) + '=' + encodeURIComponent(CI3_CSRF_HASH);
+            }
+        }
 
         $.ajax({
             url: BASE_URL + 'communications/save_template_ajax',

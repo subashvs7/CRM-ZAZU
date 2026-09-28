@@ -2,12 +2,12 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Order_item_model extends MY_Model {
-    protected $table = 'order_items';
+    protected $table = 'crm_order_items';
 
     public function get_by_order($order_id) {
         return $this->db->select('oi.*, p.name AS product_name, p.sku, p.unit')
-            ->from('order_items oi')
-            ->join('products p', 'p.id = oi.product_id', 'left')
+            ->from('crm_order_items oi')
+            ->join('crm_products p', 'p.id = oi.product_id', 'left')
             ->where(['oi.order_id' => $order_id, 'oi.is_deleted' => 0])
             ->get()->result_array();
     }

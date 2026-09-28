@@ -19,7 +19,7 @@ class Reports extends MY_Controller {
         $to   = $this->input->get('to')   ?: date('Y-m-t');
         $uid  = (int)$this->input->get('user_id') ?: null;
         $this->db->select('u.name AS staff_name, COUNT(vl.id) AS total_visits, COUNT(DISTINCT vl.customer_id) AS unique_customers, AVG(TIMESTAMPDIFF(MINUTE,vl.check_in_at,vl.check_out_at)) AS avg_duration')
-            ->from('visit_logs vl')->join('users u','u.id=vl.user_id','left')
+            ->from('crm_visit_logs vl')->join('crm_user u','u.id=vl.user_id','left')
             ->where('vl.is_deleted',0)->where('DATE(vl.check_in_at)>=',$from)->where('DATE(vl.check_in_at)<=',$to);
         if ($uid) $this->db->where('vl.user_id',$uid);
         $rows = $this->db->group_by('vl.user_id')->order_by('total_visits','desc')->get()->result_array();
@@ -49,7 +49,7 @@ class Reports extends MY_Controller {
         $to   = $this->input->get('to')   ?: date('Y-m-t');
         $uid  = (int)$this->input->get('user_id') ?: null;
         $this->db->select('u.name AS staff_name, COUNT(o.id) AS total_orders, SUM(o.final_amount) AS total_revenue, o.order_status')
-            ->from('orders o')->join('users u','u.id=o.created_by','left')
+            ->from('crm_orders o')->join('crm_user u','u.id=o.created_by','left')
             ->where(['o.is_deleted'=>0,'o.status'=>'active'])
             ->where('DATE(o.created_at)>=',$from)->where('DATE(o.created_at)<=',$to);
         if ($uid) $this->db->where('o.created_by',$uid);
@@ -67,10 +67,10 @@ class Reports extends MY_Controller {
         $to   = $this->input->get('to')   ?: date('Y-m-t');
         $uid  = (int)$this->input->get('user_id') ?: null;
         $this->db->select('u.name, COUNT(DISTINCT o.id) AS orders, SUM(o.final_amount) AS revenue, COUNT(DISTINCT vl.id) AS visits, COUNT(DISTINCT l.id) AS leads')
-            ->from('users u')
-            ->join('orders o','o.created_by=u.id AND o.is_deleted=0 AND DATE(o.created_at)>="'.$from.'" AND DATE(o.created_at)<="'.$to.'"','left')
-            ->join('visit_logs vl','vl.user_id=u.id AND vl.is_deleted=0 AND DATE(vl.check_in_at)>="'.$from.'" AND DATE(vl.check_in_at)<="'.$to.'"','left')
-            ->join('leads l','l.assigned_to=u.id AND l.is_deleted=0','left')
+            ->from('crm_user u')
+            ->join('crm_orders o','o.created_by=u.id AND o.is_deleted=0 AND DATE(o.created_at)>="'.$from.'" AND DATE(o.created_at)<="'.$to.'"','left')
+            ->join('crm_visit_logs vl','vl.user_id=u.id AND vl.is_deleted=0 AND DATE(vl.check_in_at)>="'.$from.'" AND DATE(vl.check_in_at)<="'.$to.'"','left')
+            ->join('crm_leads l','l.assigned_to=u.id AND l.is_deleted=0','left')
             ->where(['u.role'=>'field_staff','u.is_deleted'=>0]);
         if ($uid) $this->db->where('u.id', $uid);
         $this->db->group_by('u.id')->order_by('revenue','desc');
@@ -88,7 +88,7 @@ class Reports extends MY_Controller {
         $to   = $this->input->get('to')   ?: date('Y-m-t');
         $uid  = (int)$this->input->get('user_id') ?: null;
         $this->db->select('u.name AS staff_name, a.attendance_status, COUNT(*) AS cnt')
-            ->from('attendance a')->join('users u','u.id=a.user_id','left')
+            ->from('crm_attendance a')->join('crm_user u','u.id=a.user_id','left')
             ->where('a.is_deleted',0)->where('a.date>=',$from)->where('a.date<=',$to);
         if ($uid) $this->db->where('a.user_id',$uid);
         $rows = $this->db->group_by('a.user_id,a.attendance_status')->get()->result_array();
@@ -102,7 +102,7 @@ class Reports extends MY_Controller {
     public function leave_data() {
         $year = (int)($this->input->get('year') ?: date('Y'));
         $this->db->select('u.name AS staff_name, lt.name AS leave_type, lb.total_days, lb.used_days, lb.pending_days')
-            ->from('leave_balances lb')->join('users u','u.id=lb.user_id','left')->join('leave_types lt','lt.id=lb.leave_type_id','left')
+            ->from('crm_leave_balances lb')->join('crm_user u','u.id=lb.user_id','left')->join('crm_leave_types lt','lt.id=lb.leave_type_id','left')
             ->where(['lb.year'=>$year,'lb.is_deleted'=>0]);
         $rows = $this->db->order_by('u.name')->get()->result_array();
         $this->json_success($rows);
@@ -118,7 +118,7 @@ class Reports extends MY_Controller {
         $to   = $this->input->get('to')   ?: date('Y-m-t');
         $uid  = (int)$this->input->get('user_id') ?: null;
         $this->db->select('u.name AS staff_name, COUNT(*) AS total_days, SUM(CASE WHEN a.attendance_status="present" THEN 1 ELSE 0 END) AS present_days, AVG(a.working_hours) AS avg_hours')
-            ->from('attendance a')->join('users u','u.id=a.user_id','left')
+            ->from('crm_attendance a')->join('crm_user u','u.id=a.user_id','left')
             ->where('a.is_deleted',0)->where('a.date>=',$from)->where('a.date<=',$to);
         if ($uid) $this->db->where('a.user_id', $uid);
         $this->db->group_by('a.user_id')->order_by('present_days','desc');
@@ -136,12 +136,12 @@ class Reports extends MY_Controller {
         $to   = $this->input->get('to')   ?: date('Y-m-t');
         $uid  = (int)$this->input->get('user_id') ?: null;
         $this->db->select("c.id, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS name, c.latitude, c.longitude, COUNT(vl.id) AS visit_count")
-            ->from('customers c');
+            ->from('crm_customers c');
         if ($uid) {
-            $this->db->join('visit_logs vl','vl.customer_id=c.id AND vl.is_deleted=0 AND vl.user_id='.$uid.' AND DATE(vl.check_in_at)>="'.$from.'" AND DATE(vl.check_in_at)<="'.$to.'"','left');
+            $this->db->join('crm_visit_logs vl','vl.customer_id=c.id AND vl.is_deleted=0 AND vl.user_id='.$uid.' AND DATE(vl.check_in_at)>="'.$from.'" AND DATE(vl.check_in_at)<="'.$to.'"','left');
             $this->db->where('c.assigned_to', $uid);
         } else {
-            $this->db->join('visit_logs vl','vl.customer_id=c.id AND vl.is_deleted=0 AND DATE(vl.check_in_at)>="'.$from.'" AND DATE(vl.check_in_at)<="'.$to.'"','left');
+            $this->db->join('crm_visit_logs vl','vl.customer_id=c.id AND vl.is_deleted=0 AND DATE(vl.check_in_at)>="'.$from.'" AND DATE(vl.check_in_at)<="'.$to.'"','left');
         }
         $this->db->where(['c.is_deleted'=>0,'c.status'=>'active'])->where('c.latitude IS NOT NULL')
             ->group_by('c.id');
@@ -149,8 +149,8 @@ class Reports extends MY_Controller {
 
         // Fetch detailed visit information for these customers
         $this->db->select('vl.customer_id, vl.check_in_at, vl.check_out_at, u.name AS staff_name, u.profile_photo')
-            ->from('visit_logs vl')
-            ->join('users u', 'u.id = vl.user_id', 'left')
+            ->from('crm_visit_logs vl')
+            ->join('crm_user u', 'u.id = vl.user_id', 'left')
             ->where('vl.is_deleted', 0)
             ->where('DATE(vl.check_in_at) >=', $from)
             ->where('DATE(vl.check_in_at) <=', $to);

@@ -43,8 +43,8 @@ class Customers extends MY_Controller {
 
         $this->load->model('Product_package_split_model');
         $all_splits = $this->db->select('pps.id, pps.product_id, pt.name AS tier_name, pt.badge_color, pt.icon, pps.monthly_price')
-                               ->from('product_package_splits pps')
-                               ->join('package_tiers pt', 'pt.id = pps.package_tier_id')
+                               ->from('crm_product_package_splits pps')
+                               ->join('crm_package_tiers pt', 'pt.id = pps.package_tier_id')
                                ->where('pps.is_deleted', 0)
                                ->get()->result_array();
         $split_map = [];
@@ -265,23 +265,23 @@ class Customers extends MY_Controller {
         
         // Fetch Visit Plans
         $visits = $this->db->select('vp.id, vp.planned_date, vp.planned_time, vp.visit_status, vp.purpose, u.name AS user_name')
-            ->from('visit_plans vp')
-            ->join('users u', 'u.id = vp.user_id', 'left')
+            ->from('crm_visit_plans vp')
+            ->join('crm_user u', 'u.id = vp.user_id', 'left')
             ->where(['vp.customer_id' => $id, 'vp.is_deleted' => 0])
             ->order_by('vp.planned_date', 'desc')
             ->get()->result_array();
             
         // Fetch Visit Logs
         $logs = $this->db->select('vl.id, vl.check_in_at, vl.check_out_at, u.name AS user_name, vl.visit_outcome, vl.notes')
-            ->from('visit_logs vl')
-            ->join('users u', 'u.id = vl.user_id', 'left')
+            ->from('crm_visit_logs vl')
+            ->join('crm_user u', 'u.id = vl.user_id', 'left')
             ->where(['vl.customer_id' => $id, 'vl.is_deleted' => 0])
             ->order_by('vl.check_in_at', 'desc')
             ->get()->result_array();
             
         // Fetch Contact Book entries linked to this customer
         $cb_contacts = $this->db->select('id, name, phone, email, job_title, company_name')
-            ->from('contact_book')
+            ->from('crm_contact_book')
             ->where(['customer_id' => $id, 'is_deleted' => 0])
             ->order_by('name', 'asc')
             ->get()->result_array();

@@ -9,7 +9,7 @@ class Notification_sender {
     }
 
     public function send($user_id, $type, $title, $body, $data = []) {
-        $this->CI->db->insert('notifications', [
+        $this->CI->db->insert('crm_notifications', [
             'user_id'    => $user_id,
             'notif_type' => $type,
             'title'      => $title,
@@ -26,7 +26,7 @@ class Notification_sender {
 
     public function send_to_role($role, $type, $title, $body, $data = []) {
         $users = $this->CI->db->where(['role' => $role, 'status' => 'active', 'is_deleted' => 0])
-                              ->get('users')->result_array();
+                              ->get('crm_user')->result_array();
         foreach ($users as $u) {
             $this->send($u['id'], $type, $title, $body, $data);
         }
@@ -39,10 +39,10 @@ class Notification_sender {
 
     public function mark_read($id, $user_id) {
         return $this->CI->db->where(['id' => $id, 'user_id' => $user_id])
-                            ->update('notifications', ['is_read' => 1, 'read_at' => date('Y-m-d H:i:s')]);
+                            ->update('crm_notifications', ['is_read' => 1, 'read_at' => date('Y-m-d H:i:s')]);
     }
 
     public function unread_count($user_id) {
-        return $this->CI->db->where(['user_id' => $user_id, 'is_read' => 0, 'is_deleted' => 0])->count_all_results('notifications');
+        return $this->CI->db->where(['user_id' => $user_id, 'is_read' => 0, 'is_deleted' => 0])->count_all_results('crm_notifications');
     }
 }

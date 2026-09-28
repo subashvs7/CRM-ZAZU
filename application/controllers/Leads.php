@@ -50,7 +50,17 @@ class Leads extends MY_Controller {
         'emailopen'           => 'email_open',
         'emailopened'         => 'email_open',
         'emailbounced'        => 'email_bounced',
-        'demo'                => 'demo',
+        'demo'                => 'product_demo',
+        'demostatus'          => 'product_demo',
+        'demodone'            => 'product_demo',
+        'demoproduct'         => 'product_demo',
+        'demodetails'         => 'product_demo',
+        'productdemo'         => 'product_demo',
+        'demorequested'       => 'product_demo',
+        'product'             => 'product_name',
+        'productname'         => 'product_name',
+        'interestedproduct'   => 'product_name',
+        'campaign'            => 'keywords',
         'quotation'           => 'quotation',
         'quote'               => 'quotation',
     ];
@@ -62,17 +72,84 @@ class Leads extends MY_Controller {
     }
 
     public function index() {
-        $customers = $this->Customer_model->get_active($this->is_manager() ? [] : ['assigned_to' => $this->get_user_id()]);
-        $staff     = $this->is_manager() ? $this->User_model->get_field_staff() : [];
-        $products  = $this->Product_model->get_active_with_category();
+        $customers     = $this->Customer_model->get_active($this->is_manager() ? [] : ['assigned_to' => $this->get_user_id()]);
+        $staff         = $this->is_manager() ? $this->User_model->get_field_staff() : [];
+        $products      = $this->Product_model->get_active_with_category();
+        $lists_summary = $this->Lead_model->get_product_lists_summary();
+
         $this->load_view('leads/index', [
-            'page_title' => 'Leads',
-            'page_js'    => 'leads',
-            'customers'  => $customers,
-            'staff'      => $staff,
-            'products'   => $products,
-            'sf'         => ''
+            'page_title'    => 'Ads Leads & Lists',
+            'page_js'       => 'leads',
+            'customers'     => $customers,
+            'staff'         => $staff,
+            'products'      => $products,
+            'lists_summary' => $lists_summary,
+            'sf'            => ''
         ]);
+    }
+
+    /**
+     * AJAX: Get live Apollo style Product / Campaign Lists summary
+     */
+    public function get_product_lists_ajax() {
+        $summary = $this->Lead_model->get_product_lists_summary();
+        $this->json_success($summary);
+    }
+
+    /**
+     * AJAX: Create a new Product / Campaign List (Apollo.io style)
+     */
+    public function create_product_list_ajax() {
+        $name = trim($this->input->post('name'));
+        $sku  = trim($this->input->post('sku'));
+        $desc = trim($this->input->post('description'));
+
+        if (!$name) {
+            $this->json_error('List / Product Name is required.');
+        }
+
+        if (!$sku) {
+            $sku = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $name), 0, 10));
+        }
+
+        $existing = $this->db->get_where('products', ['name' => $name, 'is_deleted' => 0])->row_array();
+        if ($existing) {
+            $this->json_error('A product / list with this name already exists.');
+        }
+
+        $id = $this->Product_model->insert([
+            'name'        => $name,
+            'sku'         => $sku,
+            'description' => $desc,
+            'price'       => 0,
+            'status'      => 'active',
+            'created_at'  => date('Y-m-d H:i:s'),
+            'updated_at'  => date('Y-m-d H:i:s')
+        ]);
+
+        $this->json_success([
+            'id'   => $id,
+            'name' => $name,
+            'sku'  => $sku
+        ], 'List "' . esc_html($name) . '" created successfully.');
+    }
+
+    /**
+     * AJAX: Delete/Archive a Product / Campaign List
+     */
+    public function delete_product_list_ajax() {
+        $id = (int)$this->input->post('id');
+        if (!$id) {
+            $this->json_error('Invalid list ID.');
+        }
+
+        // Soft delete the product
+        $this->Product_model->delete($id);
+
+        // Reset product_id on associated leads to NULL
+        $this->db->where('product_id', $id)->update('crm_leads', ['product_id' => null]);
+
+        $this->json_success([], 'List deleted and leads unassigned successfully.');
     }
 
     public function pipeline() {
@@ -173,8 +250,9 @@ class Leads extends MY_Controller {
             if (!empty($r['product_name'])) {
                 $demoQuote[] = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1" title="Linked Product"><i class="fa fa-cube text-emerald-600 text-[9px]"></i> '.esc_html($r['product_name']).'</span>';
             }
-            if (!empty($r['demo'])) {
-                $demoQuote[] = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200"><i class="fa fa-desktop mr-1 text-[9px]"></i>Demo: '.esc_html($r['demo']).'</span>';
+            $demoVal = !empty($r['product_demo']) ? $r['product_demo'] : ($r['demo'] ?? '');
+            if (!empty($demoVal)) {
+                $demoQuote[] = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200"><i class="fa fa-desktop mr-1 text-[9px]"></i>Demo: '.esc_html($demoVal).'</span>';
             }
             if (!empty($r['quotation'])) {
                 $demoQuote[] = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200"><i class="fa fa-file-text-o mr-1 text-[9px]"></i>Quote: '.esc_html($r['quotation']).'</span>';
@@ -237,7 +315,7 @@ class Leads extends MY_Controller {
         $email_sent          = trim($this->input->post('email_sent') ?? '');
         $email_open          = trim($this->input->post('email_open') ?? '');
         $email_bounced       = trim($this->input->post('email_bounced') ?? '');
-        $demo                = trim($this->input->post('demo') ?? '');
+        $product_demo        = trim($this->input->post('product_demo') ?? $this->input->post('demo') ?? '');
         $quotation           = trim($this->input->post('quotation') ?? '');
 
         // Auto-generate title if blank
@@ -262,9 +340,19 @@ class Leads extends MY_Controller {
 
         // If customer_id is empty but company_name matches a customer, auto-link
         if (!$customer_id && $company_name) {
-            $cust = $this->db->get_where('customers', ['customer_org_name' => $company_name, 'is_deleted' => 0])->row_array();
+            $cust = $this->db->get_where('crm_customers', ['customer_org_name' => $company_name, 'is_deleted' => 0])->row_array();
             if ($cust) {
                 $customer_id = (int)$cust['id'];
+            }
+        }
+
+        // Auto-match product_id from product_demo if product_id is not manually selected
+        $product_id = (int)$this->input->post('product_id') ?: null;
+        if (!$product_id && $product_demo) {
+            $active_products = $this->Product_model->get_active_with_category();
+            $matchedP = $this->_match_product_from_keywords(['product_demo' => $product_demo], $active_products);
+            if ($matchedP) {
+                $product_id = (int)$matchedP['id'];
             }
         }
 
@@ -301,13 +389,13 @@ class Leads extends MY_Controller {
             'email_sent'           => $email_sent ?: null,
             'email_open'           => $email_open ?: null,
             'email_bounced'        => $email_bounced ?: null,
-            'demo'                 => $demo ?: null,
+            'product_demo'         => $product_demo ?: null,
             'quotation'            => $quotation ?: null,
             'description'          => $this->input->post('description') ?: null,
             'source'               => $this->input->post('source') ?: 'field',
             'lead_status'          => $this->input->post('lead_status') ?: 'new',
             'assigned_to'          => (int)$this->input->post('assigned_to') ?: $this->get_user_id(),
-            'product_id'           => (int)$this->input->post('product_id') ?: null,
+            'product_id'           => $product_id,
             'expected_value'       => ($this->input->post('expected_value') !== null && $this->input->post('expected_value') !== '') ? inr_to_paise((float)$this->input->post('expected_value')) : null,
             'expected_close_date'  => $this->input->post('expected_close_date') ?: null,
         ];
@@ -456,7 +544,8 @@ class Leads extends MY_Controller {
     public function export() {
         $format = strtolower($this->input->get('format') ?: 'xlsx');
         $status_filter = $this->input->get('status_filter') ?: 'active';
-        [$rows, $total] = $this->Lead_model->datatable(['length' => -1], $status_filter, $this->get_user_id(), $this->get_role());
+        $product_id = $this->input->get('product_id');
+        [$rows, $total] = $this->Lead_model->datatable(['length' => -1, 'product_id' => $product_id], $status_filter, $this->get_user_id(), $this->get_role());
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -511,7 +600,7 @@ class Leads extends MY_Controller {
                 $r['email_sent'] ?? '',
                 $r['email_open'] ?? '',
                 $r['email_bounced'] ?? '',
-                $r['demo'] ?? '',
+                $r['product_demo'] ?? ($r['demo'] ?? ''),
                 $r['quotation'] ?? '',
             ];
 
@@ -564,20 +653,26 @@ class Leads extends MY_Controller {
     }
 
     /**
-     * Dynamically match spreadsheet row data (keywords, technologies, industry, company)
+     * Dynamically match spreadsheet row data (Demo column, product name, keywords, technologies, industry, company)
      * against active system products.
-     * Note: Amount is manually fixed and NOT auto-overwritten by catalogue price.
+     * Special high priority is given to the 'Demo' column as requested.
      */
     private function _match_product_from_keywords($leadData, $products) {
         if (empty($products)) return null;
 
-        $kwText   = strtolower(trim($leadData['keywords'] ?? ''));
-        $techText = strtolower(trim($leadData['technologies'] ?? ''));
-        $indText  = strtolower(trim($leadData['industry'] ?? ''));
-        $compText = strtolower(trim($leadData['company_name'] ?? ''));
-        $combinedText = trim($kwText . ' ' . $techText . ' ' . $indText . ' ' . $compText);
+        $demoText  = strtolower(trim($leadData['product_demo'] ?? $leadData['demo'] ?? ''));
+        $prodText  = strtolower(trim($leadData['product_name'] ?? ''));
+        $kwText    = strtolower(trim($leadData['keywords'] ?? ''));
+        $techText  = strtolower(trim($leadData['technologies'] ?? ''));
+        $indText   = strtolower(trim($leadData['industry'] ?? ''));
+        $compText  = strtolower(trim($leadData['company_name'] ?? ''));
+        $titleText = strtolower(trim($leadData['title'] ?? ''));
 
+        $combinedText = trim($demoText . ' ' . $prodText . ' ' . $kwText . ' ' . $techText . ' ' . $indText . ' ' . $compText . ' ' . $titleText);
         if ($combinedText === '') return null;
+
+        $cleanDemo = preg_replace('/[^a-z0-9]/', '', $demoText);
+        $cleanProd = preg_replace('/[^a-z0-9]/', '', $prodText);
 
         $bestProduct = null;
         $highestScore = 0;
@@ -586,56 +681,91 @@ class Leads extends MY_Controller {
             $score = 0;
             $pName = strtolower(trim($p['name'] ?? ''));
             $pSku  = strtolower(trim($p['sku'] ?? ''));
-            $pKw   = strtolower(trim($p['keywords'] ?? ''));
-            $pSub  = strtolower(trim($p['subtitle'] ?? ''));
+            $pCat  = strtolower(trim($p['category_name'] ?? ''));
+            $pDesc = strtolower(trim($p['description'] ?? ''));
 
-            // 1. Direct name match (e.g. "Classwall ERP", "Proman Construction ERP")
-            if ($pName !== '' && stripos($combinedText, $pName) !== false) {
-                $score += 60;
+            $cleanPName = preg_replace('/[^a-z0-9]/', '', $pName);
+            $cleanSku   = preg_replace('/[^a-z0-9]/', '', $pSku);
+
+            // --- 1. DIRECT PRODUCT_DEMO COLUMN MATCHING (ABSOLUTE HIGHEST PRIORITY) ---
+            if ($cleanDemo !== '') {
+                // Exact match with SKU or full Product Name
+                if ($cleanDemo === $cleanSku || $cleanDemo === $cleanPName) {
+                    $score += 300;
+                }
+                // Exact / Substring match against SKU (e.g. "classwall", "promancm")
+                elseif ($cleanSku !== '' && (strpos($cleanDemo, $cleanSku) !== false || strpos($cleanSku, $cleanDemo) !== false)) {
+                    $score += 250;
+                }
+                // Direct match against full normalized product name
+                elseif ($cleanPName !== '' && (strpos($cleanDemo, $cleanPName) !== false || strpos($cleanPName, $cleanDemo) !== false)) {
+                    $score += 220;
+                }
+                // Raw text match
+                if ($pSku !== '' && stripos($demoText, $pSku) !== false) {
+                    $score += 180;
+                }
+                if ($pName !== '' && stripos($demoText, $pName) !== false) {
+                    $score += 180;
+                }
+
+                // Word-level match in demo column
+                $nameWords = preg_split('/[\s\-_,\.\(\)\/]+/', $pName, -1, PREG_SPLIT_NO_EMPTY);
+                $primaryWordMatchCount = 0;
+                foreach ($nameWords as $w) {
+                    if (strlen($w) >= 3 && !in_array($w, ['erp', 'crm', 'app', 'the', 'and', 'for', 'ltd', 'inc', 'pvt', 'hub', 'management', 'software', 'system'])) {
+                        if (stripos($demoText, $w) !== false) {
+                            $score += 60;
+                            $primaryWordMatchCount++;
+                        }
+                    }
+                }
+                if ($primaryWordMatchCount >= 2) {
+                    $score += 60;
+                }
+
+                // Check SKU parts in demo (e.g. "PROMAN-CM" -> "proman")
+                $skuWords = preg_split('/[\s\-_]+/', $pSku, -1, PREG_SPLIT_NO_EMPTY);
+                foreach ($skuWords as $sw) {
+                    if (strlen($sw) >= 3 && stripos($demoText, $sw) !== false) {
+                        $score += 70;
+                    }
+                }
             }
 
-            // 2. SKU match
-            if ($pSku !== '' && stripos($combinedText, $pSku) !== false) {
+            // --- 2. DEDICATED PRODUCT NAME COLUMN (IF PRESENT IN SHEET) ---
+            if ($cleanProd !== '') {
+                if ($cleanSku !== '' && (strpos($cleanProd, $cleanSku) !== false || strpos($cleanSku, $cleanProd) !== false)) {
+                    $score += 150;
+                }
+                if ($cleanPName !== '' && (strpos($cleanProd, $cleanPName) !== false || strpos($cleanPName, $cleanProd) !== false)) {
+                    $score += 140;
+                }
+            }
+
+            // --- 3. KEYWORDS, TECH, INDUSTRY, COMPANY & TITLE MATCHING ---
+            if ($pName !== '' && stripos($combinedText, $pName) !== false) {
                 $score += 50;
             }
+            if ($pSku !== '' && stripos($combinedText, $pSku) !== false) {
+                $score += 45;
+            }
 
-            // 3. Significant product name words (e.g. "Classwall", "Proman")
-            $nameWords = preg_split('/[\s\-_,\.\/]+/', $pName, -1, PREG_SPLIT_NO_EMPTY);
+            $nameWords = preg_split('/[\s\-_,\.\(\)\/]+/', $pName, -1, PREG_SPLIT_NO_EMPTY);
             foreach ($nameWords as $w) {
-                if (strlen($w) > 2 && !in_array($w, ['erp', 'crm', 'app', 'the', 'and', 'for', 'ltd', 'inc', 'pvt', 'hub'])) {
+                if (strlen($w) > 2 && !in_array($w, ['erp', 'crm', 'app', 'the', 'and', 'for', 'ltd', 'inc', 'pvt', 'hub', 'management', 'software', 'system'])) {
                     if (stripos($combinedText, $w) !== false) {
-                        // Extra weight if it appears directly in the sheet's Keywords column
-                        $score += (stripos($kwText, $w) !== false ? 35 : 20);
+                        $score += (stripos($kwText, $w) !== false ? 30 : 15);
                     }
                 }
             }
 
-            // 4. Product's configured keywords
-            if ($pKw !== '') {
-                $kwList = preg_split('/[\s,;]+/', $pKw, -1, PREG_SPLIT_NO_EMPTY);
-                foreach ($kwList as $kw) {
-                    $kw = trim($kw);
-                    if (strlen($kw) > 2 && !in_array($kw, ['and', 'the', 'for', 'with', 'all', 'app'])) {
-                        if (stripos($combinedText, $kw) !== false) {
-                            $score += (stripos($kwText, $kw) !== false ? 15 : 8);
-                        }
-                    }
-                }
+            // Category match
+            if ($pCat !== '' && stripos($combinedText, $pCat) !== false) {
+                $score += 20;
             }
 
-            // 5. Subtitle key phrases
-            if ($pSub !== '') {
-                $subWords = preg_split('/[\s\-_,\.\/]+/', $pSub, -1, PREG_SPLIT_NO_EMPTY);
-                foreach ($subWords as $sw) {
-                    if (strlen($sw) > 4 && !in_array($sw, ['management', 'complete', 'simplified', 'enterprise', 'system'])) {
-                        if (stripos($combinedText, $sw) !== false) {
-                            $score += 8;
-                        }
-                    }
-                }
-            }
-
-            if ($score > $highestScore && $score >= 15) {
+            if ($score > $highestScore && $score >= 20) {
                 $highestScore = $score;
                 $bestProduct = $p;
             }
@@ -691,7 +821,7 @@ class Leads extends MY_Controller {
         // Preload all previous active leads for fast duplicate checking (by Email and Phone)
         $existing_leads = $this->db->select('id, title, first_name, last_name, company_name, email, secondary_email, corporate_phone, company_phone')
             ->where('is_deleted', 0)
-            ->get('leads')
+            ->get('crm_leads')
             ->result_array();
 
         $existing_emails = [];
@@ -713,6 +843,28 @@ class Leads extends MY_Controller {
                 foreach ($this->_get_phone_variants($el['company_phone']) as $pv) {
                     $existing_phones[$pv] = $el;
                 }
+            }
+        }
+
+        // Check if user pre-selected a specific product list for this import batch
+        $target_product_id = $this->input->post('target_product_id');
+        $fixedProduct = null;
+        if (!empty($target_product_id) && $target_product_id !== 'auto') {
+            if ($target_product_id === 'new') {
+                $newPName = trim($this->input->post('new_product_name'));
+                if ($newPName) {
+                    $newSku = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $newPName), 0, 10));
+                    $pId = $this->Product_model->insert([
+                        'name'       => $newPName,
+                        'sku'        => $newSku,
+                        'status'     => 'active',
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ]);
+                    $fixedProduct = $this->Product_model->get_by_id($pId);
+                }
+            } else {
+                $fixedProduct = $this->Product_model->get_by_id((int)$target_product_id);
             }
         }
 
@@ -776,17 +928,26 @@ class Leads extends MY_Controller {
                 continue;
             }
 
-            // DYNAMIC PRODUCT MATCHING: Match keywords in row to active CRM products
-            $matchedProduct     = $this->_match_product_from_keywords($leadData, $active_products);
-            $matchedProductId   = $matchedProduct ? (int)$matchedProduct['id'] : null;
-            $matchedProductName = $matchedProduct ? $matchedProduct['name'] : null;
-            $matchedProductSku  = $matchedProduct ? $matchedProduct['sku'] : null;
+            // PRODUCT ASSIGNMENT: Prioritize Demo column & row keyword matching, fallback to fixed product
+            $rowMatchedProduct = $this->_match_product_from_keywords($leadData, $active_products);
 
-            if ($matchedProductId) {
+            if ($rowMatchedProduct) {
+                $matchedProductId   = (int)$rowMatchedProduct['id'];
+                $matchedProductName = $rowMatchedProduct['name'];
+                $matchedProductSku  = $rowMatchedProduct['sku'];
                 $leadData['product_id'] = $matchedProductId;
                 $matched_products_count++;
+            } elseif ($fixedProduct) {
+                $matchedProductId   = (int)$fixedProduct['id'];
+                $matchedProductName = $fixedProduct['name'];
+                $matchedProductSku  = $fixedProduct['sku'];
+                $leadData['product_id'] = $matchedProductId;
+                $matched_products_count++;
+            } else {
+                $matchedProductId   = null;
+                $matchedProductName = null;
+                $matchedProductSku  = null;
             }
-            // Note: Amount remains manual fixed (expected_value is NOT auto-set to product catalogue price)
 
             // DUPLICATE VALIDATION: Match against previous data in database
             $matched = null;
@@ -945,7 +1106,7 @@ class Leads extends MY_Controller {
         $duplicates = $data['duplicates'] ?? [];
 
         // Preload users for account owner lookup
-        $users = $this->db->select('id, name, email')->get('users')->result_array();
+        $users = $this->db->select('id, name, email')->get('crm_user')->result_array();
         $user_lookup = [];
         foreach ($users as $u) {
             $user_lookup[strtolower(trim($u['name']))]  = $u['id'];
@@ -988,7 +1149,7 @@ class Leads extends MY_Controller {
                         $customer_id = (int)$cust['id'];
                     } elseif ($auto_create_customers) {
                         $cPhone = !empty($ld['corporate_phone']) ? $ld['corporate_phone'] : (!empty($ld['company_phone']) ? $ld['company_phone'] : '0000000000');
-                        $this->db->insert('customers', [
+                        $this->db->insert('crm_customers', [
                             'customer_type'     => 'primary',
                             'customer_name'     => substr(trim($first_name . ' ' . $last_name) ?: $company_name, 0, 150),
                             'customer_org_name' => substr($company_name, 0, 150),
@@ -1065,7 +1226,7 @@ class Leads extends MY_Controller {
                     }
 
                     $this->Lead_model->update($matchedId, $updateFields);
-                    $this->db->insert('lead_activities', [
+                    $this->db->insert('crm_lead_activities', [
                         'lead_id'       => $matchedId,
                         'user_id'       => $currentUserId,
                         'activity_type' => 'note',
@@ -1117,7 +1278,7 @@ class Leads extends MY_Controller {
                     }
 
                     $newId = $this->Lead_model->insert($insertData);
-                    $this->db->insert('lead_activities', [
+                    $this->db->insert('crm_lead_activities', [
                         'lead_id'       => $newId,
                         'user_id'       => $currentUserId,
                         'activity_type' => 'note',
@@ -1141,6 +1302,9 @@ class Leads extends MY_Controller {
 
             $this->db->trans_commit();
             $this->db->db_debug = $old_db_debug;
+
+            // Auto-sync product_id from product_demo column against crm_products
+            $this->Lead_model->sync_products_from_product_demo();
         } catch (\Throwable $e) {
             $this->db->trans_rollback();
             $this->db->db_debug = $old_db_debug;

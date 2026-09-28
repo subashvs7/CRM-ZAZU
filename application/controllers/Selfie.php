@@ -16,8 +16,8 @@ class Selfie extends MY_Controller {
     public function log_datatable() {
         $params = $this->input->get();
         $this->db->select('a.id, u.name AS user_name, a.date, a.punch_in_selfie, a.face_verified, a.face_confidence_score, a.punch_in_at')
-            ->from('attendance a')
-            ->join('users u','u.id=a.user_id','left')
+            ->from('crm_attendance a')
+            ->join('crm_user u','u.id=a.user_id','left')
             ->where(['a.is_deleted'=>0])->where('a.punch_in_selfie IS NOT NULL');
         $total = $this->db->count_all_results('',false);
         $this->db->order_by('a.date','desc')->limit($params['length'],$params['start']);
@@ -39,8 +39,8 @@ class Selfie extends MY_Controller {
     public function mismatches_datatable() {
         $params = $this->input->get();
         $this->db->select('a.id, u.name AS user_name, a.date, a.punch_in_selfie, a.face_confidence_score, a.punch_in_at')
-            ->from('attendance a')
-            ->join('users u','u.id=a.user_id','left')
+            ->from('crm_attendance a')
+            ->join('crm_user u','u.id=a.user_id','left')
             ->where(['a.is_deleted'=>0,'a.face_verified'=>0])->where('a.punch_in_selfie IS NOT NULL');
         $total = $this->db->count_all_results('',false);
         $this->db->order_by('a.date','desc')->limit($params['length'],$params['start']);

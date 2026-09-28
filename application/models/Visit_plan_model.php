@@ -2,24 +2,24 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Visit_plan_model extends MY_Model {
-    protected $table = 'visit_plans';
+    protected $table = 'crm_visit_plans';
 
     public function get_with_details($id) {
         return $this->db->select("vp.*, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, u.name AS user_name, cb.name AS created_by_name")
-            ->from('visit_plans vp')
-            ->join('customers c', 'c.id = vp.customer_id', 'left')
-            ->join('users u', 'u.id = vp.user_id', 'left')
-            ->join('users cb', 'cb.id = vp.created_by', 'left')
+            ->from('crm_visit_plans vp')
+            ->join('crm_customers c', 'c.id = vp.customer_id', 'left')
+            ->join('crm_user u', 'u.id = vp.user_id', 'left')
+            ->join('crm_user cb', 'cb.id = vp.created_by', 'left')
             ->where(['vp.id' => $id, 'vp.is_deleted' => 0])
             ->get()->row_array();
     }
 
     public function datatable($params, $status_filter = null, $user_id = null, $role = null) {
         $this->db->select("vp.id, vp.customer_id, vp.planned_date, vp.planned_time, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, c.customer_type, u.name AS user_name, vp.visit_status, vp.purpose, vp.status, vp.created_at, vl.id AS open_visit_log_id")
-            ->from('visit_plans vp')
-            ->join('customers c', 'c.id = vp.customer_id', 'left')
-            ->join('users u', 'u.id = vp.user_id', 'left')
-            ->join('visit_logs vl', 'vl.visit_plan_id = vp.id AND vl.check_out_at IS NULL', 'left');
+            ->from('crm_visit_plans vp')
+            ->join('crm_customers c', 'c.id = vp.customer_id', 'left')
+            ->join('crm_user u', 'u.id = vp.user_id', 'left')
+            ->join('crm_visit_logs vl', 'vl.visit_plan_id = vp.id AND vl.check_out_at IS NULL', 'left');
 
         if ($status_filter === 'deleted')      $this->db->where('vp.is_deleted', 1);
         elseif ($status_filter === 'primary')  $this->db->where(['c.customer_type' => 'primary', 'vp.is_deleted' => 0]);
@@ -55,9 +55,9 @@ class Visit_plan_model extends MY_Model {
 
     public function calendar_data($user_id = null, $role = null, $start = null, $end = null) {
         $this->db->select("vp.id, vp.planned_date, vp.planned_time, vp.visit_status, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, u.name AS user_name")
-            ->from('visit_plans vp')
-            ->join('customers c', 'c.id = vp.customer_id', 'left')
-            ->join('users u', 'u.id = vp.user_id', 'left')
+            ->from('crm_visit_plans vp')
+            ->join('crm_customers c', 'c.id = vp.customer_id', 'left')
+            ->join('crm_user u', 'u.id = vp.user_id', 'left')
             ->where('vp.is_deleted', 0);
         if ($role === 'field_staff') $this->db->where('vp.user_id', $user_id);
         if ($start) $this->db->where('vp.planned_date >=', $start);

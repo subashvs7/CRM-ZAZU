@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Product_asset_model extends MY_Model {
-    protected $table = 'product_assets';
+    protected $table = 'crm_product_assets';
 
     public function insert($data) {
         $data['is_deleted'] = 0;
@@ -18,8 +18,8 @@ class Product_asset_model extends MY_Model {
 
     public function get_with_product($id) {
         return $this->db->select('a.*, p.name as product_name')
-            ->from('product_assets a')
-            ->join('products p', 'p.id = a.product_id', 'left')
+            ->from('crm_product_assets a')
+            ->join('crm_products p', 'p.id = a.product_id', 'left')
             ->where('a.id', $id)
             ->where('a.is_deleted', 0)
             ->get()->row_array();
@@ -27,9 +27,9 @@ class Product_asset_model extends MY_Model {
 
     public function datatable($params) {
         $this->db->select('a.id, a.title, a.description, a.asset_type, a.product_id, p.name as product_name, p.sku as product_sku, p.logo as product_logo, p.image as product_image, p.theme_color as product_theme_color, u.name as user_name, a.file_link, a.created_at, a.updated_at')
-            ->from('product_assets a')
-            ->join('products p', 'p.id = a.product_id', 'left')
-            ->join('users u', 'u.id = a.created_by', 'left')
+            ->from('crm_product_assets a')
+            ->join('crm_products p', 'p.id = a.product_id', 'left')
+            ->join('crm_user u', 'u.id = a.created_by', 'left')
             ->where('a.is_deleted', 0);
 
         $search = $params['search']['value'] ?? '';
@@ -80,7 +80,7 @@ class Product_asset_model extends MY_Model {
         ];
         
         $res = $this->db->select('asset_type, COUNT(id) as cnt')
-            ->from('product_assets')
+            ->from('crm_product_assets')
             ->where('is_deleted', 0)
             ->group_by('asset_type')
             ->get()->result_array();

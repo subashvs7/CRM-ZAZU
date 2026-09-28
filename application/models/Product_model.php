@@ -2,28 +2,28 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Product_model extends MY_Model {
-    protected $table = 'products';
+    protected $table = 'crm_products';
 
     public function get_with_category($id) {
         return $this->db->select('p.*, pc.name AS category_name')
-            ->from('products p')
-            ->join('product_categories pc', 'pc.id = p.category_id', 'left')
+            ->from('crm_products p')
+            ->join('crm_product_categories pc', 'pc.id = p.category_id', 'left')
             ->where(['p.id' => $id, 'p.is_deleted' => 0])
             ->get()->row_array();
     }
 
     public function get_active_with_category() {
         return $this->db->select('p.*, pc.name AS category_name')
-            ->from('products p')
-            ->join('product_categories pc', 'pc.id = p.category_id', 'left')
+            ->from('crm_products p')
+            ->join('crm_product_categories pc', 'pc.id = p.category_id', 'left')
             ->where(['p.status' => 'active', 'p.is_deleted' => 0])
             ->order_by('p.name')->get()->result_array();
     }
 
     public function datatable($params, $status_filter = null) {
         $this->db->select('p.*, pc.name AS category_name')
-            ->from('products p')
-            ->join('product_categories pc', 'pc.id = p.category_id', 'left');
+            ->from('crm_products p')
+            ->join('crm_product_categories pc', 'pc.id = p.category_id', 'left');
 
         if ($status_filter === 'deleted')      $this->db->where('p.is_deleted', 1);
         elseif ($status_filter === 'active')   $this->db->where(['p.status' => 'active',   'p.is_deleted' => 0]);

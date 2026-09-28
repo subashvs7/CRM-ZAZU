@@ -93,8 +93,8 @@ class Attendance extends MY_Controller {
         $this->require_role(['admin','manager']);
         $params = $this->input->get();
         $this->db->select('a.id, u.name AS user_name, a.date, a.punch_in_at, a.punch_out_at, a.attendance_status, a.regularized_reason')
-            ->from('attendance a')
-            ->join('users u','u.id=a.user_id','left')
+            ->from('crm_attendance a')
+            ->join('crm_user u','u.id=a.user_id','left')
             ->where(['a.is_regularized'=>0,'a.is_deleted'=>0]);
         $total = $this->db->count_all_results('',false);
         $this->db->order_by('a.date','desc')->limit($params['length'],$params['start']);

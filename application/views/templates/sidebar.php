@@ -173,7 +173,10 @@
             <a href="<?= base_url('communications/bulk_mail') ?>" class="sub-link sidebar-text<?= ($seg1==='communications' && ($seg2==='bulk_mail' || $seg2==='')) ?' active':'' ?>">
                 <i class="fa fa-paper-plane w-4 text-center"></i> Send Mail
             </a>
-            <a href="<?= base_url('communications/bulk_mail#tab-history') ?>" class="sub-link sidebar-text">
+            <a href="<?= base_url('communications/mail_templates') ?>" class="sub-link sidebar-text<?= ($seg1==='communications' && $seg2==='mail_templates') ?' active':'' ?>">
+                <i class="fa fa-folder-open-o w-4 text-center"></i> Mail Templates
+            </a>
+            <a href="<?= base_url('communications/mail_history') ?>" class="sub-link sidebar-text<?= ($seg1==='communications' && $seg2==='mail_history') ?' active':'' ?>">
                 <i class="fa fa-history w-4 text-center"></i> Mail History
             </a>
             <a href="<?= base_url('communications/smtp_settings') ?>" class="sub-link sidebar-text<?= ($seg1==='communications' && $seg2==='smtp_settings') ?' active':'' ?>">

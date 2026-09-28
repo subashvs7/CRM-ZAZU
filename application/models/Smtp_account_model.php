@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Smtp_account_model extends MY_Model {
-    protected $table = 'smtp_accounts';
+    protected $table = 'crm_smtp_accounts';
 
     public function __construct() {
         parent::__construct();

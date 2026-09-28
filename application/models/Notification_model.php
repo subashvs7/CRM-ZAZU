@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Notification_model extends MY_Model {
-    protected $table = 'notifications';
+    protected $table = 'crm_notifications';
 
     public function get_user_notifications($user_id, $limit = 20) {
         return $this->db->where(['user_id' => $user_id, 'is_deleted' => 0])

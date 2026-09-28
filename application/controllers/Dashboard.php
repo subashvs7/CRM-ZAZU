@@ -33,27 +33,27 @@ class Dashboard extends MY_Controller {
             $data['total_orders']     = $this->Order_model->count_all(['status'=>'active']);
             $data['pending_orders']   = $this->Order_model->count_all(['order_status'=>'pending_approval','is_deleted'=>0]);
             $data['active_staff']     = $this->User_model->count_all(['role'=>'field_staff','status'=>'active']);
-            $data['visits_today']     = $this->db->where(['is_deleted'=>0])->where('DATE(check_in_at)',$today)->count_all_results('visit_logs');
-            $data['visits_month']     = $this->db->where(['is_deleted'=>0])->where('check_in_at >=',$month_s)->where('check_in_at <=',$month_e.' 23:59:59')->count_all_results('visit_logs');
+            $data['visits_today']     = $this->db->where(['is_deleted'=>0])->where('DATE(check_in_at)',$today)->count_all_results('crm_visit_logs');
+            $data['visits_month']     = $this->db->where(['is_deleted'=>0])->where('check_in_at >=',$month_s)->where('check_in_at <=',$month_e.' 23:59:59')->count_all_results('crm_visit_logs');
 
             $conv = $this->Lead_model->conversion_stats($month_s, $month_e);
             $data['lead_pipeline'] = $conv;
 
             $monthly_orders = $this->db->select('DATE(created_at) AS d, SUM(final_amount) AS total')
-                ->from('orders')->where(['is_deleted'=>0,'status'=>'active'])
+                ->from('crm_orders')->where(['is_deleted'=>0,'status'=>'active'])
                 ->where('created_at >=',$month_s)->where('created_at <=',$month_e.' 23:59:59')
                 ->group_by('DATE(created_at)')->order_by('d','asc')->get()->result_array();
             $data['monthly_orders'] = $monthly_orders;
 
             $data['top_staff'] = $this->db->select('u.id, u.name, COUNT(DISTINCT vl.id) AS visit_count, COUNT(DISTINCT l.id) AS lead_count')
-                ->from('visit_logs vl')
-                ->join('users u','u.id = vl.user_id','left')
-                ->join('leads l','l.assigned_to = u.id AND l.is_deleted = 0','left')
+                ->from('crm_visit_logs vl')
+                ->join('crm_user u','u.id = vl.user_id','left')
+                ->join('crm_leads l','l.assigned_to = u.id AND l.is_deleted = 0','left')
                 ->where(['vl.is_deleted'=>0])->where('DATE(vl.check_in_at)>=',$month_s)->where('DATE(vl.check_in_at)<=',$month_e)
                 ->group_by('u.id')->order_by('visit_count','desc')->limit(5)->get()->result_array();
         } else {
-            $data['my_visits_today'] = $this->db->where(['user_id'=>$uid,'is_deleted'=>0])->where('DATE(check_in_at)',$today)->count_all_results('visit_logs');
-            $data['my_visits_month'] = $this->db->where(['user_id'=>$uid,'is_deleted'=>0])->where('check_in_at >=',$month_s)->count_all_results('visit_logs');
+            $data['my_visits_today'] = $this->db->where(['user_id'=>$uid,'is_deleted'=>0])->where('DATE(check_in_at)',$today)->count_all_results('crm_visit_logs');
+            $data['my_visits_month'] = $this->db->where(['user_id'=>$uid,'is_deleted'=>0])->where('check_in_at >=',$month_s)->count_all_results('crm_visit_logs');
             $data['my_leads']        = $this->Lead_model->count_all(['assigned_to'=>$uid,'status'=>'active']);
             $data['my_orders']       = $this->Order_model->count_all(['created_by'=>$uid,'status'=>'active']);
 
@@ -63,9 +63,9 @@ class Dashboard extends MY_Controller {
             $data['punch_out_at']     = ($att && $att['punch_out_at']) ? date('H:i', strtotime($att['punch_out_at'])) : null;
 
             $plan = $this->db->select("vp.id, vp.planned_date, vp.planned_time, vp.purpose, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, vp.customer_id, vp.visit_status, vl.id AS open_visit_log_id")
-                ->from('visit_plans vp')
-                ->join('customers c','c.id=vp.customer_id','left')
-                ->join('visit_logs vl', 'vl.visit_plan_id = vp.id AND vl.check_out_at IS NULL', 'left')
+                ->from('crm_visit_plans vp')
+                ->join('crm_customers c','c.id=vp.customer_id','left')
+                ->join('crm_visit_logs vl', 'vl.visit_plan_id = vp.id AND vl.check_out_at IS NULL', 'left')
                 ->where(['vp.user_id'=>$uid,'vp.is_deleted'=>0])
                 ->where('vp.planned_date >=', $today)
                 ->where_in('vp.visit_status', ['planned', 'rescheduled'])

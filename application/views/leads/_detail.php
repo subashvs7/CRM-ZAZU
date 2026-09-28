@@ -122,8 +122,8 @@
                         <?php if(!empty($lead['email_bounced'])): ?>
                         <span class="px-2 py-0.5 rounded font-semibold <?= strtolower($lead['email_bounced']) === 'yes' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200' ?>">Bounce: <?= esc_html($lead['email_bounced']) ?></span>
                         <?php endif; ?>
-                        <?php if(!empty($lead['demo'])): ?>
-                        <span class="px-2 py-0.5 rounded font-semibold bg-purple-50 text-purple-700 border border-purple-200"><i class="fa fa-desktop mr-1"></i>Demo: <?= esc_html($lead['demo']) ?></span>
+                        <?php $demoVal = !empty($lead['product_demo']) ? $lead['product_demo'] : ($lead['demo'] ?? ''); if(!empty($demoVal)): ?>
+                        <span class="px-2 py-0.5 rounded font-semibold bg-purple-50 text-purple-700 border border-purple-200"><i class="fa fa-desktop mr-1"></i>Demo: <?= esc_html($demoVal) ?></span>
                         <?php endif; ?>
                         <?php if(!empty($lead['quotation'])): ?>
                         <span class="px-2 py-0.5 rounded font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200"><i class="fa fa-file-text-o mr-1"></i>Quote: <?= esc_html($lead['quotation']) ?></span>

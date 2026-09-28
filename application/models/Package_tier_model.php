@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Package_tier_model extends MY_Model {
-    protected $table = 'package_tiers';
+    protected $table = 'crm_package_tiers';
 
     public function get_all_active() {
         return $this->db->where(['status' => 'active', 'is_deleted' => 0])

@@ -39,13 +39,13 @@ class Seeder extends CI_Controller {
             ['name'=>'Staff Zeta',  'email'=>'staff6@fieldcrm.com',  'role'=>'field_staff', 'phone'=>'9000000009'],
         ];
         foreach ($users as $u) {
-            $exists = $this->db->where('email',$u['email'])->count_all_results('users');
+            $exists = $this->db->where('email',$u['email'])->count_all_results('crm_user');
             if ($exists) continue;
-            $this->db->insert('users', array_merge($u, ['password'=>$hash,'status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]));
+            $this->db->insert('crm_user', array_merge($u, ['password'=>$hash,'status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]));
             $uid = $this->db->insert_id();
             if ($u['role'] === 'admin') {
                 $perms = ['leads.manage','orders.approve','attendance.correct','reports.view'];
-                foreach ($perms as $p) $this->db->insert('user_permissions',['user_id'=>$uid,'permission'=>$p]);
+                foreach ($perms as $p) $this->db->insert('crm_user_permissions',['user_id'=>$uid,'permission'=>$p]);
             }
         }
         echo "✅ Users seeded\n";
@@ -53,15 +53,15 @@ class Seeder extends CI_Controller {
 
     private function _seed_teams() {
         $now = date('Y-m-d H:i:s');
-        $mgr1 = $this->db->where('email','manager1@fieldcrm.com')->get('users')->row_array();
-        $mgr2 = $this->db->where('email','manager2@fieldcrm.com')->get('users')->row_array();
+        $mgr1 = $this->db->where('email','manager1@fieldcrm.com')->get('crm_user')->row_array();
+        $mgr2 = $this->db->where('email','manager2@fieldcrm.com')->get('crm_user')->row_array();
         $teams = [
             ['name'=>'North Team', 'manager_id'=>$mgr1['id']??null,'territory'=>'Delhi NCR'],
             ['name'=>'South Team', 'manager_id'=>$mgr2['id']??null,'territory'=>'Mumbai'],
             ['name'=>'East Team',  'manager_id'=>null,'territory'=>'Kolkata'],
         ];
         foreach ($teams as $t) {
-            $this->db->insert('teams', array_merge($t, ['status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]));
+            $this->db->insert('crm_teams', array_merge($t, ['status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]));
         }
         echo "✅ Teams seeded\n";
     }
@@ -74,7 +74,7 @@ class Seeder extends CI_Controller {
             ['name'=>'General Shift','start_time'=>'10:00:00','end_time'=>'19:00:00','grace_minutes'=>20,'half_day_hours'=>4,'full_day_hours'=>8],
         ];
         foreach ($shifts as $s) {
-            $this->db->insert('shifts', array_merge($s, ['status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]));
+            $this->db->insert('crm_shifts', array_merge($s, ['status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]));
         }
         echo "✅ Shifts seeded\n";
     }
@@ -87,14 +87,14 @@ class Seeder extends CI_Controller {
             ['name'=>'Casual Leave',  'days_allowed_per_year'=>8, 'carry_forward'=>0,'paid'=>1],
         ];
         foreach ($types as $t) {
-            $this->db->insert('leave_types', array_merge($t, ['status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]));
+            $this->db->insert('crm_leave_types', array_merge($t, ['status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]));
             $tid = $this->db->insert_id();
             // Seed balances for ALL users (admin/manager/field_staff)
-            $users = $this->db->where('is_deleted', 0)->get('users')->result_array();
+            $users = $this->db->where('is_deleted', 0)->get('crm_user')->result_array();
             foreach ($users as $u) {
-                $exists = $this->db->where(['user_id'=>$u['id'],'leave_type_id'=>$tid,'year'=>date('Y')])->count_all_results('leave_balances');
+                $exists = $this->db->where(['user_id'=>$u['id'],'leave_type_id'=>$tid,'year'=>date('Y')])->count_all_results('crm_leave_balances');
                 if (!$exists) {
-                    $this->db->insert('leave_balances',['user_id'=>$u['id'],'leave_type_id'=>$tid,'year'=>date('Y'),'total_days'=>$t['days_allowed_per_year'],'used_days'=>0,'pending_days'=>0,'status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]);
+                    $this->db->insert('crm_leave_balances',['user_id'=>$u['id'],'leave_type_id'=>$tid,'year'=>date('Y'),'total_days'=>$t['days_allowed_per_year'],'used_days'=>0,'pending_days'=>0,'status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]);
                 }
             }
         }
@@ -116,7 +116,7 @@ class Seeder extends CI_Controller {
             ['name'=>'New Year',         'date'=>$year.'-12-31','holiday_type'=>'national'],
         ];
         foreach ($holidays as $h) {
-            $this->db->insert('holidays', array_merge($h, ['status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]));
+            $this->db->insert('crm_holidays', array_merge($h, ['status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]));
         }
         echo "✅ Holidays seeded\n";
     }
@@ -125,10 +125,10 @@ class Seeder extends CI_Controller {
         $now = date('Y-m-d H:i:s');
         $roots = ['Electronics','FMCG','Pharmaceuticals','Industrial','Textiles'];
         foreach ($roots as $r) {
-            $this->db->insert('product_categories',['name'=>$r,'parent_id'=>null,'status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]);
+            $this->db->insert('crm_product_categories',['name'=>$r,'parent_id'=>null,'status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]);
             $pid = $this->db->insert_id();
             $subs = [$r.' - Type A',$r.' - Type B'];
-            foreach ($subs as $s) $this->db->insert('product_categories',['name'=>$s,'parent_id'=>$pid,'status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]);
+            foreach ($subs as $s) $this->db->insert('crm_product_categories',['name'=>$s,'parent_id'=>$pid,'status'=>'active','is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]);
         }
         echo "✅ Product categories seeded\n";
     }
@@ -140,19 +140,19 @@ class Seeder extends CI_Controller {
             $products[] = ['name'=>'Product '.$i,'sku'=>'SKU-'.str_pad($i,4,'0',STR_PAD_LEFT),'unit'=>'pcs','price'=>rand(10000,500000),'min_price'=>rand(5000,9000),'stock'=>rand(0,500),'status'=>$i<=18?'active':'inactive'];
         }
         foreach ($products as $p) {
-            $this->db->insert('products', array_merge($p, ['is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]));
+            $this->db->insert('crm_products', array_merge($p, ['is_deleted'=>0,'created_at'=>$now,'updated_at'=>$now]));
         }
         echo "✅ Products seeded\n";
     }
 
     private function _seed_customers() {
         $now   = date('Y-m-d H:i:s');
-        $staff = $this->db->where(['role'=>'field_staff','is_deleted'=>0])->get('users')->result_array();
+        $staff = $this->db->where(['role'=>'field_staff','is_deleted'=>0])->get('crm_user')->result_array();
         $cities = ['Mumbai','Delhi','Pune','Bengaluru','Chennai','Hyderabad','Kolkata','Ahmedabad','Jaipur','Lucknow'];
         for ($i=1; $i<=30; $i++) {
             $status = $i <= 25 ? 'active' : ($i <= 28 ? 'inactive' : 'deleted');
             $assigned = $staff ? $staff[array_rand($staff)]['id'] : null;
-            $this->db->insert('customers', [
+            $this->db->insert('crm_customers', [
                 'name'=>'Customer '.$i,'phone'=>'98765'.str_pad($i,5,'0',STR_PAD_LEFT),
                 'email'=>'customer'.$i.'@example.com','city'=>$cities[array_rand($cities)],
                 'state'=>'Maharashtra','assigned_to'=>$assigned,
@@ -166,15 +166,15 @@ class Seeder extends CI_Controller {
 
     private function _seed_leads() {
         $now       = date('Y-m-d H:i:s');
-        $customers = $this->db->where(['is_deleted'=>0,'status'=>'active'])->get('customers')->result_array();
-        $staff     = $this->db->where(['role'=>'field_staff','is_deleted'=>0])->get('users')->result_array();
+        $customers = $this->db->where(['is_deleted'=>0,'status'=>'active'])->get('crm_customers')->result_array();
+        $staff     = $this->db->where(['role'=>'field_staff','is_deleted'=>0])->get('crm_user')->result_array();
         $stages    = ['new','contacted','qualified','proposal','negotiation','won','lost'];
         $sources   = ['field','call','referral','online','walk_in'];
         for ($i=1; $i<=50; $i++) {
             if (!$customers || !$staff) break;
             $cust    = $customers[array_rand($customers)];
             $assignee= $staff[array_rand($staff)];
-            $this->db->insert('leads', [
+            $this->db->insert('crm_leads', [
                 'customer_id'=>$cust['id'],'title'=>'Lead for '.$cust['name'].' #'.$i,
                 'source'=>$sources[array_rand($sources)],'lead_status'=>$stages[array_rand($stages)],
                 'assigned_to'=>$assignee['id'],'expected_value'=>rand(10000,1000000)*100,

@@ -2,27 +2,27 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Geofence_zone_model extends MY_Model {
-    protected $table = 'geofence_zones';
+    protected $table = 'crm_geofence_zones';
 
     public function get_with_customer($id) {
         return $this->db->select("gz.*, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name")
-            ->from('geofence_zones gz')
-            ->join('customers c', 'c.id = gz.customer_id', 'left')
+            ->from('crm_geofence_zones gz')
+            ->join('crm_customers c', 'c.id = gz.customer_id', 'left')
             ->where(['gz.id' => $id, 'gz.is_deleted' => 0])
             ->get()->row_array();
     }
 
     public function get_active_zones() {
         return $this->db->select("gz.*, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name")
-            ->from('geofence_zones gz')
-            ->join('customers c', 'c.id = gz.customer_id', 'left')
+            ->from('crm_geofence_zones gz')
+            ->join('crm_customers c', 'c.id = gz.customer_id', 'left')
             ->where(['gz.status' => 'active', 'gz.is_deleted' => 0])
             ->get()->result_array();
     }
 
     public function datatable($params, $status_filter = null) {
         $this->db->select('gz.id, gz.name, gz.zone_type, gz.radius_meters, gz.auto_checkin, gz.alert_on_exit, gz.alert_on_enter, gz.status, gz.created_at')
-            ->from('geofence_zones gz');
+            ->from('crm_geofence_zones gz');
 
         if ($status_filter === 'deleted')      $this->db->where('gz.is_deleted', 1);
         elseif ($status_filter)                $this->db->where(['gz.status' => $status_filter, 'gz.is_deleted' => 0]);

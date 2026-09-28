@@ -19,7 +19,7 @@ class Workspace extends MY_Controller {
 
     public function contact_book() {
         $customers = $this->db->select("id, IF(customer_name != '', CONCAT(customer_name, ' (', customer_org_name, ')'), customer_org_name) AS display_name")
-            ->from('customers')->where(['status' => 'active', 'is_deleted' => 0, 'customer_type' => 'primary'])
+            ->from('crm_customers')->where(['status' => 'active', 'is_deleted' => 0, 'customer_type' => 'primary'])
             ->order_by('customer_org_name', 'asc')->get()->result_array();
         $this->load_view('workspace/contact_book', [
             'page_title' => 'Contact Book',
@@ -112,7 +112,7 @@ class Workspace extends MY_Controller {
         // Get linked customer display name if any
         if (!empty($contact['customer_id'])) {
             $cust = $this->db->select("IF(customer_name != '', CONCAT(customer_name, ' (', customer_org_name, ')'), customer_org_name) AS display_name")
-                ->from('customers')->where('id', $contact['customer_id'])->get()->row_array();
+                ->from('crm_customers')->where('id', $contact['customer_id'])->get()->row_array();
             $contact['customer_display'] = $cust['display_name'] ?? '';
         } else {
             $contact['customer_display'] = '';

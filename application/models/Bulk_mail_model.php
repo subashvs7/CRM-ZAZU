@@ -12,8 +12,8 @@ class Bulk_mail_model extends CI_Model {
      */
     public function get_templates_by_product($product_id = null, $category = null) {
         $this->db->select('t.*, p.name AS product_name, p.sku AS product_sku')
-            ->from('notification_templates t')
-            ->join('products p', 'p.id = t.product_id', 'left')
+            ->from('crm_notification_templates t')
+            ->join('crm_products p', 'p.id = t.product_id', 'left')
             ->where('t.channel', 'email')
             ->where('t.is_deleted', 0)
             ->where('t.status', 'active');
@@ -39,8 +39,8 @@ class Bulk_mail_model extends CI_Model {
      */
     public function get_template_by_id($id) {
         return $this->db->select('t.*, p.name AS product_name, p.price AS product_price, p.website_url AS product_website')
-            ->from('notification_templates t')
-            ->join('products p', 'p.id = t.product_id', 'left')
+            ->from('crm_notification_templates t')
+            ->join('crm_products p', 'p.id = t.product_id', 'left')
             ->where('t.id', (int)$id)
             ->where('t.is_deleted', 0)
             ->get()->row_array();
@@ -58,12 +58,12 @@ class Bulk_mail_model extends CI_Model {
         $data['updated_at'] = date('Y-m-d H:i:s');
 
         if ($id) {
-            $this->db->where('id', $id)->update('notification_templates', $data);
+            $this->db->where('id', $id)->update('crm_notification_templates', $data);
             return $id;
         } else {
             $data['created_at'] = date('Y-m-d H:i:s');
             $data['is_deleted'] = 0;
-            $this->db->insert('notification_templates', $data);
+            $this->db->insert('crm_notification_templates', $data);
             return $this->db->insert_id();
         }
     }
@@ -72,7 +72,7 @@ class Bulk_mail_model extends CI_Model {
      * Soft delete template
      */
     public function delete_template($id) {
-        return $this->db->where('id', (int)$id)->update('notification_templates', [
+        return $this->db->where('id', (int)$id)->update('crm_notification_templates', [
             'is_deleted' => 1,
             'status'     => 'deleted',
             'deleted_at' => date('Y-m-d H:i:s'),
@@ -121,8 +121,8 @@ class Bulk_mail_model extends CI_Model {
                 TRIM(CONCAT(COALESCE(l.first_name, ''), ' ', COALESCE(l.last_name, ''))) AS full_name,
                 l.first_name, l.last_name, l.company_name, l.title, l.corporate_phone AS phone,
                 l.product_id, p.name AS product_name, p.price AS product_price, l.lead_status")
-                ->from('leads l')
-                ->join('products p', 'p.id = l.product_id', 'left')
+                ->from('crm_leads l')
+                ->join('crm_products p', 'p.id = l.product_id', 'left')
                 ->where('l.is_deleted', 0)
                 ->where('l.status', 'active')
                 ->where('l.email IS NOT NULL', null, false)
@@ -168,7 +168,7 @@ class Bulk_mail_model extends CI_Model {
         // 2. Process Customers
         if ($hasCustomers) {
             $this->db->select("c.id AS customer_id, c.email, c.customer_name, c.customer_org_name, c.phone, c.status")
-                ->from('customers c')
+                ->from('crm_customers c')
                 ->where('c.is_deleted', 0)
                 ->where('c.email IS NOT NULL', null, false)
                 ->where('TRIM(c.email) !=', '');
@@ -210,7 +210,7 @@ class Bulk_mail_model extends CI_Model {
         // 3. Process Contact Book
         if ($hasContactBook) {
             $this->db->select("cb.id AS contact_id, cb.email, cb.name, cb.company_name, cb.phone, cb.job_title")
-                ->from('contact_book cb')
+                ->from('crm_contact_book cb')
                 ->where('cb.is_deleted', 0)
                 ->where('cb.email IS NOT NULL', null, false)
                 ->where('TRIM(cb.email) !=', '')
@@ -252,7 +252,7 @@ class Bulk_mail_model extends CI_Model {
      * Create campaign and add recipients to queue
      */
     public function create_campaign($data) {
-        $this->db->insert('bulk_mail_campaigns', $data);
+        $this->db->insert('crm_bulk_mail_campaigns', $data);
         return $this->db->insert_id();
     }
 
@@ -275,7 +275,7 @@ class Bulk_mail_model extends CI_Model {
         // Chunk in blocks of 200 for safe SQL batch insert
         $chunks = array_chunk($batch_data, 200);
         foreach ($chunks as $chunk) {
-            $this->db->insert_batch('bulk_mail_queue', $chunk);
+            $this->db->insert_batch('crm_bulk_mail_queue', $chunk);
         }
         return true;
     }
@@ -293,7 +293,7 @@ class Bulk_mail_model extends CI_Model {
         ];
 
         $this->db->select('status, count(id) as count');
-        $this->db->from('bulk_mail_queue');
+        $this->db->from('crm_bulk_mail_queue');
         $this->db->group_by('status');
         $query = $this->db->get();
 
@@ -304,7 +304,7 @@ class Bulk_mail_model extends CI_Model {
         }
         $stats['total'] = $stats['sent'] + $stats['queued'] + $stats['failed'];
 
-        $stats['campaigns'] = (int)$this->db->count_all('bulk_mail_campaigns');
+        $stats['campaigns'] = (int)$this->db->count_all('crm_bulk_mail_campaigns');
         return $stats;
     }
 
@@ -317,10 +317,10 @@ class Bulk_mail_model extends CI_Model {
             SUM(CASE WHEN q.status = "sent" THEN 1 ELSE 0 END) AS count_sent,
             SUM(CASE WHEN q.status = "failed" THEN 1 ELSE 0 END) AS count_failed,
             SUM(CASE WHEN q.status = "queued" THEN 1 ELSE 0 END) AS count_queued')
-            ->from('bulk_mail_campaigns c')
-            ->join('products p', 'p.id = c.product_id', 'left')
-            ->join('notification_templates t', 't.id = c.template_id', 'left')
-            ->join('bulk_mail_queue q', 'q.campaign_id = c.id', 'left')
+            ->from('crm_bulk_mail_campaigns c')
+            ->join('crm_products p', 'p.id = c.product_id', 'left')
+            ->join('crm_notification_templates t', 't.id = c.template_id', 'left')
+            ->join('crm_bulk_mail_queue q', 'q.campaign_id = c.id', 'left')
             ->group_by('c.id')
             ->order_by('c.created_at', 'DESC');
 
@@ -333,18 +333,18 @@ class Bulk_mail_model extends CI_Model {
      */
     public function get_campaign_detail($campaign_id) {
         $campaign = $this->db->select('c.*, p.name AS product_name, t.name AS template_name')
-            ->from('bulk_mail_campaigns c')
-            ->join('products p', 'p.id = c.product_id', 'left')
-            ->join('notification_templates t', 't.id = c.template_id', 'left')
+            ->from('crm_bulk_mail_campaigns c')
+            ->join('crm_products p', 'p.id = c.product_id', 'left')
+            ->join('crm_notification_templates t', 't.id = c.template_id', 'left')
             ->where('c.id', (int)$campaign_id)
             ->get()->row_array();
 
         if (!$campaign) return null;
 
         $items = $this->db->select('q.*, l.title AS lead_title, cust.customer_name')
-            ->from('bulk_mail_queue q')
-            ->join('leads l', 'l.id = q.lead_id', 'left')
-            ->join('customers cust', 'cust.id = q.customer_id', 'left')
+            ->from('crm_bulk_mail_queue q')
+            ->join('crm_leads l', 'l.id = q.lead_id', 'left')
+            ->join('crm_customers cust', 'cust.id = q.customer_id', 'left')
             ->where('q.campaign_id', (int)$campaign_id)
             ->order_by('q.id', 'ASC')
             ->get()->result_array();
@@ -358,8 +358,8 @@ class Bulk_mail_model extends CI_Model {
      */
     public function get_pending_queue($limit = 50) {
         $this->db->select('q.*, c.subject, c.message, c.product_id, c.template_id')
-            ->from('bulk_mail_queue q')
-            ->join('bulk_mail_campaigns c', 'c.id = q.campaign_id')
+            ->from('crm_bulk_mail_queue q')
+            ->join('crm_bulk_mail_campaigns c', 'c.id = q.campaign_id')
             ->where('q.status', 'queued')
             ->limit($limit);
         return $this->db->get()->result_array();
@@ -367,23 +367,98 @@ class Bulk_mail_model extends CI_Model {
 
     public function update_queue_item($id, $data) {
         $this->db->where('id', $id);
-        return $this->db->update('bulk_mail_queue', $data);
+        return $this->db->update('crm_bulk_mail_queue', $data);
     }
 
     public function update_campaign_status($id, $status) {
         $this->db->where('id', $id);
-        return $this->db->update('bulk_mail_campaigns', ['status' => $status]);
+        return $this->db->update('crm_bulk_mail_campaigns', ['status' => $status]);
     }
 
     public function check_and_update_campaign($campaign_id) {
         $this->db->where('campaign_id', $campaign_id);
         $this->db->where('status', 'queued');
-        $count = $this->db->count_all_results('bulk_mail_queue');
+        $count = $this->db->count_all_results('crm_bulk_mail_queue');
 
         if ($count == 0) {
             $this->update_campaign_status($campaign_id, 'completed');
         } else {
             $this->update_campaign_status($campaign_id, 'processing');
         }
+    }
+
+    /**
+     * Generate unique anti-spam reference code (e.g. ZAZU-8K2M)
+     */
+    public function generate_anti_spam_hash() {
+        $chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+        $rand = '';
+        for ($i = 0; $i < 5; $i++) {
+            $rand .= $chars[random_int(0, strlen($chars) - 1)];
+        }
+        return 'ZAZU-' . $rand;
+    }
+
+    /**
+     * Get distinct sender emails used in dispatches for filter dropdown
+     */
+    public function get_distinct_senders() {
+        $res = $this->db->distinct()
+            ->select('sender_email')
+            ->from('crm_bulk_mail_queue')
+            ->where('sender_email IS NOT NULL', null, false)
+            ->where('sender_email !=', '')
+            ->get()->result_array();
+        return array_column($res, 'sender_email');
+    }
+
+    /**
+     * Get detailed delivery logs with filters for History page
+     */
+    public function get_delivery_logs($params = [], $limit = 50, $offset = 0) {
+        $this->db->select('q.*, c.subject AS campaign_subject, c.recipient_type, p.name AS product_name, p.sku AS product_sku, sa.name AS sender_mailbox_name')
+            ->from('crm_bulk_mail_queue q')
+            ->join('crm_bulk_mail_campaigns c', 'c.id = q.campaign_id', 'left')
+            ->join('crm_products p', 'p.id = c.product_id', 'left')
+            ->join('crm_smtp_accounts sa', 'sa.id = q.smtp_account_id', 'left');
+
+        // Filter: Status
+        if (!empty($params['status']) && $params['status'] !== 'all') {
+            $this->db->where('q.status', $params['status']);
+        }
+
+        // Filter: Sender Mailbox
+        if (!empty($params['sender_email']) && $params['sender_email'] !== 'all') {
+            $this->db->where('q.sender_email', $params['sender_email']);
+        }
+
+        // Filter: Date Range
+        if (!empty($params['from_date'])) {
+            $this->db->where('DATE(COALESCE(q.sent_at, q.created_at)) >=', $params['from_date']);
+        }
+        if (!empty($params['to_date'])) {
+            $this->db->where('DATE(COALESCE(q.sent_at, q.created_at)) <=', $params['to_date']);
+        }
+
+        // Filter: Search keyword
+        if (!empty($params['search'])) {
+            $s = trim($params['search']);
+            $this->db->group_start()
+                ->like('q.recipient_email', $s)
+                ->or_like('q.recipient_name', $s)
+                ->or_like('q.anti_spam_hash', $s)
+                ->or_like('q.sender_email', $s)
+                ->or_like('c.subject', $s)
+                ->group_end();
+        }
+
+        $total = $this->db->count_all_results('', false);
+        $this->db->order_by('q.id', 'DESC')->limit($limit, $offset);
+        $rows = $this->db->get()->result_array();
+
+        return [
+            'total' => $total,
+            'rows'  => $rows
+        ];
     }
 }

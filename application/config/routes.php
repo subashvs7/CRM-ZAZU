@@ -30,6 +30,9 @@ $route['leads/import_validate']   = 'Leads/import_validate';
 $route['leads/import_confirm']    = 'Leads/import_confirm';
 $route['leads/sample_template']   = 'Leads/sample_template';
 $route['leads/export']            = 'Leads/export';
+$route['leads/lists_ajax']        = 'Leads/get_product_lists_ajax';
+$route['leads/create_list']       = 'Leads/create_product_list_ajax';
+$route['leads/delete_list']       = 'Leads/delete_product_list_ajax';
 
 // Customers
 $route['customers']                 = 'Customers/index';
@@ -238,3 +241,10 @@ $route['communications/campaign_detail_ajax/(:num)']  = 'Communications/campaign
 $route['communications/history_ajax']                 = 'Communications/history_ajax';
 $route['communications/smtp_pool_status']             = 'Communications/smtp_pool_status_ajax';
 $route['communications/smtp_settings']                = 'Communications/smtp_settings';
+$route['communications/mail_templates']              = 'Communications/mail_templates';
+$route['communications/mail_history']                = 'Communications/mail_history';
+$route['communications/delivery_logs_ajax']          = 'Communications/delivery_logs_ajax';
+$route['communications/process_queue_cron']           = 'Communications/process_queue_cron';
+$route['communications/process_queue_batch_ajax']     = 'Communications/process_queue_batch_ajax';
+$route['mail_templates']                              = 'Communications/mail_templates';
+$route['mail_history']                                = 'Communications/mail_history';

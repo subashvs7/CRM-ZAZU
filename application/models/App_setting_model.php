@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class App_setting_model extends MY_Model {
-    protected $table = 'app_settings';
+    protected $table = 'crm_app_settings';
 
     public function get_by_key($key) {
         $row = $this->db->where(['setting_key' => $key, 'is_deleted' => 0])->get($this->table)->row_array();

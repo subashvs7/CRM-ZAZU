@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Shift_model extends MY_Model {
-    protected $table = 'shifts';
+    protected $table = 'crm_shifts';
 
     public function datatable($params, $status_filter = null) {
         $this->db->from($this->table);

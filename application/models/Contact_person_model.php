@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Contact_person_model extends MY_Model {
-    protected $table = 'contact_persons';
+    protected $table = 'crm_contact_persons';
 
     public function get_by_customer($customer_id) {
         return $this->db->where(['customer_id' => $customer_id, 'is_deleted' => 0])

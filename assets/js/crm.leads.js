@@ -13,6 +13,7 @@ $(function() {
                 url: BASE_URL + 'leads/datatable',
                 data: function(d) {
                     d.status_filter = window.currentStatusFilter || '';
+                    d.product_id    = window.currentProductFilter || '';
                 }
             },
             columns: [
@@ -66,8 +67,15 @@ $(function() {
         }
     });
 
-    // Close dropdown on clicking any item
-    $(document).on('click', '#export-dropdown-menu a', function() {
+    // Close dropdown on clicking any item (append product_id filter if active)
+    $(document).on('click', '#export-dropdown-menu a', function(e) {
+        if (window.currentProductFilter) {
+            e.preventDefault();
+            var href = $(this).attr('href');
+            var url = new URL(href, window.location.origin);
+            url.searchParams.set('product_id', window.currentProductFilter);
+            window.location.href = url.toString();
+        }
         $('#export-dropdown-menu').addClass('hidden');
     });
 
@@ -152,7 +160,7 @@ $(function() {
             $f.find('[name="email_sent"]').val(data.email_sent || '');
             $f.find('[name="email_open"]').val(data.email_open || '');
             $f.find('[name="email_bounced"]').val(data.email_bounced || '');
-            $f.find('[name="demo"]').val(data.demo || '');
+            $f.find('[name="product_demo"], [name="demo"]').val(data.product_demo || data.demo || '');
             $f.find('[name="quotation"]').val(data.quotation || '');
             $f.find('[name="product_id"]').val(data.product_id || '').trigger('change');
             $f.find('[name="expected_value"]').val(data.expected_value ? (data.expected_value / 100).toFixed(2) : '');
@@ -174,7 +182,11 @@ $(function() {
             $f.find('[name="lead_status"]').val('new');
             $f.find('[name="source"]').val('online');
             $f.find('[name="customer_id"]').val('').trigger('change');
-            $f.find('[name="product_id"]').val('').trigger('change');
+            if (window.currentProductFilter && window.currentProductFilter !== 'all' && window.currentProductFilter !== 'unassigned') {
+                $f.find('[name="product_id"]').val(window.currentProductFilter).trigger('change');
+            } else {
+                $f.find('[name="product_id"]').val('').trigger('change');
+            }
             $('#product-ref-price-text').text('₹0.00');
             if ($f.find('[name="assigned_to"]').length) {
                 $f.find('[name="assigned_to"]').val('').trigger('change');
@@ -418,7 +430,7 @@ $(function() {
             $('#view-email-open').html(d.email_open ? '<span class="px-2 py-0.5 rounded font-bold ' + (d.email_open.toLowerCase() === 'yes' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-700') + '">' + $('<div>').text(d.email_open).html() + '</span>' : '-');
             $('#view-email-bounced').html(d.email_bounced ? '<span class="px-2 py-0.5 rounded font-bold ' + (d.email_bounced.toLowerCase() === 'yes' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200') + '">' + $('<div>').text(d.email_bounced).html() + '</span>' : '-');
 
-            $('#view-demo').text(d.demo || '-');
+            $('#view-demo').text(d.product_demo || d.demo || '-');
             $('#view-quotation').text(d.quotation || '-');
             $('#view-expected-value').text(d.expected_value ? ('₹' + (d.expected_value / 100).toLocaleString('en-IN', {minimumFractionDigits: 2})) : '-');
             if (d.product_name) {
@@ -502,6 +514,11 @@ $(function() {
         $('#preview-matched-products-count').text('0 Matched');
         $('input[name="global_dup_action"][value="skip"]').prop('checked', true);
         updateDupChoiceStyles('skip');
+        if (window.currentProductFilter && window.currentProductFilter !== 'all' && window.currentProductFilter !== 'unassigned') {
+            $('#drawer-target-product').val(window.currentProductFilter);
+        } else {
+            $('#drawer-target-product').val('auto');
+        }
     }
 
     function closeImportDrawer() {
@@ -875,6 +892,7 @@ $(function() {
                     if (window.mainTable) {
                         window.mainTable.ajax.reload(null, false);
                     }
+                    refreshProductLists();
                 } else {
                     CRM.toast('error', resp.message || 'Import failed.');
                 }
@@ -916,4 +934,156 @@ $(function() {
         var msg = action === 'delete' ? 'Delete this lead record?' : 'Change status for this lead?';
         CRM.handle_status(action, id, BASE_URL + 'leads/status', window.mainTable, msg);
     });
+
+    // =========================================================================
+    // PRODUCT LISTS & SEGMENTS HUB (LIST CONCEPT)
+    // =========================================================================
+
+    // 1. Open Product Drill-down: Click Product List row or "Open List" button
+    $(document).on('click', '.btn-filter-leads-by-product, .product-list-card-row', function(e) {
+        // If clicking action buttons inside row, don't trigger row click
+        if ($(e.target).closest('a, .btn-upload-to-product-list, .btn-delete-product-list, input').length) {
+            return;
+        }
+
+        var id        = $(this).data('id');
+        var name      = $(this).data('name') || 'Product List';
+        var leads     = $(this).data('leads') || 0;
+        var customers = $(this).data('customers') || 0;
+
+        window.currentProductFilter = id;
+
+        $('#active-product-title').text(name);
+        $('#active-product-badge').text(leads + ' Leads • ' + customers + ' Customers');
+
+        // Hide Product Lists Hub, Show Leads & Customers for this Product
+        $('#view-products-hub').addClass('hidden');
+        $('#view-leads-database').removeClass('hidden');
+
+        if (window.mainTable) {
+            window.mainTable.ajax.reload();
+        }
+
+        $('html, body').animate({ scrollTop: 0 }, 200);
+    });
+
+    // 2. Back to Product Lists Overview
+    $(document).on('click', '#btn-back-to-products', function() {
+        window.currentProductFilter = '';
+        $('#view-leads-database').addClass('hidden');
+        $('#view-products-hub').removeClass('hidden');
+        refreshProductLists();
+        $('html, body').animate({ scrollTop: 0 }, 200);
+    });
+
+    // 4. Live Search among Product Lists
+    $(document).on('input', '#product-list-search-input', function() {
+        var q = $(this).val().toLowerCase().trim();
+        $('.product-list-card-row').each(function() {
+            var name = $(this).data('name') || '';
+            var rowText = $(this).text().toLowerCase();
+            if (!q || name.indexOf(q) !== -1 || rowText.indexOf(q) !== -1) {
+                $(this).removeClass('hidden');
+            } else {
+                $(this).addClass('hidden');
+            }
+        });
+    });
+
+    // 5. Toggle Quick Filter Bar
+    $(document).on('click', '#btn-toggle-list-filters', function() {
+        $('#list-quick-filter-bar').toggleClass('hidden');
+    });
+
+    // 6. Quick Filter Pills
+    $(document).on('click', '.btn-list-filter-pill', function() {
+        $('.btn-list-filter-pill').removeClass('active bg-amber-500 text-white shadow-2xs').addClass('bg-white text-gray-600 border border-gray-200');
+        $(this).addClass('active bg-amber-500 text-white shadow-2xs').removeClass('bg-white text-gray-600 border border-gray-200');
+        var f = $(this).data('filter');
+        $('.product-list-card-row').each(function() {
+            var leads = parseInt($(this).data('leads')) || 0;
+            var custs = parseInt($(this).data('customers')) || 0;
+            if (f === 'all') {
+                $(this).removeClass('hidden');
+            } else if (f === 'has_customers') {
+                $(this).toggle(custs > 0);
+            } else if (f === 'has_leads') {
+                $(this).toggle(leads > 0);
+            }
+        });
+    });
+
+    // 7. Upload leads to a specific product
+    $(document).on('click', '.btn-upload-to-product-list', function(e) {
+        e.stopPropagation();
+        var id = $(this).data('id');
+        $('#drawer-target-product').val(id).trigger('change');
+        $('#btn-open-import').trigger('click');
+    });
+
+    // 8. Refresh Product Lists via AJAX
+    function refreshProductLists() {
+        $.ajax({
+            url: BASE_URL + 'leads/lists_ajax',
+            method: 'GET',
+            dataType: 'json',
+            success: function(resp) {
+                if (resp && resp.status === 'success' && resp.data) {
+                    var lists = resp.data;
+                    $('#product-lists-total-badge').text(lists.length + ' Lists');
+                    var html = '';
+                    if (lists.length === 0) {
+                        html = '<tr><td colspan="7" class="py-6 text-center text-gray-400">No products found in CRM database.</td></tr>';
+                    } else {
+                        lists.forEach(function(l) {
+                            var escName = $('<div>').text(l.name).html();
+                            var escSku  = l.sku ? $('<div>').text(l.sku).html() : '';
+                            var escCat  = l.category_name ? $('<div>').text(l.category_name).html() : '';
+                            var subtitle = '';
+                            if (escSku || escCat) {
+                                subtitle = '<span class="block text-[11px] text-gray-400 font-normal">' + (escSku || '') + ((escSku && escCat) ? ' • ' : '') + (escCat || '') + '</span>';
+                            }
+                            var creator = $('<div>').text(l.created_by).html();
+                            var modified = $('<div>').text(l.last_modified).html();
+
+                            html += '<tr class="hover:bg-amber-50/40 transition-colors product-list-card-row cursor-pointer" data-id="' + l.id + '" data-name="' + escName.toLowerCase() + '" data-leads="' + l.leads_count + '" data-customers="' + l.customers_count + '">';
+                            html += '<td class="py-3.5 px-4"><div class="flex items-center gap-2.5">';
+                            html += '<div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-xs border border-emerald-200 flex-shrink-0"><i class="fa fa-cube"></i></div>';
+                            html += '<div><button type="button" class="btn-filter-leads-by-product text-left font-bold text-gray-900 hover:text-emerald-700 text-sm tracking-tight cursor-pointer uppercase" data-id="' + l.id + '" data-name="' + escName + '" data-leads="' + l.leads_count + '" data-customers="' + l.customers_count + '">' + escName + '</button>' + subtitle + '</div>';
+                            html += '</div></td>';
+                            html += '<td class="py-3.5 px-4"><span class="font-mono font-bold text-gray-900 text-sm">' + l.total_records + '</span><span class="text-[11px] text-gray-400 font-medium ml-1">Records</span></td>';
+                            html += '<td class="py-3.5 px-4"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200"><i class="fa fa-users text-blue-600"></i><span>' + l.customers_count + '</span> Customers</span></td>';
+                            html += '<td class="py-3.5 px-4"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa fa-filter text-emerald-600"></i><span>' + l.leads_count + '</span> Leads</span></td>';
+                            html += '<td class="py-3.5 px-4 text-gray-600 text-xs"><i class="fa fa-user-circle-o text-gray-400 mr-1"></i> ' + creator + '</td>';
+                            html += '<td class="py-3.5 px-4 text-gray-500 text-xs"><i class="fa fa-clock-o text-gray-400 mr-1"></i> ' + modified + '</td>';
+                            html += '<td class="py-3.5 px-4 text-right"><div class="inline-flex items-center gap-1.5">';
+                            html += '<button type="button" class="btn-filter-leads-by-product px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors shadow-2xs flex items-center gap-1 cursor-pointer" data-id="' + l.id + '" data-name="' + escName + '" data-leads="' + l.leads_count + '" data-customers="' + l.customers_count + '"><i class="fa fa-folder-open-o"></i> Open Leads</button>';
+                            html += '<button type="button" class="btn-upload-to-product-list p-1.5 text-gray-400 hover:text-emerald-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer" data-id="' + l.id + '" title="Upload Excel to this Product"><i class="fa fa-upload"></i></button>';
+                            html += '<a href="' + BASE_URL + 'leads/export?format=xlsx&product_id=' + l.id + '" class="p-1.5 text-gray-400 hover:text-blue-700 rounded-lg hover:bg-gray-100 transition-colors" title="Export this product list"><i class="fa fa-download"></i></a>';
+                            html += '</div></td></tr>';
+                        });
+                    }
+                    $('#product-lists-summary-tbody').html(html);
+
+                    // Also synchronize dropdowns
+                    var currentTargetVal = $('#drawer-target-product').val();
+                    var currentDtVal     = $('#dt-product-filter').val();
+                    var optsHtml = '<option value="auto">🔄 Auto-Detect from Excel / Ads Keywords</option>';
+                    var dtOptsHtml = '<option value="">All Products / Lists</option>';
+                    lists.forEach(function(l) {
+                        if (!l.is_unassigned) {
+                            var escN = $('<div>').text(l.name).html();
+                            optsHtml += '<option value="' + l.id + '">📦 ' + escN + '</option>';
+                            dtOptsHtml += '<option value="' + l.id + '">📦 ' + escN + '</option>';
+                        }
+                    });
+                    dtOptsHtml += '<option value="unassigned">Unassigned Leads</option>';
+
+                    $('#drawer-target-product').html(optsHtml).val(currentTargetVal || 'auto');
+                    $('#dt-product-filter').html(dtOptsHtml).val(currentDtVal || '');
+                }
+            }
+        });
+    }
+    window.refreshProductLists = refreshProductLists;
 });

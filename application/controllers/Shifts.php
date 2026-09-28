@@ -58,7 +58,7 @@ class Shifts extends MY_Controller {
         $sid  = (int)$this->input->post('shift_id');
         $from = $this->input->post('effective_from');
         if (!$uid || !$sid || !$from) $this->json_error('All fields required.');
-        $this->db->where(['user_id'=>$uid,'is_deleted'=>0])->where('effective_to IS NULL')->update('shift_assignments',['effective_to'=>date('Y-m-d',strtotime($from.' -1 day')),'updated_at'=>date('Y-m-d H:i:s')]);
+        $this->db->where(['user_id'=>$uid,'is_deleted'=>0])->where('effective_to IS NULL')->update('crm_shift_assignments',['effective_to'=>date('Y-m-d',strtotime($from.' -1 day')),'updated_at'=>date('Y-m-d H:i:s')]);
         $this->Shift_assignment_model->insert(['user_id'=>$uid,'shift_id'=>$sid,'effective_from'=>$from,'effective_to'=>null]);
         $this->json_success([],'Shift assigned.');
     }

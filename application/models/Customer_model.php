@@ -2,20 +2,20 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Customer_model extends MY_Model {
-    protected $table = 'customers';
+    protected $table = 'crm_customers';
 
     public function get_with_staff($id) {
         return $this->db->select('c.*, u.name AS assigned_name')
-            ->from('customers c')
-            ->join('users u', 'u.id = c.assigned_to', 'left')
+            ->from('crm_customers c')
+            ->join('crm_user u', 'u.id = c.assigned_to', 'left')
             ->where(['c.id' => $id, 'c.is_deleted' => 0])
             ->get()->row_array();
     }
 
     public function datatable($params, $status_filter = null, $user_id = null, $role = null) {
         $this->db->select('c.id, c.customer_name, c.customer_org_name, c.phone, c.email, c.city, c.state, c.notes, c.product_ids, u.name AS assigned_name, c.status, c.created_at')
-            ->from('customers c')
-            ->join('users u', 'u.id = c.assigned_to', 'left');
+            ->from('crm_customers c')
+            ->join('crm_user u', 'u.id = c.assigned_to', 'left');
 
         if ($status_filter === 'deleted')      $this->db->where('c.is_deleted', 1);
         elseif ($status_filter === 'active')   $this->db->where(['c.status' => 'active',   'c.is_deleted' => 0]);
@@ -78,7 +78,7 @@ class Customer_model extends MY_Model {
 
     public function get_map_data($user_id = null, $role = null) {
         $this->db->select("c.id, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS name, c.phone, c.city, c.latitude, c.longitude, c.status")
-            ->from('customers c')
+            ->from('crm_customers c')
             ->where(['c.is_deleted' => 0, 'c.status' => 'active'])
             ->where('c.latitude IS NOT NULL')
             ->where('c.longitude IS NOT NULL');

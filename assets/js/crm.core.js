@@ -12,6 +12,30 @@ $.ajaxSetup({
     }
 });
 
+// Auto-inject CSRF token to prevent 403 Access Denied on any AJAX POST
+$.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+    if (options.type && options.type.toUpperCase() === 'POST') {
+        var csrfName = typeof CI3_CSRF_NAME !== 'undefined' ? CI3_CSRF_NAME : 'csrf_crm';
+        var csrfHash = typeof CI3_CSRF_HASH !== 'undefined' ? CI3_CSRF_HASH : $('[name="' + csrfName + '"]').val();
+
+        if (csrfName && csrfHash) {
+            if (typeof options.data === 'string') {
+                if (options.data.indexOf(encodeURIComponent(csrfName) + '=') === -1 && options.data.indexOf(csrfName + '=') === -1) {
+                    options.data += (options.data ? '&' : '') + encodeURIComponent(csrfName) + '=' + encodeURIComponent(csrfHash);
+                }
+            } else if ($.isPlainObject(options.data)) {
+                if (!options.data[csrfName]) {
+                    options.data[csrfName] = csrfHash;
+                }
+            } else if (typeof FormData !== 'undefined' && options.data instanceof FormData) {
+                if (!options.data.has(csrfName)) {
+                    options.data.append(csrfName, csrfHash);
+                }
+            }
+        }
+    }
+});
+
 var CRM = {
 
     toast: function(type, msg, title) {

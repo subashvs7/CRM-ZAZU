@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Gps_track_model extends MY_Model {
-    protected $table = 'gps_tracks';
+    protected $table = 'crm_gps_tracks';
 
     public function get_trail($user_id, $date) {
         return $this->db->where(['user_id' => $user_id, 'is_deleted' => 0])
@@ -19,8 +19,8 @@ class Gps_track_model extends MY_Model {
 
     public function ping_datatable($params) {
         $this->db->select('gt.id, u.name AS user_name, gt.latitude, gt.longitude, gt.accuracy, gt.speed, gt.battery_level, gt.recorded_at')
-            ->from('gps_tracks gt')
-            ->join('users u', 'u.id = gt.user_id', 'left')
+            ->from('crm_gps_tracks gt')
+            ->join('crm_user u', 'u.id = gt.user_id', 'left')
             ->where('gt.is_deleted', 0);
 
         $search = $params['search']['value'] ?? '';

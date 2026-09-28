@@ -32,7 +32,7 @@ class Gps extends MY_Controller {
         $uid = $this->get_user_id();
 
         // 1. Save to gps_tracks table
-        $this->db->insert('gps_tracks', [
+        $this->db->insert('crm_gps_tracks', [
             'user_id'      => $uid,
             'latitude'     => $lat,
             'longitude'    => $lng,
@@ -55,7 +55,7 @@ class Gps extends MY_Controller {
             if ($zone['auto_checkin'] && $zone['customer_id']) {
                 $open = $this->Visit_log_model->get_open_visit($uid);
                 if (!$open) {
-                    $this->db->insert('visit_logs', [
+                    $this->db->insert('crm_visit_logs', [
                         'user_id'         => $uid,
                         'customer_id'     => $zone['customer_id'],
                         'check_in_at'     => date('Y-m-d H:i:s'),

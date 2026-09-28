@@ -23,8 +23,8 @@ class Tracking extends MY_Controller {
         $today = date('Y-m-d');
         $visit_rows = $this->db
             ->select("vl.user_id, COUNT(*) AS visit_count, MAX(IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name)) AS last_customer")
-            ->from('visit_logs vl')
-            ->join('customers c', 'c.id = vl.customer_id', 'left')
+            ->from('crm_visit_logs vl')
+            ->join('crm_customers c', 'c.id = vl.customer_id', 'left')
             ->where(['vl.is_deleted' => 0])
             ->where('DATE(vl.check_in_at)', $today)
             ->where_in('vl.user_id', $uids ?: [0])
@@ -70,8 +70,8 @@ class Tracking extends MY_Controller {
 
         // Fetch customer visits for this user on this date
         $visits = $this->db->select("vl.id, vl.customer_id, vl.check_in_at, vl.check_out_at, vl.check_in_lat, vl.check_in_lng, vl.check_out_lat, vl.check_out_lng, vl.notes, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS customer_name, c.latitude AS customer_lat, c.longitude AS customer_lng")
-            ->from('visit_logs vl')
-            ->join('customers c', 'c.id = vl.customer_id', 'left')
+            ->from('crm_visit_logs vl')
+            ->join('crm_customers c', 'c.id = vl.customer_id', 'left')
             ->where(['vl.user_id' => $uid, 'vl.is_deleted' => 0])
             ->where('DATE(vl.check_in_at)', $date)
             ->order_by('vl.check_in_at', 'asc')
@@ -80,7 +80,7 @@ class Tracking extends MY_Controller {
         // Fetch customer IDs that are relevant to this user on this specific date:
         // 1. Created on this date
         $c_created = $this->db->select('id')
-            ->from('customers')
+            ->from('crm_customers')
             ->where('DATE(created_at)', $date)
             ->where('assigned_to', $uid)
             ->where('is_deleted', 0)
@@ -88,7 +88,7 @@ class Tracking extends MY_Controller {
 
         // 2. Planned for this date for this user
         $c_planned = $this->db->select('customer_id AS id')
-            ->from('visit_plans')
+            ->from('crm_visit_plans')
             ->where('planned_date', $date)
             ->where('user_id', $uid)
             ->where('is_deleted', 0)
@@ -96,7 +96,7 @@ class Tracking extends MY_Controller {
 
         // 3. Visited on this date by this user (from visit_logs)
         $c_visited = $this->db->select('customer_id AS id')
-            ->from('visit_logs')
+            ->from('crm_visit_logs')
             ->where('user_id', $uid)
             ->where('is_deleted', 0)
             ->where('DATE(check_in_at)', $date)
@@ -112,15 +112,15 @@ class Tracking extends MY_Controller {
         $day_visits = [];
         if (!empty($cust_ids)) {
             $day_customers = $this->db->select("c.id, IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name) AS name, c.phone, c.city, c.latitude, c.longitude, u.name AS assigned_staff")
-                ->from('customers c')
-                ->join('users u', 'u.id = c.assigned_to', 'left')
+                ->from('crm_customers c')
+                ->join('crm_user u', 'u.id = c.assigned_to', 'left')
                 ->where_in('c.id', $cust_ids)
                 ->where('c.is_deleted', 0)
                 ->get()->result_array();
 
             $day_visits = $this->db->select('vl.customer_id, vl.check_in_at, vl.check_out_at, vl.notes, u.name AS visited_by_staff')
-                ->from('visit_logs vl')
-                ->join('users u', 'u.id = vl.user_id', 'left')
+                ->from('crm_visit_logs vl')
+                ->join('crm_user u', 'u.id = vl.user_id', 'left')
                 ->where_in('vl.customer_id', $cust_ids)
                 ->where('DATE(vl.check_in_at)', $date)
                 ->where('vl.is_deleted', 0)

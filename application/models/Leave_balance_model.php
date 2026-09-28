@@ -2,13 +2,13 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Leave_balance_model extends MY_Model {
-    protected $table = 'leave_balances';
+    protected $table = 'crm_leave_balances';
 
     public function get_user_balances($user_id, $year = null) {
         $year = $year ?? date('Y');
         return $this->db->select('lb.*, lt.name AS leave_type_name, lt.paid')
-            ->from('leave_balances lb')
-            ->join('leave_types lt', 'lt.id = lb.leave_type_id', 'left')
+            ->from('crm_leave_balances lb')
+            ->join('crm_leave_types lt', 'lt.id = lb.leave_type_id', 'left')
             ->where(['lb.user_id' => $user_id, 'lb.year' => $year, 'lb.is_deleted' => 0])
             ->get()->result_array();
     }

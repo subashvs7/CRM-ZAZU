@@ -150,7 +150,7 @@ class Orders extends MY_Controller {
         $this->require_role(['admin','manager']);
         $id     = (int)$this->input->post('id');
         $reason = $this->input->post('reason');
-        $this->Order_model->update($id, ['order_status'=>'cancelled','notes'=>$this->db->get_where('orders',['id'=>$id])->row_array()['notes']."\n[Rejected: $reason]"]);
+        $this->Order_model->update($id, ['order_status'=>'cancelled','notes'=>$this->db->get_where('crm_orders',['id'=>$id])->row_array()['notes']."\n[Rejected: $reason]"]);
         $order = $this->Order_model->get_with_details($id);
         $this->notification_sender->send($order['created_by'], 'order_rejected', 'Order Rejected', 'Your order '.$order['order_number'].' was rejected: '.$reason, ['order_id'=>$id]);
         $this->json_success([], 'Order rejected.');

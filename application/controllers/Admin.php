@@ -60,9 +60,9 @@ class Admin extends MY_Controller {
         if ($errors) $this->json_error('Validation failed.', 400, $errors);
 
         if ($id) {
-            $check = $this->db->where('email', $email)->where('id !=', $id)->get('users')->row_array();
+            $check = $this->db->where('email', $email)->where('id !=', $id)->get('crm_user')->row_array();
         } else {
-            $check = $this->db->where('email', $email)->get('users')->row_array();
+            $check = $this->db->where('email', $email)->get('crm_user')->row_array();
         }
         if ($check) $this->json_error('Email already exists.', 400, ['email'=>'This email is already registered.']);
 
@@ -97,7 +97,7 @@ class Admin extends MY_Controller {
         $users = $this->db->select('id, name, email, role, status, phone, team_id, last_login_at')
             ->where('is_deleted', 0)
             ->order_by('role, name')
-            ->get('users')->result_array();
+            ->get('crm_user')->result_array();
         $this->json_success($users);
     }
 
@@ -509,14 +509,14 @@ class Admin extends MY_Controller {
 
     public function fetch_role_permissions() {
         $all_modules = ['dashboard', 'customers', 'leads', 'orders', 'visits', 'tracking/live', 'geofence', 'attendance', 'shifts', 'leave', 'selfie/log', 'reports', 'admin'];
-        $rows = $this->db->get('role_permissions')->result_array();
+        $rows = $this->db->get('crm_role_permissions')->result_array();
 
         if (empty($rows)) {
             // Auto-seed default permissions into DB if table is empty
-            $this->db->insert('role_permissions', ['role' => 'admin', 'module' => json_encode($all_modules)]);
-            $this->db->insert('role_permissions', ['role' => 'manager', 'module' => json_encode($all_modules)]);
-            $this->db->insert('role_permissions', ['role' => 'field_staff', 'module' => json_encode(['dashboard', 'customers', 'leads', 'orders', 'visits', 'attendance', 'leave'])]);
-            $rows = $this->db->get('role_permissions')->result_array();
+            $this->db->insert('crm_role_permissions', ['role' => 'admin', 'module' => json_encode($all_modules)]);
+            $this->db->insert('crm_role_permissions', ['role' => 'manager', 'module' => json_encode($all_modules)]);
+            $this->db->insert('crm_role_permissions', ['role' => 'field_staff', 'module' => json_encode(['dashboard', 'customers', 'leads', 'orders', 'visits', 'attendance', 'leave'])]);
+            $rows = $this->db->get('crm_role_permissions')->result_array();
         }
 
         $perms = [
@@ -547,11 +547,11 @@ class Admin extends MY_Controller {
 
         $json_modules = json_encode(array_values($modules));
 
-        $exists = $this->db->where('role', $role)->count_all_results('role_permissions');
+        $exists = $this->db->where('role', $role)->count_all_results('crm_role_permissions');
         if ($exists) {
-            $status = $this->db->where('role', $role)->update('role_permissions', ['module' => $json_modules]);
+            $status = $this->db->where('role', $role)->update('crm_role_permissions', ['module' => $json_modules]);
         } else {
-            $status = $this->db->insert('role_permissions', [
+            $status = $this->db->insert('crm_role_permissions', [
                 'role' => $role,
                 'module' => $json_modules
             ]);
@@ -625,7 +625,7 @@ class Admin extends MY_Controller {
             $this->json_error('Please select customers and a field staff.');
         }
         
-        $this->db->where_in('id', $customer_ids)->update('customers', ['assigned_to' => $staff_id]);
+        $this->db->where_in('id', $customer_ids)->update('crm_customers', ['assigned_to' => $staff_id]);
         
         $this->json_success([], count($customer_ids) . ' customer(s) transferred successfully.');
     }

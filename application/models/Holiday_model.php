@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Holiday_model extends MY_Model {
-    protected $table = 'holidays';
+    protected $table = 'crm_holidays';
 
     public function get_by_year($year) {
         return $this->db->where(['is_deleted' => 0, 'status' => 'active'])

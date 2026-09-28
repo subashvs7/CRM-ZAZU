@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Notification_template_model extends MY_Model {
-    protected $table = 'notification_templates';
+    protected $table = 'crm_notification_templates';
 
     public function get_by_name($name) {
         return $this->db->where(['name' => $name, 'is_deleted' => 0])->get($this->table)->row_array();

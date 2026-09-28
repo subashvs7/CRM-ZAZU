@@ -120,7 +120,7 @@ if (!function_exists('generate_order_number')) {
     function generate_order_number() {
         $CI =& get_instance();
         $prefix = $CI->db->where(['setting_key' => 'order_prefix', 'is_deleted' => 0])
-                         ->get('app_settings')->row_array();
+                         ->get('crm_app_settings')->row_array();
         $prefix = $prefix['setting_value'] ?? 'ORD';
         return $prefix . '-' . strtoupper(substr(uniqid(), -6)) . '-' . date('Ymd');
     }
@@ -147,7 +147,7 @@ if (!function_exists('get_setting')) {
     function get_setting($key, $default = '') {
         $CI =& get_instance();
         $row = $CI->db->where(['setting_key' => $key, 'is_deleted' => 0])
-                      ->get('app_settings')->row_array();
+                      ->get('crm_app_settings')->row_array();
         return $row ? $row['setting_value'] : $default;
     }
 }
@@ -188,7 +188,7 @@ if (!function_exists('working_days_between')) {
         $CI =& get_instance();
         $holidays = $CI->db->where(['is_deleted' => 0, 'status' => 'active'])
                            ->where('date >=', $start)->where('date <=', $end)
-                           ->get('holidays')->result_array();
+                           ->get('crm_holidays')->result_array();
         $holiday_dates = array_column($holidays, 'date');
         $count = 0;
         $d = new DateTime($start);
@@ -218,7 +218,7 @@ if (!function_exists('has_module_access')) {
         }
 
         try {
-            $row = $CI->db->where('role', $role)->get('role_permissions')->row_array();
+            $row = $CI->db->where('role', $role)->get('crm_role_permissions')->row_array();
             if ($row && !empty($row['module'])) {
                 $allowed = json_decode($row['module'], true);
                 if (is_array($allowed)) {

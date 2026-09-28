@@ -11,7 +11,7 @@ class Crm_auth {
     public function login($email, $password) {
         $user = $this->CI->db
             ->where(['email' => $email, 'is_deleted' => 0])
-            ->get('users')->row_array();
+            ->get('crm_user')->row_array();
 
         if (!$user) return ['success' => false, 'message' => 'Invalid credentials.'];
         if ($user['status'] === 'inactive') return ['success' => false, 'message' => 'Your account has been disabled.'];
@@ -25,12 +25,12 @@ class Crm_auth {
 
         if (!$password_matches) return ['success' => false, 'message' => 'Invalid credentials.'];
 
-        $perms = $this->CI->db->where('user_id', $user['id'])->get('user_permissions')->result_array();
+        $perms = $this->CI->db->where('user_id', $user['id'])->get('crm_user_permissions')->result_array();
         $user['permissions'] = array_column($perms, 'permission');
         unset($user['password']);
 
         $this->CI->session->set_userdata('crm_user', $user);
-        $this->CI->db->where('id', $user['id'])->update('users', ['last_login_at' => date('Y-m-d H:i:s')]);
+        $this->CI->db->where('id', $user['id'])->update('crm_user', ['last_login_at' => date('Y-m-d H:i:s')]);
 
         return ['success' => true, 'user' => $user];
     }

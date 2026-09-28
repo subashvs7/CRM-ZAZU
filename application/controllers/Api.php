@@ -14,13 +14,13 @@ class Api extends MY_Controller {
         if (!$token) $token = $this->input->post('api_token');
         if (!$token) return null;
         $token = str_replace('Bearer ', '', $token);
-        return $this->db->where(['fcm_token'=>$token,'is_deleted'=>0,'status'=>'active'])->get('users')->row_array();
+        return $this->db->where(['fcm_token'=>$token,'is_deleted'=>0,'status'=>'active'])->get('crm_user')->row_array();
     }
 
     public function get_token() {
         $email = $this->input->post('email');
         $pass  = $this->input->post('password');
-        $user  = $this->db->where(['email'=>$email,'is_deleted'=>0,'status'=>'active'])->get('users')->row_array();
+        $user  = $this->db->where(['email'=>$email,'is_deleted'=>0,'status'=>'active'])->get('crm_user')->row_array();
         $password_matches = false;
         if ($user) {
             if (password_verify($pass, $user['password'])) {
@@ -31,7 +31,7 @@ class Api extends MY_Controller {
         }
         if (!$user || !$password_matches) $this->json_error('Invalid credentials.', 401);
         $token = bin2hex(random_bytes(32));
-        $this->db->where('id',$user['id'])->update('users',['fcm_token'=>$token,'updated_at'=>date('Y-m-d H:i:s')]);
+        $this->db->where('id',$user['id'])->update('crm_user',['fcm_token'=>$token,'updated_at'=>date('Y-m-d H:i:s')]);
         $this->json_success(['token'=>$token,'user_id'=>$user['id'],'name'=>$user['name'],'role'=>$user['role']]);
     }
 
@@ -61,7 +61,7 @@ class Api extends MY_Controller {
             'created_at'  => date('Y-m-d H:i:s'),
             'updated_at'  => date('Y-m-d H:i:s'),
         ];
-        $this->db->insert('gps_tracks', $track_data);
+        $this->db->insert('crm_gps_tracks', $track_data);
 
         // Save live file
         $this->Gps_track_model->save_live_file($user['id'], $lat, $lng, $acc, $battery);
@@ -72,7 +72,7 @@ class Api extends MY_Controller {
             if ($zone['auto_checkin']) {
                 $open = $this->Visit_log_model->get_open_visit($user['id']);
                 if (!$open && $zone['customer_id']) {
-                    $this->db->insert('visit_logs', [
+                    $this->db->insert('crm_visit_logs', [
                         'user_id'=>$user['id'],'customer_id'=>$zone['customer_id'],
                         'check_in_at'=>date('Y-m-d H:i:s'),'check_in_lat'=>$lat,'check_in_lng'=>$lng,
                         'is_auto_checkin'=>1,'geofence_zone_id'=>$zone['id'],
@@ -81,7 +81,7 @@ class Api extends MY_Controller {
                 }
             }
             if ($zone['alert_on_enter']) {
-                $this->db->insert('geo_alerts', [
+                $this->db->insert('crm_geo_alerts', [
                     'geofence_zone_id'=>$zone['id'],'user_id'=>$user['id'],
                     'alert_type'=>'enter','triggered_at'=>date('Y-m-d H:i:s'),
                     'latitude'=>$lat,'longitude'=>$lng,

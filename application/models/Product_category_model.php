@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Product_category_model extends MY_Model {
-    protected $table = 'product_categories';
+    protected $table = 'crm_product_categories';
 
     public function get_tree() {
         $all = $this->get_all([], 'name ASC');
@@ -23,8 +23,8 @@ class Product_category_model extends MY_Model {
 
     public function datatable($params, $status_filter = null) {
         $this->db->select('c.id, c.name, p.name AS parent_name, c.status, c.created_at')
-            ->from('product_categories c')
-            ->join('product_categories p', 'p.id = c.parent_id', 'left');
+            ->from('crm_product_categories c')
+            ->join('crm_product_categories p', 'p.id = c.parent_id', 'left');
 
         if ($status_filter === 'deleted')      $this->db->where('c.is_deleted', 1);
         elseif ($status_filter)                $this->db->where(['c.status' => $status_filter, 'c.is_deleted' => 0]);

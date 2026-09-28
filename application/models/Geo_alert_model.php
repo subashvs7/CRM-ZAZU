@@ -2,13 +2,13 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Geo_alert_model extends MY_Model {
-    protected $table = 'geo_alerts';
+    protected $table = 'crm_geo_alerts';
 
     public function datatable($params, $status_filter = null) {
         $this->db->select('ga.id, gz.name AS zone_name, u.name AS user_name, ga.alert_type, ga.triggered_at, ga.resolved_at, ga.status')
-            ->from('geo_alerts ga')
-            ->join('geofence_zones gz', 'gz.id = ga.geofence_zone_id', 'left')
-            ->join('users u', 'u.id = ga.user_id', 'left');
+            ->from('crm_geo_alerts ga')
+            ->join('crm_geofence_zones gz', 'gz.id = ga.geofence_zone_id', 'left')
+            ->join('crm_user u', 'u.id = ga.user_id', 'left');
 
         if ($status_filter === 'deleted') $this->db->where('ga.is_deleted', 1);
         else                              $this->db->where('ga.is_deleted', 0);
