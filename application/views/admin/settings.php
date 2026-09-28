@@ -300,8 +300,8 @@
                                 </td>
                                 <td class="py-3.5 px-4 text-right">
                                     <div class="flex items-center justify-end gap-1.5">
-                                        <button type="button" class="btn-test-smtp px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] rounded-lg transition-colors flex items-center gap-1" data-id="<?= $acc['id'] ?>" title="Test socket connection to Hostinger">
-                                            <i class="fa fa-bolt text-amber-500"></i> Test
+                                        <button type="button" class="btn-test-smtp px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] rounded-lg transition-colors flex items-center gap-1" data-id="<?= $acc['id'] ?>" title="Send test email template to your inbox">
+                                            <i class="fa fa-paper-plane text-blue-600"></i> Send Test
                                         </button>
                                         <button type="button" class="btn-edit-smtp px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] rounded-lg transition-colors flex items-center gap-1" data-id="<?= $acc['id'] ?>" title="Edit credentials">
                                             <i class="fa fa-pencil"></i> Edit
@@ -564,17 +564,25 @@ $(function(){
         });
     });
 
-    // ── Test Connection for existing account row ──────────────────────────────
+    // ── Test Connection / Send Test Email for existing account row ───────────
     $(document).on('click', '.btn-test-smtp', function(){
         var id = $(this).data('id');
+        var defaultEmail = '<?= esc_html($current_user['email'] ?? '') ?>';
+        var toEmail = prompt('Enter recipient email address to send a verification test template:', defaultEmail);
+        if(!toEmail || !toEmail.trim()) return;
+
         var $btn = $(this);
         var origHtml = $btn.html();
-        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin text-amber-500"></i>');
+        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin text-blue-500"></i> Sending...');
 
         $.ajax({
-            url: BASE_URL + 'admin/test_smtp_connection',
+            url: BASE_URL + 'admin/send_test_email',
             method: 'POST',
-            data: { id: id, [CI3_CSRF_NAME]: CI3_CSRF_HASH },
+            data: { 
+                id: id, 
+                to_email: toEmail.trim(), 
+                [CI3_CSRF_NAME]: CI3_CSRF_HASH 
+            },
             success: function(res){
                 if(res.status === 'success') {
                     CRM.toast('success', res.message);
@@ -582,8 +590,9 @@ $(function(){
                     CRM.toast('error', res.message);
                 }
             },
-            error: function(){
-                CRM.toast('error', 'Test connection failed.');
+            error: function(xhr){
+                var json = xhr.responseJSON;
+                CRM.toast('error', (json && json.message) || 'Failed to dispatch test email. Check SMTP credentials.');
             },
             complete: function(){
                 $btn.prop('disabled', false).html(origHtml);
@@ -720,7 +729,7 @@ $(function(){
                         rowsHtml += '<td class="py-3.5 px-4 min-w-[160px]"><div class="flex items-center justify-between text-[11px] font-semibold mb-1"><span class="font-mono text-gray-700">' + sent + ' sent</span><span class="font-mono ' + (rem <= 15 ? 'text-rose-600 font-bold' : 'text-emerald-600') + '">' + rem + ' left</span></div><div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden"><div class="h-1.5 rounded-full ' + barColor + '" style="width:' + Math.min(100, pct) + '%"></div></div></td>';
                         rowsHtml += '<td class="py-3.5 px-4 text-center"><span class="px-2 py-0.5 text-[10px] font-bold rounded-lg border ' + badgeClass + '">' + badgeText + '</span></td>';
                         rowsHtml += '<td class="py-3.5 px-4 text-right"><div class="flex items-center justify-end gap-1.5">';
-                        rowsHtml += '<button type="button" class="btn-test-smtp px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] rounded-lg transition-colors flex items-center gap-1" data-id="' + acc.id + '"><i class="fa fa-bolt text-amber-500"></i> Test</button>';
+                        rowsHtml += '<button type="button" class="btn-test-smtp px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] rounded-lg transition-colors flex items-center gap-1" data-id="' + acc.id + '" title="Send test email template to your inbox"><i class="fa fa-paper-plane text-blue-600"></i> Send Test</button>';
                         rowsHtml += '<button type="button" class="btn-edit-smtp px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] rounded-lg transition-colors flex items-center gap-1" data-id="' + acc.id + '"><i class="fa fa-pencil"></i> Edit</button>';
                         rowsHtml += '<button type="button" class="btn-reset-smtp px-2 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold text-[11px] rounded-lg transition-colors" data-id="' + acc.id + '"><i class="fa fa-undo"></i></button>';
                         rowsHtml += '<button type="button" class="btn-delete-smtp px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-[11px] rounded-lg transition-colors" data-id="' + acc.id + '"><i class="fa fa-trash"></i></button>';

@@ -396,6 +396,102 @@ class Admin extends MY_Controller {
     }
 
     /**
+     * AJAX: Send real test email template directly to user's inbox
+     */
+    public function send_test_smtp_email() {
+        $to_email = trim($this->input->post('to_email'));
+        $id       = (int)$this->input->post('id');
+
+        if (!$to_email || !filter_var($to_email, FILTER_VALIDATE_EMAIL)) {
+            $this->json_error('Please enter a valid recipient email address.');
+        }
+
+        if ($id) {
+            $account = $this->Smtp_account_model->get_by_id($id);
+            if (!$account) {
+                $this->json_error('SMTP Account not found.', 404);
+            }
+        } else {
+            $account = [
+                'name'         => trim($this->input->post('name')) ?: 'Hostinger Mail',
+                'sender_email' => trim($this->input->post('sender_email')),
+                'sender_name'  => trim($this->input->post('sender_name')) ?: 'CRM Mailer',
+                'smtp_host'    => trim($this->input->post('smtp_host')) ?: 'smtp.hostinger.com',
+                'smtp_port'    => (int)$this->input->post('smtp_port') ?: 465,
+                'smtp_crypto'  => strtolower(trim($this->input->post('smtp_crypto'))) ?: 'ssl',
+                'smtp_user'    => trim($this->input->post('smtp_user')),
+                'smtp_pass'    => trim($this->input->post('smtp_pass')),
+            ];
+        }
+
+        if (empty($account['smtp_user']) || empty($account['smtp_pass'])) {
+            $this->json_error('SMTP Username and Password are required to send an email.');
+        }
+
+        $this->load->library('email');
+        $smtpConfig = [
+            'protocol'    => 'smtp',
+            'smtp_host'   => $account['smtp_host'] ?: 'smtp.hostinger.com',
+            'smtp_port'   => (int)($account['smtp_port'] ?: 465),
+            'smtp_user'   => $account['smtp_user'],
+            'smtp_pass'   => $account['smtp_pass'],
+            'smtp_crypto' => strtolower($account['smtp_crypto'] ?: 'ssl'),
+            'mailtype'    => 'html',
+            'charset'     => 'utf-8',
+            'newline'     => "\r\n",
+            'crlf'        => "\r\n",
+            'smtp_timeout'=> 10
+        ];
+
+        $this->email->initialize($smtpConfig);
+        $this->email->clear(true);
+        $this->email->from($account['sender_email'], $account['sender_name']);
+        $this->email->to($to_email);
+        $this->email->subject('✅ Hostinger SMTP Test - ZAZU CRM Mailer Verification');
+
+        $body = '
+        <div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background: #ffffff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="display: inline-block; width: 48px; height: 48px; line-height: 48px; background: #eff6ff; border-radius: 12px; margin-bottom: 8px;">
+                    <span style="font-size: 24px;">🚀</span>
+                </div>
+                <h2 style="color: #1e293b; margin: 0; font-size: 20px; font-weight: 700;">ZAZU Field CRM</h2>
+                <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">Hostinger Multi-SMTP Mail Pool Verification</p>
+            </div>
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; margin-bottom: 24px; text-align: center;">
+                <div style="font-size: 16px; font-weight: 700; color: #166534; margin-bottom: 4px;">🎉 Connection &amp; Delivery Successful!</div>
+                <p style="color: #15803d; font-size: 13px; margin: 0; line-height: 1.5;">This email confirms that your Hostinger SMTP mailbox is properly configured, authenticated, and ready to dispatch marketing &amp; sales campaigns.</p>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin-bottom: 12px;">Configuration Details</div>
+                <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+                    <tr><td style="padding: 6px 0; color: #64748b; width: 40%;">Account Label:</td><td style="padding: 6px 0; font-weight: 600; color: #0f172a;">' . htmlspecialchars($account['name'], ENT_QUOTES, 'UTF-8') . '</td></tr>
+                    <tr><td style="padding: 6px 0; color: #64748b;">Sender Email:</td><td style="padding: 6px 0; font-weight: 600; color: #0f172a;">' . htmlspecialchars($account['sender_email'], ENT_QUOTES, 'UTF-8') . '</td></tr>
+                    <tr><td style="padding: 6px 0; color: #64748b;">Display Name:</td><td style="padding: 6px 0; font-weight: 600; color: #0f172a;">' . htmlspecialchars($account['sender_name'], ENT_QUOTES, 'UTF-8') . '</td></tr>
+                    <tr><td style="padding: 6px 0; color: #64748b;">Server &amp; Port:</td><td style="padding: 6px 0; font-family: monospace; font-weight: 600; color: #2563eb;">' . htmlspecialchars($account['smtp_host'] . ':' . $account['smtp_port'], ENT_QUOTES, 'UTF-8') . ' (' . strtoupper($account['smtp_crypto']) . ')</td></tr>
+                    <tr><td style="padding: 6px 0; color: #64748b;">Dispatched At:</td><td style="padding: 6px 0; color: #475569;">' . date('d M Y, h:i:s A') . '</td></tr>
+                </table>
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; text-align: center; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                Sent automatically by ZAZU CRM Mail Engine &bull; Hostinger Multi-SMTP Pool
+            </div>
+        </div>';
+
+        $this->email->message($body);
+
+        if (@$this->email->send()) {
+            if ($id) {
+                $this->Smtp_account_model->increment_sent_count($id);
+            }
+            $this->json_success([], 'Test email sent successfully to ' . esc_html($to_email) . '! Please check your Inbox / Spam folder.');
+        } else {
+            $debug = $this->email->print_debugger(['headers']);
+            $cleanDebug = strip_tags($debug);
+            $this->json_error('Failed to send email. Hostinger returned: ' . $cleanDebug);
+        }
+    }
+
+    /**
      * AJAX: Get SMTP pool status with live remaining counts & alerts
      */
     public function smtp_pool_status_ajax() {

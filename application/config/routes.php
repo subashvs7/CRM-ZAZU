@@ -192,6 +192,7 @@ $route['admin/smtp_accounts']       = 'Admin/smtp_accounts_ajax';
 $route['admin/save_smtp_account']   = 'Admin/save_smtp_account';
 $route['admin/delete_smtp_account'] = 'Admin/delete_smtp_account';
 $route['admin/test_smtp_connection']= 'Admin/test_smtp_connection';
+$route['admin/send_test_email']     = 'Admin/send_test_smtp_email';
 $route['admin/reset_smtp_counter']  = 'Admin/reset_smtp_counter';
 $route['admin/smtp_pool_status']    = 'Admin/smtp_pool_status_ajax';
 $route['admin/role_permissions']      = 'Admin/role_permissions';
