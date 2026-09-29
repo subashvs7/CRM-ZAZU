@@ -857,7 +857,11 @@ class Leads extends MY_Controller {
         return $bestProduct;
     }
 
-    public function import_validate() {
+    /**
+     * Parse uploaded spreadsheet file into rows and map recognized column headers.
+     * Memory and execution time limits are increased for large spreadsheets.
+     */
+    private function _parse_uploaded_spreadsheet() {
         if (!isset($_FILES['file']) && !isset($_FILES['csv_file'])) {
             $this->json_error('No spreadsheet file selected.');
         }
@@ -871,6 +875,9 @@ class Leads extends MY_Controller {
         if (!in_array($ext, ['xlsx', 'xls', 'csv'])) {
             $this->json_error('Invalid file type (.'.$ext.'). Please upload an Excel (.xlsx/.xls) or CSV file.');
         }
+
+        @set_time_limit(300);
+        @ini_set('memory_limit', '512M');
 
         try {
             $spreadsheet = IOFactory::load($file['tmp_name']);
@@ -898,36 +905,46 @@ class Leads extends MY_Controller {
             $this->json_error('Could not identify recognized column headers. Please download the sample template.');
         }
 
-        // Preload active products for dynamic keyword matching
-        $active_products = $this->Product_model->get_active_with_category();
+        return [$file, $rows, $header_map];
+    }
 
-        // Preload all previous active leads for fast duplicate checking (by Email and Phone)
+    /**
+     * Preload all active CRM leads indexed by valid Email and Secondary Email.
+     * Duplicate checking is strictly by Email (same mobile with different email is allowed as separate lead).
+     */
+    private function _get_existing_leads_by_email() {
         $existing_leads = $this->db->select('id, title, first_name, last_name, company_name, email, secondary_email, corporate_phone, company_phone')
             ->where('is_deleted', 0)
             ->get('crm_leads')
             ->result_array();
 
         $existing_emails = [];
-        $existing_phones = [];
-
         foreach ($existing_leads as $el) {
             if (!empty($el['email'])) {
-                $existing_emails[strtolower(trim($el['email']))] = $el;
-            }
-            if (!empty($el['secondary_email'])) {
-                $existing_emails[strtolower(trim($el['secondary_email']))] = $el;
-            }
-            if (!empty($el['corporate_phone'])) {
-                foreach ($this->_get_phone_variants($el['corporate_phone']) as $pv) {
-                    $existing_phones[$pv] = $el;
+                $em = strtolower(trim($el['email']));
+                if (filter_var($em, FILTER_VALIDATE_EMAIL)) {
+                    $existing_emails[$em] = $el;
                 }
             }
-            if (!empty($el['company_phone'])) {
-                foreach ($this->_get_phone_variants($el['company_phone']) as $pv) {
-                    $existing_phones[$pv] = $el;
+            if (!empty($el['secondary_email'])) {
+                $sec = strtolower(trim($el['secondary_email']));
+                if (filter_var($sec, FILTER_VALIDATE_EMAIL)) {
+                    $existing_emails[$sec] = $el;
                 }
             }
         }
+
+        return $existing_emails;
+    }
+
+    public function import_validate() {
+        [$file, $rows, $header_map] = $this->_parse_uploaded_spreadsheet();
+
+        // Preload active products for dynamic keyword matching
+        $active_products = $this->Product_model->get_active_with_category();
+
+        // Preload all active leads strictly indexed by Email from DB
+        $existing_emails = $this->_get_existing_leads_by_email();
 
         // Check if user pre-selected a specific product list for this import batch
         $target_product_id = $this->input->post('target_product_id');
@@ -1032,13 +1049,13 @@ class Leads extends MY_Controller {
                 $matchedProductSku  = null;
             }
 
-            // DUPLICATE VALIDATION: Match against previous data in database
-            $matched = null;
+            // DUPLICATE VALIDATION: Strictly match against existing database records by EMAIL only
+            // Same mobile number with different email ID is allowed as a valid lead.
+            $matched     = null;
             $match_field = '';
             $match_val   = '';
 
-            // 1. Primary Email check
-            if ($email !== '') {
+            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $normEmail = strtolower($email);
                 if (isset($existing_emails[$normEmail])) {
                     $matched     = $existing_emails[$normEmail];
@@ -1047,37 +1064,12 @@ class Leads extends MY_Controller {
                 }
             }
 
-            // 2. Secondary Email check
-            if (!$matched && $secEmail !== '') {
+            if (!$matched && $secEmail !== '' && filter_var($secEmail, FILTER_VALIDATE_EMAIL)) {
                 $normSec = strtolower($secEmail);
                 if (isset($existing_emails[$normSec])) {
                     $matched     = $existing_emails[$normSec];
                     $match_field = 'Secondary Email';
                     $match_val   = $secEmail;
-                }
-            }
-
-            // 3. Corporate Phone check
-            if (!$matched && $corpPhone !== '') {
-                foreach ($this->_get_phone_variants($corpPhone) as $pv) {
-                    if (isset($existing_phones[$pv])) {
-                        $matched     = $existing_phones[$pv];
-                        $match_field = 'Corporate Phone';
-                        $match_val   = $corpPhone;
-                        break;
-                    }
-                }
-            }
-
-            // 4. Company Phone check
-            if (!$matched && $compPhone !== '') {
-                foreach ($this->_get_phone_variants($compPhone) as $pv) {
-                    if (isset($existing_phones[$pv])) {
-                        $matched     = $existing_phones[$pv];
-                        $match_field = 'Company Phone';
-                        $match_val   = $compPhone;
-                        break;
-                    }
                 }
             }
 
@@ -1116,41 +1108,11 @@ class Leads extends MY_Controller {
                     'matched_product_name' => $matchedProductName,
                     'matched_product_sku'  => $matchedProductSku,
                 ];
-
-                // Register into local lookup so in-sheet duplicates are also detected
-                if ($email !== '') {
-                    $existing_emails[strtolower($email)] = ['id' => 'sheet_row_'.$rowNum, 'title' => $displayName, 'first_name' => $first_name, 'last_name' => $last_name, 'company_name' => $company_name, 'email' => $email, 'corporate_phone' => $corpPhone, 'company_phone' => $compPhone];
-                }
-                if ($corpPhone !== '') {
-                    foreach ($this->_get_phone_variants($corpPhone) as $pv) {
-                        $existing_phones[$pv] = ['id' => 'sheet_row_'.$rowNum, 'title' => $displayName, 'first_name' => $first_name, 'last_name' => $last_name, 'company_name' => $company_name, 'email' => $email, 'corporate_phone' => $corpPhone, 'company_phone' => $compPhone];
-                    }
-                }
             }
         }
 
-        // Cache parsed session data to temporary file
-        $token = 'import_' . bin2hex(random_bytes(16));
-        $scratchDir = FCPATH . 'scratch/';
-        if (!is_dir($scratchDir)) {
-            @mkdir($scratchDir, 0777, true);
-        }
-
-        $sessionData = [
-            'token'                  => $token,
-            'filename'               => $file['name'],
-            'auto_create_customers'  => (bool)$this->input->post('auto_create_customers'),
-            'new_leads'              => $new_leads,
-            'duplicates'             => $duplicates,
-            'invalid_rows'           => $invalid_rows,
-            'matched_products_count' => $matched_products_count,
-            'created_at'             => time()
-        ];
-        file_put_contents($scratchDir . $token . '.json', json_encode($sessionData));
-
         $totalRows = count($new_leads) + count($duplicates) + count($invalid_rows);
         $this->json_success([
-            'token'                  => $token,
             'filename'               => $file['name'],
             'total_rows'             => $totalRows,
             'new_count'              => count($new_leads),
@@ -1160,33 +1122,44 @@ class Leads extends MY_Controller {
             'duplicates'             => $duplicates,
             'sample_new'             => array_slice($new_leads, 0, 5),
             'invalid_rows'           => $invalid_rows,
-        ], 'Spreadsheet parsed. Validation against previous records and keyword product matching complete.');
+        ], 'Spreadsheet parsed. Validation against database complete.');
     }
 
     public function import_confirm() {
-        $token = $this->input->post('token');
-        if (!$token || !preg_match('/^import_[a-f0-9]+$/', $token)) {
-            $this->json_error('Invalid or missing import token.');
+        [$file, $rows, $header_map] = $this->_parse_uploaded_spreadsheet();
+
+        $duplicate_action      = $this->input->post('duplicate_action') ?: 'skip'; // 'skip', 'overwrite', 'delete'
+        $row_actions_raw       = $this->input->post('row_actions');
+        $row_actions           = is_array($row_actions_raw) ? $row_actions_raw : (json_decode($row_actions_raw ?: '[]', true) ?: []);
+        $auto_create_customers = (bool)$this->input->post('auto_create_customers');
+
+        // Preload active products for dynamic keyword matching
+        $active_products = $this->Product_model->get_active_with_category();
+
+        // Check if user pre-selected a specific product list
+        $target_product_id = $this->input->post('target_product_id');
+        $fixedProduct = null;
+        if (!empty($target_product_id) && $target_product_id !== 'auto') {
+            if ($target_product_id === 'new') {
+                $newPName = trim($this->input->post('new_product_name'));
+                if ($newPName) {
+                    $newSku = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $newPName), 0, 10));
+                    $pId = $this->Product_model->insert([
+                        'name'       => $newPName,
+                        'sku'        => $newSku,
+                        'status'     => 'active',
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ]);
+                    $fixedProduct = $this->Product_model->get_by_id($pId);
+                }
+            } else {
+                $fixedProduct = $this->Product_model->get_by_id((int)$target_product_id);
+            }
         }
 
-        $filePath = FCPATH . 'scratch/' . $token . '.json';
-        if (!file_exists($filePath)) {
-            $this->json_error('Import session expired or file not found. Please upload spreadsheet again.');
-        }
-
-        $raw = file_get_contents($filePath);
-        $data = json_decode($raw, true);
-        if (!$data) {
-            $this->json_error('Corrupted import session data.');
-        }
-
-        $duplicate_action = $this->input->post('duplicate_action') ?: 'skip'; // 'skip', 'overwrite', 'delete'
-        $row_actions_raw  = $this->input->post('row_actions');
-        $row_actions      = is_array($row_actions_raw) ? $row_actions_raw : (json_decode($row_actions_raw ?: '[]', true) ?: []);
-
-        $auto_create_customers = !empty($data['auto_create_customers']);
-        $new_leads  = $data['new_leads'] ?? [];
-        $duplicates = $data['duplicates'] ?? [];
+        // Preload existing leads from DB indexed strictly by email
+        $existing_emails = $this->_get_existing_leads_by_email();
 
         // Preload users for account owner lookup
         $users = $this->db->select('id, name, email')->get('crm_user')->result_array();
@@ -1198,59 +1171,64 @@ class Leads extends MY_Controller {
 
         $tableFields = $this->db->list_fields('leads');
 
-        $imported = 0;
-        $updated  = 0;
-        $skipped  = 0;
+        $imported             = 0;
+        $updated              = 0;
+        $skipped              = 0;
         $deleted_and_replaced = 0;
-        $currentUserId = $this->get_user_id() ?: 1;
+        $currentUserId        = $this->get_user_id() ?: 1;
 
         $old_db_debug = $this->db->db_debug;
         $this->db->db_debug = FALSE;
         $this->db->trans_begin();
 
         try {
-            // 1. Process New Leads
-            foreach ($new_leads as $item) {
-                $ld = $item['lead_data'];
+            for ($i = 1; $i < count($rows); $i++) {
+                $rowNum = $i + 1;
+                $row = $rows[$i];
+
+                $hasContent = false;
+                foreach ($row as $cell) {
+                    if ($cell !== null && trim((string)$cell) !== '') {
+                        $hasContent = true;
+                        break;
+                    }
+                }
+                if (!$hasContent) continue;
+
+                $ld = [];
+                foreach ($header_map as $colIdx => $field) {
+                    $ld[$field] = isset($row[$colIdx]) ? trim((string)$row[$colIdx]) : '';
+                }
+
                 $first_name   = $ld['first_name'] ?? '';
                 $last_name    = $ld['last_name'] ?? '';
                 $title        = $ld['title'] ?? '';
                 $company_name = $ld['company_name'] ?? '';
                 $email        = $ld['email'] ?? '';
+                $secEmail     = $ld['secondary_email'] ?? '';
+                $corpPhone    = $ld['corporate_phone'] ?? '';
+                $compPhone    = $ld['company_phone'] ?? '';
 
+                if (!$first_name && !$last_name && !$title && !$company_name && !$email) {
+                    continue; // Skip invalid row
+                }
+
+                // Match product
+                $rowMatchedProduct = $this->_match_product_from_keywords($ld, $active_products);
+                if ($rowMatchedProduct) {
+                    $ld['product_id'] = (int)$rowMatchedProduct['id'];
+                } elseif ($fixedProduct) {
+                    $ld['product_id'] = (int)$fixedProduct['id'];
+                }
+
+                // Title fallback
                 if (!$title) {
                     $fullName = trim($first_name . ' ' . $last_name);
                     $title = $fullName ? ($fullName . ($company_name ? ' (' . $company_name . ')' : '')) : ($company_name ?: ($email ?: 'Imported Lead'));
                 }
                 $ld['title'] = substr($title, 0, 200);
 
-                // Link or create customer
-                $customer_id = null;
-                if ($company_name) {
-                    $cust = $this->db->get_where('customers', ['customer_org_name' => $company_name, 'is_deleted' => 0])->row_array();
-                    if ($cust) {
-                        $customer_id = (int)$cust['id'];
-                    } elseif ($auto_create_customers) {
-                        $cPhone = !empty($ld['corporate_phone']) ? $ld['corporate_phone'] : (!empty($ld['company_phone']) ? $ld['company_phone'] : '0000000000');
-                        $this->db->insert('crm_customers', [
-                            'customer_type'     => 'primary',
-                            'customer_name'     => substr(trim($first_name . ' ' . $last_name) ?: $company_name, 0, 150),
-                            'customer_org_name' => substr($company_name, 0, 150),
-                            'phone'             => substr($cPhone, 0, 20),
-                            'email'             => $email ?: null,
-                            'address'           => $ld['company_address'] ?? ($ld['address'] ?? null),
-                            'city'              => $ld['company_city'] ?? ($ld['city'] ?? null),
-                            'state'             => $ld['company_state'] ?? ($ld['state'] ?? null),
-                            'status'            => 'active',
-                            'created_at'        => date('Y-m-d H:i:s'),
-                            'updated_at'        => date('Y-m-d H:i:s'),
-                        ]);
-                        $customer_id = $this->db->insert_id();
-                    }
-                }
-                $ld['customer_id'] = $customer_id;
-
-                // Assigned to
+                // Account owner
                 $assigned_to = $currentUserId;
                 if (!empty($ld['account_owner'])) {
                     $ownerNorm = strtolower(trim($ld['account_owner']));
@@ -1260,98 +1238,117 @@ class Leads extends MY_Controller {
                 }
                 $ld['assigned_to'] = $assigned_to;
 
-                $ld['source']      = 'online';
-                $ld['lead_status'] = !empty($ld['lead_status']) ? $ld['lead_status'] : 'new';
-                $ld['status']      = 'active';
-                $ld['is_deleted']  = 0;
-                $ld['created_at']  = date('Y-m-d H:i:s');
-                $ld['updated_at']  = date('Y-m-d H:i:s');
-
-                // Sanitize and filter only real lead table fields
-                $insertData = [];
-                foreach ($ld as $k => $v) {
-                    if (in_array($k, $tableFields)) {
-                        $insertData[$k] = ($v === '') ? null : $v;
+                // Check duplicate against existing DB leads strictly by Email
+                // Same mobile number with different email ID is allowed as a new lead.
+                $matched = null;
+                if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $normEmail = strtolower($email);
+                    if (isset($existing_emails[$normEmail])) {
+                        $matched = $existing_emails[$normEmail];
+                    }
+                }
+                if (!$matched && $secEmail !== '' && filter_var($secEmail, FILTER_VALIDATE_EMAIL)) {
+                    $normSec = strtolower($secEmail);
+                    if (isset($existing_emails[$normSec])) {
+                        $matched = $existing_emails[$normSec];
                     }
                 }
 
-                $this->Lead_model->insert($insertData);
-                $imported++;
-            }
+                if ($matched) {
+                    $matchedId = (int)$matched['id'];
+                    $action = $row_actions[(string)$rowNum] ?? $duplicate_action;
 
-            // 2. Process Duplicate Leads (based on selected action or per-row choice)
-            foreach ($duplicates as $dup) {
-                $rowNum = (string)$dup['row'];
-                $action = $row_actions[$rowNum] ?? $duplicate_action;
-                $matchedId = (int)$dup['matched_id'];
-                $ld = $dup['lead_data'];
+                    if ($action === 'skip' || $action === 'no') {
+                        $skipped++;
+                        continue;
+                    }
 
-                if ($action === 'skip' || $action === 'no') {
-                    $skipped++;
-                    continue;
-                }
+                    if ($action === 'overwrite' || $action === 'yes' || $action === 'update') {
+                        $updateFields = [];
+                        foreach ($ld as $col => $val) {
+                            if (in_array($col, $tableFields) && $val !== '' && $val !== null && $col !== 'id') {
+                                $updateFields[$col] = $val;
+                            }
+                        }
+                        $updateFields['updated_at'] = date('Y-m-d H:i:s');
+                        $updateFields['assigned_to'] = $assigned_to;
 
-                if ($action === 'overwrite' || $action === 'yes' || $action === 'update') {
-                    // Update previous lead with new spreadsheet values
-                    $updateFields = [];
-                    foreach ($ld as $col => $val) {
-                        if (in_array($col, $tableFields) && $val !== '' && $val !== null && $col !== 'id') {
-                            $updateFields[$col] = $val;
+                        $this->Lead_model->update($matchedId, $updateFields);
+                        $this->db->insert('crm_lead_activities', [
+                            'lead_id'       => $matchedId,
+                            'user_id'       => $currentUserId,
+                            'activity_type' => 'note',
+                            'notes'         => "Lead updated via spreadsheet import ('{$file['name']}' row #{$rowNum}).",
+                            'occurred_at'   => date('Y-m-d H:i:s'),
+                            'status'        => 'active',
+                            'is_deleted'    => 0,
+                            'created_at'    => date('Y-m-d H:i:s'),
+                            'updated_at'    => date('Y-m-d H:i:s')
+                        ]);
+                        $updated++;
+                    } elseif ($action === 'delete' || $action === 'delete_and_replace') {
+                        $this->Lead_model->soft_delete($matchedId);
+
+                        $ld['source']      = 'online';
+                        $ld['lead_status'] = !empty($ld['lead_status']) ? $ld['lead_status'] : 'new';
+                        $ld['status']      = 'active';
+                        $ld['is_deleted']  = 0;
+                        $ld['created_at']  = date('Y-m-d H:i:s');
+                        $ld['updated_at']  = date('Y-m-d H:i:s');
+
+                        $insertData = [];
+                        foreach ($ld as $k => $v) {
+                            if (in_array($k, $tableFields)) {
+                                $insertData[$k] = ($v === '') ? null : $v;
+                            }
+                        }
+                        $newId = $this->Lead_model->insert($insertData);
+                        $this->db->insert('crm_lead_activities', [
+                            'lead_id'       => $newId,
+                            'user_id'       => $currentUserId,
+                            'activity_type' => 'note',
+                            'notes'         => "Replaced previous lead #{$matchedId} via spreadsheet import ('{$file['name']}' row #{$rowNum}).",
+                            'occurred_at'   => date('Y-m-d H:i:s'),
+                            'status'        => 'active',
+                            'is_deleted'    => 0,
+                            'created_at'    => date('Y-m-d H:i:s'),
+                            'updated_at'    => date('Y-m-d H:i:s')
+                        ]);
+                        $deleted_and_replaced++;
+                    }
+                } else {
+                    // New Unique Lead
+                    $customer_id = null;
+                    if ($company_name) {
+                        $cust = $this->db->get_where('crm_customers', ['customer_org_name' => $company_name, 'is_deleted' => 0])->row_array();
+                        if ($cust) {
+                            $customer_id = (int)$cust['id'];
+                        } elseif ($auto_create_customers) {
+                            $cPhone = !empty($ld['corporate_phone']) ? $ld['corporate_phone'] : (!empty($ld['company_phone']) ? $ld['company_phone'] : '0000000000');
+                            $this->db->insert('crm_customers', [
+                                'customer_type'     => 'primary',
+                                'customer_name'     => substr(trim($first_name . ' ' . $last_name) ?: $company_name, 0, 150),
+                                'customer_org_name' => substr($company_name, 0, 150),
+                                'phone'             => substr($cPhone, 0, 20),
+                                'email'             => $email ?: null,
+                                'address'           => $ld['company_address'] ?? ($ld['address'] ?? null),
+                                'city'              => $ld['company_city'] ?? ($ld['city'] ?? null),
+                                'state'             => $ld['company_state'] ?? ($ld['state'] ?? null),
+                                'status'            => 'active',
+                                'created_at'        => date('Y-m-d H:i:s'),
+                                'updated_at'        => date('Y-m-d H:i:s'),
+                            ]);
+                            $customer_id = $this->db->insert_id();
                         }
                     }
-                    $updateFields['updated_at'] = date('Y-m-d H:i:s');
+                    $ld['customer_id'] = $customer_id;
 
-                    if (!empty($ld['account_owner'])) {
-                        $ownerNorm = strtolower(trim($ld['account_owner']));
-                        if (isset($user_lookup[$ownerNorm])) {
-                            $updateFields['assigned_to'] = $user_lookup[$ownerNorm];
-                        }
-                    }
-
-                    $this->Lead_model->update($matchedId, $updateFields);
-                    $this->db->insert('crm_lead_activities', [
-                        'lead_id'       => $matchedId,
-                        'user_id'       => $currentUserId,
-                        'activity_type' => 'note',
-                        'notes'         => "Lead updated via spreadsheet import ('{$data['filename']}' row #{$dup['row']}).",
-                        'occurred_at'   => date('Y-m-d H:i:s'),
-                        'status'        => 'active',
-                        'is_deleted'    => 0,
-                        'created_at'    => date('Y-m-d H:i:s'),
-                        'updated_at'    => date('Y-m-d H:i:s')
-                    ]);
-                    $updated++;
-                } elseif ($action === 'delete' || $action === 'delete_and_replace') {
-                    // Soft delete previous duplicate lead
-                    $this->Lead_model->soft_delete($matchedId);
-
-                    // Insert fresh lead from spreadsheet
-                    $first_name   = $ld['first_name'] ?? '';
-                    $last_name    = $ld['last_name'] ?? '';
-                    $title        = $ld['title'] ?? '';
-                    $company_name = $ld['company_name'] ?? '';
-                    $email        = $ld['email'] ?? '';
-
-                    if (!$title) {
-                        $fullName = trim($first_name . ' ' . $last_name);
-                        $title = $fullName ? ($fullName . ($company_name ? ' (' . $company_name . ')' : '')) : ($company_name ?: ($email ?: 'Imported Lead'));
-                    }
-                    $ld['title']       = substr($title, 0, 200);
                     $ld['source']      = 'online';
                     $ld['lead_status'] = !empty($ld['lead_status']) ? $ld['lead_status'] : 'new';
                     $ld['status']      = 'active';
                     $ld['is_deleted']  = 0;
                     $ld['created_at']  = date('Y-m-d H:i:s');
                     $ld['updated_at']  = date('Y-m-d H:i:s');
-
-                    $assigned_to = $currentUserId;
-                    if (!empty($ld['account_owner'])) {
-                        $ownerNorm = strtolower(trim($ld['account_owner']));
-                        if (isset($user_lookup[$ownerNorm])) {
-                            $assigned_to = $user_lookup[$ownerNorm];
-                        }
-                    }
-                    $ld['assigned_to'] = $assigned_to;
 
                     $insertData = [];
                     foreach ($ld as $k => $v) {
@@ -1360,19 +1357,8 @@ class Leads extends MY_Controller {
                         }
                     }
 
-                    $newId = $this->Lead_model->insert($insertData);
-                    $this->db->insert('crm_lead_activities', [
-                        'lead_id'       => $newId,
-                        'user_id'       => $currentUserId,
-                        'activity_type' => 'note',
-                        'notes'         => "Replaced previous lead #{$matchedId} via spreadsheet import ('{$data['filename']}' row #{$dup['row']}).",
-                        'occurred_at'   => date('Y-m-d H:i:s'),
-                        'status'        => 'active',
-                        'is_deleted'    => 0,
-                        'created_at'    => date('Y-m-d H:i:s'),
-                        'updated_at'    => date('Y-m-d H:i:s')
-                    ]);
-                    $deleted_and_replaced++;
+                    $this->Lead_model->insert($insertData);
+                    $imported++;
                 }
             }
 
@@ -1394,9 +1380,6 @@ class Leads extends MY_Controller {
             log_message('error', 'Import confirm error: ' . $e->getMessage());
             $this->json_error('Import failed: ' . $e->getMessage());
         }
-
-        // Cleanup temporary session file
-        @unlink($filePath);
 
         $msgParts = [];
         if ($imported > 0)             $msgParts[] = "{$imported} new lead(s) imported";

@@ -489,7 +489,7 @@
                             <i class="fa fa-exclamation-triangle text-amber-600"></i> Previous Data Conflict Detected
                         </h4>
                         <p class="text-xs text-amber-800 mt-1 leading-relaxed">
-                            <span id="dup-notice-count" class="font-bold">0</span> records match existing leads by <strong>Email</strong> or <strong>Phone Number</strong>. Choose your resolution rule:
+                            <span id="dup-notice-count" class="font-bold">0</span> records match existing leads by <strong>Email Address</strong>. Choose your resolution rule:
                         </p>
                     </div>
                     <button type="button" id="btn-show-dup-popup" class="flex-shrink-0 px-2.5 py-1 text-[11px] font-bold bg-white text-amber-800 border border-amber-300 rounded-lg shadow-2xs hover:bg-amber-100 transition-colors">
@@ -597,7 +597,7 @@
                 </div>
                 <div>
                     <h4 class="text-sm font-bold text-gray-900 leading-tight">Duplicate Leads Found!</h4>
-                    <p class="text-xs text-gray-500">Existing records match by Email or Phone</p>
+                    <p class="text-xs text-gray-500">Existing records match by Email Address</p>
                 </div>
             </div>
             <button type="button" id="btn-close-dup-popup" class="text-gray-400 hover:text-gray-600 text-lg leading-none p-1">

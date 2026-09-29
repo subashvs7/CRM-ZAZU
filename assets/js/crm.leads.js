@@ -989,8 +989,10 @@ $(function() {
 
     // STEP 2: Confirm & Save Leads
     $('#btn-confirm-save-import').click(function() {
-        if (!activeImportToken) {
-            CRM.toast('error', 'Import session expired. Please upload and validate file again.');
+        var formEl = document.getElementById('drawer-import-form');
+        var fileInput = document.getElementById('drawer-file-input');
+        if (!fileInput || !fileInput.files || !fileInput.files.length) {
+            CRM.toast('error', 'Please choose a spreadsheet file first.');
             return;
         }
 
@@ -998,6 +1000,7 @@ $(function() {
         var originalText = $btn.html();
         $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Processing & Saving to Database...');
 
+        var formData = new FormData(formEl);
         var globalAction = $('input[name="global_dup_action"]:checked').val() || 'skip';
         var rowActions = {};
         $('.row-dup-action').each(function() {
@@ -1005,24 +1008,23 @@ $(function() {
             rowActions[r] = $(this).val();
         });
 
-        var postData = {
-            token: activeImportToken,
-            duplicate_action: globalAction,
-            row_actions: JSON.stringify(rowActions)
-        };
+        formData.append('duplicate_action', globalAction);
+        formData.append('row_actions', JSON.stringify(rowActions));
 
         // Attach CSRF token
         if (typeof CI3_CSRF_NAME !== 'undefined' && typeof CI3_CSRF_HASH !== 'undefined') {
-            postData[CI3_CSRF_NAME] = CI3_CSRF_HASH;
+            formData.append(CI3_CSRF_NAME, CI3_CSRF_HASH);
         } else {
             var $csrf = $('input[name="csrf_token"]');
-            if ($csrf.length) postData[$csrf.attr('name')] = $csrf.val();
+            if ($csrf.length) formData.append($csrf.attr('name'), $csrf.val());
         }
 
         $.ajax({
             url: BASE_URL + 'leads/import_confirm',
             method: 'POST',
-            data: postData,
+            data: formData,
+            processData: false,
+            contentType: false,
             success: function(resp) {
                 if (resp.status === 'success') {
                     CRM.toast('success', resp.message);
