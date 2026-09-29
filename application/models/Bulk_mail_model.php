@@ -144,11 +144,11 @@ class Bulk_mail_model extends CI_Model {
 
             // Apply Reach & Direction Filters
             if ($reach_filter === 'never_sent' || $reach_filter === 'unsent') {
-                $this->db->where("( (l.email_sent IS NULL OR l.email_sent != 'Yes') AND NOT EXISTS (SELECT 1 FROM crm_bulk_mail_queue q WHERE q.lead_id = l.id AND q.status = 'sent') )", null, false);
+                $this->db->where("( (l.email_sent IS NULL OR l.email_sent = '' OR l.email_sent = 'No' OR l.email_sent LIKE '%Fail%') AND NOT EXISTS (SELECT 1 FROM crm_bulk_mail_queue q WHERE q.lead_id = l.id AND q.status = 'sent') )", null, false);
             } elseif ($reach_filter === 'already_sent' || $reach_filter === 'followup') {
-                $this->db->where("( (l.email_sent = 'Yes') OR EXISTS (SELECT 1 FROM crm_bulk_mail_queue q WHERE q.lead_id = l.id AND q.status = 'sent') )", null, false);
+                $this->db->where("( (l.email_sent = 'Yes' OR l.email_sent LIKE '%Success%') OR EXISTS (SELECT 1 FROM crm_bulk_mail_queue q WHERE q.lead_id = l.id AND q.status = 'sent') )", null, false);
             } elseif ($reach_filter === 'failed' || $reach_filter === 'retry') {
-                $this->db->where("( (l.email_bounced = 'Yes') OR EXISTS (SELECT 1 FROM crm_bulk_mail_queue q WHERE q.lead_id = l.id AND q.status = 'failed') )", null, false);
+                $this->db->where("( (l.email_bounced = 'Yes' OR l.email_sent LIKE '%Fail%') OR EXISTS (SELECT 1 FROM crm_bulk_mail_queue q WHERE q.lead_id = l.id AND q.status = 'failed') )", null, false);
             } elseif ($reach_filter === 'inbound') {
                 $this->db->where_in('l.source', ['walk_in', 'call', 'online']);
             } elseif ($reach_filter === 'outbound') {
@@ -166,9 +166,9 @@ class Bulk_mail_model extends CI_Model {
                     $name = !empty($r['full_name']) ? $r['full_name'] : ($r['title'] ?: ($r['company_name'] ?: 'Lead #' . $r['lead_id']));
 
                     $reach = 'never_sent';
-                    if ($r['last_delivery_status'] === 'failed' || (!empty($r['email_bounced']) && $r['email_bounced'] === 'Yes')) {
+                    if ($r['last_delivery_status'] === 'failed' || (!empty($r['email_bounced']) && $r['email_bounced'] === 'Yes') || (!empty($r['email_sent']) && stripos($r['email_sent'], 'fail') !== false)) {
                         $reach = 'failed';
-                    } elseif ($r['last_delivery_status'] === 'sent' || (!empty($r['email_sent']) && $r['email_sent'] === 'Yes')) {
+                    } elseif ($r['last_delivery_status'] === 'sent' || (!empty($r['email_sent']) && (in_array(strtolower($r['email_sent']), ['yes', 'sent', 'true']) || stripos($r['email_sent'], 'success') !== false))) {
                         $reach = 'already_sent';
                     }
 

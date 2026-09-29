@@ -232,18 +232,25 @@ class Leads extends MY_Controller {
             // Email Tracking (Sent, Open, Bounced)
             $tracking = [];
             if (!empty($r['email_sent'])) {
-                $isSent = in_array(strtolower($r['email_sent']), ['yes', 'true', '1', 'sent']);
-                $tracking[] = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold '.($isSent ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-gray-100 text-gray-600').'">Sent: '.esc_html($r['email_sent']).'</span>';
+                $sentVal = trim((string)$r['email_sent']);
+                $lowerVal = strtolower($sentVal);
+                if (stripos($sentVal, 'success') !== false || in_array($lowerVal, ['yes', 'true', '1', 'sent'])) {
+                    $tracking[] = '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs whitespace-nowrap" title="'.esc_html($sentVal).'"><i class="fa fa-check-circle text-emerald-600"></i> '.esc_html($sentVal).'</span>';
+                } elseif (stripos($sentVal, 'fail') !== false || in_array($lowerVal, ['no', 'false', '0', 'failed'])) {
+                    $tracking[] = '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-300 shadow-2xs whitespace-nowrap" title="'.esc_html($sentVal).'"><i class="fa fa-times-circle text-rose-600"></i> '.esc_html($sentVal).'</span>';
+                } else {
+                    $tracking[] = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">'.esc_html($sentVal).'</span>';
+                }
             }
             if (!empty($r['email_open'])) {
                 $isOpen = in_array(strtolower($r['email_open']), ['yes', 'true', '1', 'opened']);
-                $tracking[] = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold '.($isOpen ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600').'">Open: '.esc_html($r['email_open']).'</span>';
+                $tracking[] = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold '.($isOpen ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600').'"><i class="fa fa-envelope-open-o text-[9px]"></i> Open: '.esc_html($r['email_open']).'</span>';
             }
             if (!empty($r['email_bounced'])) {
                 $isBounced = in_array(strtolower($r['email_bounced']), ['yes', 'true', '1', 'bounced']);
-                $tracking[] = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold '.($isBounced ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200').'">Bounce: '.esc_html($r['email_bounced']).'</span>';
+                $tracking[] = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold '.($isBounced ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200').'"><i class="fa fa-exclamation-circle text-[9px]"></i> Bounce: '.esc_html($r['email_bounced']).'</span>';
             }
-            $outreachHtml = !empty($tracking) ? '<div class="flex flex-col gap-1 items-start">'.implode('', $tracking).'</div>' : '<span class="text-gray-400 text-xs">-</span>';
+            $outreachHtml = !empty($tracking) ? '<div class="flex flex-col gap-1 items-start">'.implode('', $tracking).'</div>' : '<span class="text-gray-400 text-xs font-mono">-</span>';
 
             // Demo & Quote & Linked Product
             $demoQuote = [];
@@ -1000,6 +1007,26 @@ class Leads extends MY_Controller {
             $corpPhone    = $leadData['corporate_phone'] ?? '';
             $compPhone    = $leadData['company_phone'] ?? '';
 
+            // Smart email extraction: extract valid emails if text or multiple emails exist in cell (e.g. "email1@co.in / email2@co.in")
+            if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                if (preg_match_all('/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/', $email, $m) && !empty($m[0])) {
+                    $extractedPrimary = $m[0][0];
+                    if (empty($secEmail) && isset($m[0][1])) {
+                        $secEmail = $m[0][1];
+                        $leadData['secondary_email'] = $secEmail;
+                    }
+                    $email = $extractedPrimary;
+                    $leadData['email'] = $email;
+                }
+            }
+
+            if ($secEmail !== '' && !filter_var($secEmail, FILTER_VALIDATE_EMAIL)) {
+                if (preg_match_all('/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/', $secEmail, $m) && !empty($m[0])) {
+                    $secEmail = $m[0][0];
+                    $leadData['secondary_email'] = $secEmail;
+                }
+            }
+
             // Format validation: at least 1 identifier
             if (!$first_name && !$last_name && !$title && !$company_name && !$email) {
                 $invalid_rows[] = [
@@ -1169,7 +1196,7 @@ class Leads extends MY_Controller {
             $user_lookup[strtolower(trim($u['email']))] = $u['id'];
         }
 
-        $tableFields = $this->db->list_fields('leads');
+        $tableFields = $this->db->list_fields('crm_leads');
 
         $imported             = 0;
         $updated              = 0;
@@ -1208,6 +1235,26 @@ class Leads extends MY_Controller {
                 $secEmail     = $ld['secondary_email'] ?? '';
                 $corpPhone    = $ld['corporate_phone'] ?? '';
                 $compPhone    = $ld['company_phone'] ?? '';
+
+                // Smart email extraction: extract valid emails if text or multiple emails exist in cell
+                if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    if (preg_match_all('/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/', $email, $m) && !empty($m[0])) {
+                        $extractedPrimary = $m[0][0];
+                        if (empty($secEmail) && isset($m[0][1])) {
+                            $secEmail = $m[0][1];
+                            $ld['secondary_email'] = $secEmail;
+                        }
+                        $email = $extractedPrimary;
+                        $ld['email'] = $email;
+                    }
+                }
+
+                if ($secEmail !== '' && !filter_var($secEmail, FILTER_VALIDATE_EMAIL)) {
+                    if (preg_match_all('/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/', $secEmail, $m) && !empty($m[0])) {
+                        $secEmail = $m[0][0];
+                        $ld['secondary_email'] = $secEmail;
+                    }
+                }
 
                 if (!$first_name && !$last_name && !$title && !$company_name && !$email) {
                     continue; // Skip invalid row

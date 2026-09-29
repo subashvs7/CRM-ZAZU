@@ -364,7 +364,7 @@ CREATE TABLE `crm_leads` (
   `company_phone` varchar(50) DEFAULT NULL,
   `technologies` text DEFAULT NULL,
   `annual_revenue` varchar(100) DEFAULT NULL,
-  `email_sent` varchar(50) DEFAULT NULL,
+  `email_sent` text DEFAULT NULL,
   `email_open` varchar(50) DEFAULT NULL,
   `email_bounced` varchar(50) DEFAULT NULL,
   `product_demo` varchar(100) DEFAULT NULL,

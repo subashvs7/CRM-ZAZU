@@ -696,30 +696,43 @@ class Communications extends MY_Controller {
 
                 // Attempt send
                 $sendOk = @$this->email->send();
+                $nowFormatted = date('d M Y, h:i A');
 
-                // Increment sent counter on the SMTP account (auto-triggers limit_reached flag if daily_limit hit)
-                if ($currentSmtp) {
-                    $this->Smtp_account_model->increment_sent_count($currentSmtp['id']);
+                if ($sendOk) {
+                    $statusText = 'Send Success - ' . $nowFormatted;
+                    $queueStatus = 'sent';
+                    $sentCount++;
+
+                    // Increment sent counter on the SMTP account (auto-triggers limit_reached flag if daily_limit hit)
+                    if ($currentSmtp) {
+                        $this->Smtp_account_model->increment_sent_count($currentSmtp['id']);
+                    }
+                } else {
+                    $statusText = 'Send Failed - ' . $nowFormatted;
+                    $queueStatus = 'failed';
                 }
 
-                // Mark queue item as sent with rich audit trail
+                // Mark queue item with rich audit trail
                 $this->Bulk_mail_model->update_queue_item($item['id'], [
                     'sender_email'       => $fromEmail,
                     'smtp_account_id'   => $currentSmtp ? $currentSmtp['id'] : null,
                     'anti_spam_hash'     => $anti_spam_hash,
-                    'status'             => 'sent',
+                    'status'             => $queueStatus,
                     'sent_at'            => date('Y-m-d H:i:s'),
                     'next_followup_date' => $next_followup_date
                 ]);
-                $sentCount++;
 
-                // If lead recipient, record follow-up activity log and mark email_sent = 'Yes'
+                // If lead recipient, record follow-up activity log and update email_sent status
                 if (!empty($item['lead_id'])) {
+                    $activityNote = $sendOk 
+                        ? "{$typeTitle} Dispatched Successfully via {$fromEmail} [Ref: #{$anti_spam_hash}]: \"{$subject}\" (Campaign #{$campaign_id}). Status: Send Success ({$nowFormatted}). Next follow-up on {$next_followup_date}."
+                        : "{$typeTitle} Dispatch Failed via {$fromEmail} [Ref: #{$anti_spam_hash}]: \"{$subject}\" (Campaign #{$campaign_id}). Status: Send Failed ({$nowFormatted}).";
+
                     $this->db->insert('crm_lead_activities', [
                         'lead_id'       => (int)$item['lead_id'],
                         'user_id'       => $currentUserId,
                         'activity_type' => 'email',
-                        'notes'         => "{$typeTitle} Dispatched via {$fromEmail} [Ref: #{$anti_spam_hash}]: \"{$subject}\" (Campaign #{$campaign_id}). Next follow-up on {$next_followup_date}.",
+                        'notes'         => $activityNote,
                         'occurred_at'   => date('Y-m-d H:i:s'),
                         'status'        => 'active',
                         'is_deleted'    => 0,
@@ -728,7 +741,7 @@ class Communications extends MY_Controller {
                     ]);
 
                     $this->db->where('id', (int)$item['lead_id'])->update('crm_leads', [
-                        'email_sent' => 'Yes',
+                        'email_sent' => $statusText,
                         'updated_at' => date('Y-m-d H:i:s')
                     ]);
                 }
@@ -920,9 +933,17 @@ class Communications extends MY_Controller {
             $this->email->message($personalizedMessage);
 
             $sendOk = @$this->email->send();
+            $nowFormatted = date('d M Y, h:i A');
 
-            if ($currentSmtp) {
-                $this->Smtp_account_model->increment_sent_count($currentSmtp['id']);
+            if ($sendOk) {
+                $statusText = 'Send Success - ' . $nowFormatted;
+                $queueStatus = 'sent';
+                if ($currentSmtp) {
+                    $this->Smtp_account_model->increment_sent_count($currentSmtp['id']);
+                }
+            } else {
+                $statusText = 'Send Failed - ' . $nowFormatted;
+                $queueStatus = 'failed';
             }
 
             // Update queue item with sender, anti-spam hash, and follow-up date
@@ -930,7 +951,7 @@ class Communications extends MY_Controller {
                 'sender_email'       => $fromEmail,
                 'smtp_account_id'   => $currentSmtp ? $currentSmtp['id'] : null,
                 'anti_spam_hash'     => $anti_spam_hash,
-                'status'             => 'sent',
+                'status'             => $queueStatus,
                 'sent_at'            => date('Y-m-d H:i:s'),
                 'next_followup_date' => $next_followup_date
             ]);
@@ -952,11 +973,15 @@ class Communications extends MY_Controller {
                     $typeTitle = $typeLabels[$item['campaign_type']] ?? 'Outreach';
                 }
 
+                $activityNote = $sendOk 
+                    ? "Queued {$typeTitle} Dispatched Successfully via {$fromEmail} [Ref: #{$anti_spam_hash}]. Status: Send Success ({$nowFormatted}). Next follow-up on {$next_followup_date}."
+                    : "Queued {$typeTitle} Dispatch Failed via {$fromEmail} [Ref: #{$anti_spam_hash}]. Status: Send Failed ({$nowFormatted}).";
+
                 $this->db->insert('crm_lead_activities', [
                     'lead_id'       => (int)$item['lead_id'],
                     'user_id'       => 1, // System / Cron
                     'activity_type' => 'email',
-                    'notes'         => "Queued {$typeTitle} Dispatched via {$fromEmail} [Ref: #{$anti_spam_hash}]. Next follow-up on {$next_followup_date}.",
+                    'notes'         => $activityNote,
                     'occurred_at'   => date('Y-m-d H:i:s'),
                     'status'        => 'active',
                     'is_deleted'    => 0,
@@ -965,7 +990,7 @@ class Communications extends MY_Controller {
                 ]);
 
                 $this->db->where('id', (int)$item['lead_id'])->update('crm_leads', [
-                    'email_sent' => 'Yes',
+                    'email_sent' => $statusText,
                     'updated_at' => date('Y-m-d H:i:s')
                 ]);
             }

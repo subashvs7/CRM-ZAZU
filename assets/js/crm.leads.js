@@ -595,7 +595,16 @@ $(function() {
             $('#view-assigned-name').text(d.assigned_name || '-');
             $('#view-source').text(d.source || '-');
 
-            $('#view-email-sent').html(d.email_sent ? '<span class="px-2 py-0.5 rounded font-bold ' + (d.email_sent.toLowerCase() === 'yes' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-gray-100 text-gray-700') + '">' + $('<div>').text(d.email_sent).html() + '</span>' : '-');
+            var sentBadge = '-';
+            if (d.email_sent) {
+                var sVal = d.email_sent;
+                var isS = sVal.toLowerCase().indexOf('success') !== -1 || ['yes', 'true', '1', 'sent'].indexOf(sVal.toLowerCase()) !== -1;
+                var isF = sVal.toLowerCase().indexOf('fail') !== -1 || ['no', 'false', '0', 'failed'].indexOf(sVal.toLowerCase()) !== -1;
+                var bClass = isS ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : (isF ? 'bg-rose-50 text-rose-800 border-rose-300' : 'bg-blue-50 text-blue-700 border-blue-200');
+                var icon = isS ? '<i class="fa fa-check-circle text-emerald-600 mr-1"></i>' : (isF ? '<i class="fa fa-times-circle text-rose-600 mr-1"></i>' : '<i class="fa fa-envelope mr-1"></i>');
+                sentBadge = '<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border ' + bClass + '">' + icon + $('<div>').text(sVal).html() + '</span>';
+            }
+            $('#view-email-sent').html(sentBadge);
             $('#view-email-open').html(d.email_open ? '<span class="px-2 py-0.5 rounded font-bold ' + (d.email_open.toLowerCase() === 'yes' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-700') + '">' + $('<div>').text(d.email_open).html() + '</span>' : '-');
             $('#view-email-bounced').html(d.email_bounced ? '<span class="px-2 py-0.5 rounded font-bold ' + (d.email_bounced.toLowerCase() === 'yes' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200') + '">' + $('<div>').text(d.email_bounced).html() + '</span>' : '-');
 

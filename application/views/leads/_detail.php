@@ -113,8 +113,14 @@
                 <div class="py-2 border-b border-gray-50 space-y-1">
                     <span class="text-[11px] text-gray-400 uppercase font-semibold tracking-wide block">Email Outreach Tracking</span>
                     <div class="flex flex-wrap gap-1.5 text-xs">
-                        <?php if(!empty($lead['email_sent'])): ?>
-                        <span class="px-2 py-0.5 rounded font-semibold <?= strtolower($lead['email_sent']) === 'yes' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-gray-100 text-gray-600' ?>">Sent: <?= esc_html($lead['email_sent']) ?></span>
+                        <?php if(!empty($lead['email_sent'])): 
+                            $sVal = trim((string)$lead['email_sent']);
+                            $isS = stripos($sVal, 'success') !== false || in_array(strtolower($sVal), ['yes', 'true', '1', 'sent']);
+                            $isF = stripos($sVal, 'fail') !== false || in_array(strtolower($sVal), ['no', 'false', '0', 'failed']);
+                        ?>
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold <?= $isS ? 'bg-emerald-50 text-emerald-800 border border-emerald-300' : ($isF ? 'bg-rose-50 text-rose-800 border border-rose-300' : 'bg-blue-50 text-blue-700 border border-blue-200') ?>">
+                            <i class="fa <?= $isS ? 'fa-check-circle text-emerald-600' : ($isF ? 'fa-times-circle text-rose-600' : 'fa-envelope') ?>"></i> <?= esc_html($sVal) ?>
+                        </span>
                         <?php endif; ?>
                         <?php if(!empty($lead['email_open'])): ?>
                         <span class="px-2 py-0.5 rounded font-semibold <?= strtolower($lead['email_open']) === 'yes' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600' ?>">Open: <?= esc_html($lead['email_open']) ?></span>
