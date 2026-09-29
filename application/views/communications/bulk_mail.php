@@ -617,32 +617,88 @@
                         </div>
 
                         <!-- Campaign Outreach Purpose & Follow-Up Planner -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-indigo-50/50 border border-indigo-200/80 rounded-xl">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-800 mb-1 flex items-center gap-1.5">
-                                    <i class="fa fa-tag text-indigo-600"></i> Outreach Purpose / Stage
-                                </label>
-                                <select name="campaign_type" id="select-campaign-type" class="w-full px-3 py-2 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                                    <option value="outreach" selected>🚀 Initial Outreach (First Pitch)</option>
-                                    <option value="followup_1">🔁 Follow-Up #1 (Gentle Reminder)</option>
-                                    <option value="followup_2">⚡ Follow-Up #2 (Last Call & Offer)</option>
-                                    <option value="retry">🛠️ Retry / Resend Failed Dispatches</option>
-                                    <option value="announcement">📢 Announcement / Product Update</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-800 mb-1 flex items-center gap-1.5">
-                                    <i class="fa fa-calendar text-indigo-600"></i> Schedule Next Follow-Up
-                                </label>
-                                <div class="flex items-center gap-1.5">
-                                    <select name="followup_schedule" id="select-followup-schedule" class="w-full px-3 py-2 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                                        <option value="3" selected>After 3 Days (Standard)</option>
-                                        <option value="5">After 5 Days</option>
-                                        <option value="7">After 1 Week (7 Days)</option>
-                                        <option value="custom">Custom Date...</option>
+                        <div class="p-3.5 bg-indigo-50/50 border border-indigo-200/80 rounded-xl space-y-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                                            <i class="fa fa-tag text-indigo-600"></i> Outreach Purpose / Stage
+                                        </label>
+                                        <div class="flex items-center gap-1">
+                                            <button type="button" id="btn-manage-stages" class="px-2 py-0.5 text-[11px] font-semibold text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded border border-indigo-200 transition-colors flex items-center gap-1" title="Customize stages and days">
+                                                <i class="fa fa-sliders text-[10px]"></i> Edit Options
+                                            </button>
+                                            <button type="button" id="btn-view-stage-logs" class="px-2 py-0.5 text-[11px] font-semibold text-gray-700 bg-white hover:bg-gray-100 rounded border border-gray-200 transition-colors flex items-center gap-1" title="Check Stage Logs">
+                                                <i class="fa fa-list-alt text-[10px] text-gray-500"></i> Logs
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <select name="campaign_type" id="select-campaign-type" class="w-full px-3 py-2 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                        <?php if(!empty($outreach_stages)): foreach ($outreach_stages as $stg): ?>
+                                            <option value="<?= esc_html($stg['id']) ?>" data-days="<?= (int)($stg['days'] ?? 3) ?>" <?= $stg['id'] === 'outreach' ? 'selected' : '' ?>>
+                                                <?= esc_html($stg['name']) ?>
+                                            </option>
+                                        <?php endforeach; else: ?>
+                                            <option value="outreach" selected>🚀 Initial Outreach (First Pitch)</option>
+                                            <option value="followup_1">🔁 Follow-Up #1 (Gentle Reminder)</option>
+                                            <option value="followup_2">⚡ Follow-Up #2 (Last Call & Offer)</option>
+                                            <option value="retry">🛠️ Retry / Resend Failed Dispatches</option>
+                                            <option value="announcement">📢 Announcement / Product Update</option>
+                                        <?php endif; ?>
                                     </select>
-                                    <input type="date" name="custom_followup_date" id="input-custom-followup-date" class="hidden px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                                 </div>
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                                            <i class="fa fa-calendar text-indigo-600"></i> Schedule Next Follow-Up
+                                        </label>
+                                        <span id="followup-preview-badge" class="text-[10px] font-mono font-semibold text-indigo-700 bg-indigo-100/90 px-2 py-0.5 rounded border border-indigo-200">
+                                            Due: <?= date('d M Y', strtotime('+3 days')) ?>
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <select name="followup_schedule" id="select-followup-schedule" class="w-full px-3 py-2 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                            <option value="1">After 1 Day (Tomorrow)</option>
+                                            <option value="2">After 2 Days</option>
+                                            <option value="3" selected>After 3 Days (Standard)</option>
+                                            <option value="4">After 4 Days</option>
+                                            <option value="5">After 5 Days</option>
+                                            <option value="7">After 1 Week (7 Days)</option>
+                                            <option value="10">After 10 Days</option>
+                                            <option value="14">After 2 Weeks (14 Days)</option>
+                                            <option value="custom_days">Custom Number of Days...</option>
+                                            <option value="custom">Custom Date...</option>
+                                        </select>
+                                        <div id="wrap-custom-followup-days" class="hidden flex-shrink-0 w-28">
+                                            <input type="number" min="1" max="365" name="custom_followup_days" id="input-custom-followup-days" placeholder="Days e.g. 6" class="w-full px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                        </div>
+                                        <div id="wrap-custom-followup-date" class="hidden flex-shrink-0 w-36">
+                                            <input type="date" name="custom_followup_date" id="input-custom-followup-date" min="<?= date('Y-m-d') ?>" value="<?= date('Y-m-d', strtotime('+3 days')) ?>" class="w-full px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Partition / Batch Count Dispatch Control -->
+                            <div class="pt-2 border-t border-indigo-100 flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-[11px] font-bold text-gray-700 flex items-center gap-1">
+                                        <i class="fa fa-pie-chart text-indigo-600"></i> Dispatch Partition:
+                                    </span>
+                                    <label class="text-xs font-medium text-gray-700 cursor-pointer flex items-center gap-1.5">
+                                        <input type="radio" name="partition_mode" value="all" checked class="text-indigo-600 focus:ring-indigo-500">
+                                        <span>Dispatch All (<strong id="part-total-badge" class="font-mono">0</strong>)</span>
+                                    </label>
+                                    <label class="text-xs font-medium text-gray-700 cursor-pointer flex items-center gap-1.5">
+                                        <input type="radio" name="partition_mode" value="custom" class="text-indigo-600 focus:ring-indigo-500">
+                                        <span>Custom Batch:</span>
+                                    </label>
+                                    <div id="wrap-partition-input" class="hidden items-center gap-1.5">
+                                        <input type="number" min="1" name="partition_limit" id="input-partition-limit" placeholder="e.g. 50" class="w-20 px-2 py-1 bg-white border border-indigo-300 rounded text-xs font-mono font-bold text-gray-800 focus:ring-1 focus:ring-indigo-500">
+                                        <span class="text-[10px] text-gray-500">now, rest stay in queue</span>
+                                    </div>
+                                </div>
+                                <span id="part-feedback-badge" class="text-[10px] text-indigo-600 italic">Full batch will be dispatched</span>
                             </div>
                         </div>
 
@@ -716,6 +772,127 @@
         </form>
     </div>
 </div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: MANAGE OUTREACH STAGES                                             -->
+<!-- ========================================================================= -->
+<div id="modal-manage-stages" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full border border-gray-200 overflow-hidden animate-fade-in my-8">
+        <div class="px-5 py-4 bg-gradient-to-r from-indigo-700 to-blue-700 text-white flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-sm">
+                    <i class="fa fa-sliders"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold">Manage Outreach Stages</h3>
+                    <p class="text-[11px] text-indigo-100">Customize follow-up stages, labels, and default follow-up intervals</p>
+                </div>
+            </div>
+            <button type="button" class="btn-close-stage-modal text-white/80 hover:text-white text-lg">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+
+        <div class="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+            <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-start gap-2">
+                <i class="fa fa-lock text-amber-600 mt-0.5"></i>
+                <div>
+                    <strong>Intro is Locked:</strong> Initial Outreach is the permanent starting pitch. All follow-ups (Follow-Up #1, #2, etc.) can be renamed, re-scheduled, or added.
+                </div>
+            </div>
+
+            <div id="stages-editor-list" class="space-y-2.5">
+                <!-- Dynamically generated rows -->
+            </div>
+
+            <button type="button" id="btn-add-stage-row" class="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 border border-dashed border-indigo-300 text-indigo-700 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5">
+                <i class="fa fa-plus-circle"></i> Add New Follow-Up Stage
+            </button>
+        </div>
+
+        <div class="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+            <button type="button" class="btn-close-stage-modal px-4 py-2 bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold transition-all">
+                Cancel
+            </button>
+            <button type="button" id="btn-save-stages-submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5">
+                <i class="fa fa-check"></i> Save & Apply Changes
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: STAGE LOGS & SCHEDULE TRACKER                                      -->
+<!-- ========================================================================= -->
+<div id="modal-stage-logs" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full border border-gray-200 max-h-[90vh] flex flex-col overflow-hidden animate-fade-in my-6">
+        <div class="px-5 py-4 bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between flex-shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm">
+                    <i class="fa fa-calendar-check-o"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold">Outreach Stage &amp; Scheduled Follow-Up Logs</h3>
+                    <p class="text-[11px] text-gray-400">Live breakdown of leads by stage, sent timestamps, and upcoming due dates</p>
+                </div>
+            </div>
+            <button type="button" class="btn-close-logs-modal text-white/70 hover:text-white text-lg">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+
+        <div class="p-5 overflow-y-auto space-y-4 flex-1">
+            <!-- Stage Summary Cards Grid -->
+            <div id="stage-logs-cards-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="p-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-xs text-gray-400">
+                    Loading stats...
+                </div>
+            </div>
+
+            <!-- Filter Strip -->
+            <div class="flex items-center justify-between pt-2 border-t border-gray-100">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold text-gray-700">Filter by Stage:</span>
+                    <select id="filter-logs-stage" class="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none">
+                        <option value="all">All Stages</option>
+                    </select>
+                </div>
+                <button type="button" id="btn-refresh-stage-logs" class="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold flex items-center gap-1">
+                    <i class="fa fa-refresh"></i> Refresh
+                </button>
+            </div>
+
+            <!-- Logs Table -->
+            <div class="border border-gray-200 rounded-xl overflow-hidden shadow-2xs">
+                <div class="overflow-x-auto max-h-[350px]">
+                    <table class="w-full text-left text-xs text-gray-600">
+                        <thead class="bg-gray-50 text-[11px] font-bold text-gray-700 uppercase border-b border-gray-200 sticky top-0">
+                            <tr>
+                                <th class="py-2.5 px-3">Recipient</th>
+                                <th class="py-2.5 px-3">Stage</th>
+                                <th class="py-2.5 px-3">Sent At</th>
+                                <th class="py-2.5 px-3">Next Due Date</th>
+                                <th class="py-2.5 px-3 text-right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stage-logs-table-body" class="divide-y divide-gray-100">
+                            <tr>
+                                <td colspan="5" class="py-6 text-center text-gray-400 text-xs">Loading logs...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-end flex-shrink-0">
+            <button type="button" class="btn-close-logs-modal px-4 py-1.5 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-xl text-xs font-bold">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
 
 <!-- Summernote Lite JS -->
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.js"></script>

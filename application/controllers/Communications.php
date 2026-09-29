@@ -18,6 +18,26 @@ class Communications extends MY_Controller {
     }
 
     /**
+     * Retrieve configured outreach stages from crm_app_settings or fallback defaults
+     */
+    public function _get_outreach_stages() {
+        $raw = $this->App_setting_model->get_by_key('outreach_stages');
+        if ($raw) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded) && !empty($decoded)) {
+                return $decoded;
+            }
+        }
+        return [
+            ['id' => 'outreach', 'name' => '🚀 Initial Outreach (First Pitch)', 'days' => 3, 'locked' => true],
+            ['id' => 'followup_1', 'name' => '🔁 Follow-Up #1 (Gentle Reminder)', 'days' => 3, 'locked' => false],
+            ['id' => 'followup_2', 'name' => '⚡ Follow-Up #2 (Last Call & Offer)', 'days' => 2, 'locked' => false],
+            ['id' => 'retry', 'name' => '🛠️ Retry / Resend Failed Dispatches', 'days' => 1, 'locked' => false],
+            ['id' => 'announcement', 'name' => '📢 Announcement / Product Update', 'days' => 7, 'locked' => false]
+        ];
+    }
+
+    /**
      * Primary Bulk Mail Hub View (All-In-One Unified Hub)
      */
     public function bulk_mail() {
@@ -44,6 +64,7 @@ class Communications extends MY_Controller {
             'total_contk_count'  => $total_contk_count,
             'company_name'       => $company_name,
             'smtp_pool'          => $smtp_pool,
+            'outreach_stages'    => $this->_get_outreach_stages(),
             'current_user'       => $this->get_user()
         ]);
     }
@@ -64,6 +85,9 @@ class Communications extends MY_Controller {
     /**
      * Dedicated Mail Dispatch History & Logs
      */
+    /**
+     * Dedicated Mail Dispatch History & Logs
+     */
     public function mail_history() {
         $stats = $this->Bulk_mail_model->get_stats();
         $recent_campaigns = $this->Bulk_mail_model->get_recent_campaigns(50);
@@ -76,6 +100,7 @@ class Communications extends MY_Controller {
             'distinct_senders' => $distinct_senders,
             'delivery_logs'    => $initial_logs['rows'],
             'total_logs'       => $initial_logs['total'],
+            'outreach_stages'  => $this->_get_outreach_stages(),
             'page_js'          => 'communications'
         ]);
     }
@@ -90,12 +115,77 @@ class Communications extends MY_Controller {
             'sender_email'  => $this->input->get('sender_email'),
             'status'        => $this->input->get('status'),
             'campaign_type' => $this->input->get('campaign_type'),
+            'followup_due'  => $this->input->get('followup_due'),
             'search'        => $this->input->get('search')
         ];
         $limit  = (int)($this->input->get('limit') ?: 50);
         $offset = (int)($this->input->get('offset') ?: 0);
         $logs   = $this->Bulk_mail_model->get_delivery_logs($params, $limit, $offset);
         $this->json_success($logs);
+    }
+
+    /**
+     * Export Filtered Delivery Logs to CSV
+     */
+    public function export_delivery_logs_csv() {
+        $params = [
+            'from_date'     => $this->input->get('from_date'),
+            'to_date'       => $this->input->get('to_date'),
+            'sender_email'  => $this->input->get('sender_email'),
+            'status'        => $this->input->get('status'),
+            'campaign_type' => $this->input->get('campaign_type'),
+            'followup_due'  => $this->input->get('followup_due'),
+            'search'        => $this->input->get('search')
+        ];
+
+        // Fetch logs matching filter (up to 10,000 records)
+        $res = $this->Bulk_mail_model->get_delivery_logs($params, 10000, 0);
+        $rows = $res['rows'] ?? [];
+
+        $filename = 'crm_outreach_history_' . date('Ymd_His') . '.csv';
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $out = fopen('php://output', 'w');
+        fputs($out, "\xEF\xBB\xBF"); // UTF-8 BOM for Microsoft Excel
+
+        fputcsv($out, [
+            'Log ID',
+            'Recipient Name',
+            'Recipient Email',
+            'Outreach Purpose / Stage',
+            'Campaign Subject',
+            'Product',
+            'Sender Mailbox',
+            'Anti-Spam Ref',
+            'Dispatched At',
+            'Next Follow-Up Date',
+            'Delivery Status',
+            'Error Note'
+        ]);
+
+        foreach ($rows as $r) {
+            fputcsv($out, [
+                $r['id'],
+                $r['recipient_name'] ?: 'Customer',
+                $r['recipient_email'],
+                ucfirst(str_replace('_', ' ', $r['campaign_type'] ?: 'outreach')),
+                $r['campaign_subject'] ?: 'Direct Outreach',
+                $r['product_name'] ?: '-',
+                $r['sender_email'] ?: ($r['sender_mailbox_name'] ?: '-'),
+                !empty($r['anti_spam_hash']) ? '#' . $r['anti_spam_hash'] : '-',
+                !empty($r['sent_at']) ? $r['sent_at'] : 'In Queue',
+                !empty($r['next_followup_date']) ? $r['next_followup_date'] : '-',
+                strtoupper($r['status'] ?: 'QUEUED'),
+                $r['error_message'] ?: ''
+            ]);
+        }
+
+        fclose($out);
+        exit;
     }
 
     /**
@@ -456,31 +546,48 @@ class Communications extends MY_Controller {
             $targetSummary .= ' (' . count($recipients) . ' Handpicked)';
         }
 
+        $stages = $this->_get_outreach_stages();
+        $valid_types = array_column($stages, 'id');
         $campaign_type = $this->input->post('campaign_type') ?: 'outreach';
-        $valid_types   = ['outreach', 'followup_1', 'followup_2', 'retry', 'announcement'];
         if (!in_array($campaign_type, $valid_types)) {
             $campaign_type = 'outreach';
         }
 
+        $typeTitle = 'Outreach';
+        foreach ($stages as $st) {
+            if ($st['id'] === $campaign_type) {
+                $typeTitle = $st['name'];
+                break;
+            }
+        }
+
         $followup_schedule = $this->input->post('followup_schedule') ?: '3';
         if ($followup_schedule === 'custom') {
-            $custom_date = $this->input->post('custom_followup_date');
-            $next_followup_date = !empty($custom_date) ? $custom_date : date('Y-m-d', strtotime('+3 days'));
-            $next_followup_days = 3;
+            $custom_date = trim($this->input->post('custom_followup_date') ?: '');
+            if (!empty($custom_date) && strtotime($custom_date)) {
+                $next_followup_date = date('Y-m-d', strtotime($custom_date));
+                $todayTs = strtotime(date('Y-m-d'));
+                $targetTs = strtotime($next_followup_date);
+                $diffDays = (int)round(($targetTs - $todayTs) / 86400);
+                $next_followup_days = max(1, $diffDays);
+            } else {
+                $next_followup_days = 3;
+                $next_followup_date = date('Y-m-d', strtotime('+3 days'));
+            }
+        } elseif ($followup_schedule === 'custom_days') {
+            $custom_days = max(1, (int)$this->input->post('custom_followup_days'));
+            $next_followup_days = $custom_days;
+            $next_followup_date = date('Y-m-d', strtotime("+{$custom_days} days"));
         } else {
-            $days = (int)$followup_schedule ?: 3;
+            $days = max(1, (int)$followup_schedule);
             $next_followup_days = $days;
             $next_followup_date = date('Y-m-d', strtotime("+{$days} days"));
         }
 
-        $typeLabels = [
-            'outreach'     => 'Initial Outreach',
-            'followup_1'   => 'Follow-Up #1',
-            'followup_2'   => 'Follow-Up #2',
-            'retry'        => 'Retry Resend',
-            'announcement' => 'Announcement'
-        ];
-        $typeTitle = $typeLabels[$campaign_type] ?? 'Outreach';
+        // Custom Partition / Batch Count control
+        $partition_mode  = $this->input->post('partition_mode') ?: 'all';
+        $partition_limit = (int)$this->input->post('partition_limit');
+        $dispatch_target = ($partition_mode === 'custom' && $partition_limit > 0) ? min($partition_limit, count($recipients)) : count($recipients);
 
         $campaign_data = [
             'subject'             => $subject,
@@ -508,6 +615,11 @@ class Communications extends MY_Controller {
             $queueItems = $this->db->where('campaign_id', $campaign_id)->get('crm_bulk_mail_queue')->result_array();
 
             foreach ($queueItems as $idx => $item) {
+                // If custom partition limit reached, keep remaining items in queue for future dispatch
+                if ($partition_mode === 'custom' && $sentCount >= $dispatch_target) {
+                    break;
+                }
+
                 // SENDER SELECTION: Use chosen specific mailbox OR auto-rotate fair-share pool
                 if ($forcedSmtp) {
                     $rem = max(0, (int)$forcedSmtp['daily_limit'] - (int)$forcedSmtp['sent_today']);
@@ -568,7 +680,6 @@ class Communications extends MY_Controller {
                 ];
 
                 $anti_spam_hash = $this->Bulk_mail_model->generate_anti_spam_hash();
-                $next_followup_date = date('Y-m-d', strtotime('+3 days'));
 
                 $personalizedSubject = str_replace(array_keys($replacements), array_values($replacements), $subject);
                 $personalizedMessage = str_replace(array_keys($replacements), array_values($replacements), $message);
@@ -623,17 +734,20 @@ class Communications extends MY_Controller {
                 }
             }
 
+            $remainingCount = count($queueItems) - $sentCount;
             if ($quotaHalted) {
                 $this->Bulk_mail_model->update_campaign_status($campaign_id, 'partial');
-                $remainingCount = count($queueItems) - $sentCount;
                 $msg = "Dispatched {$sentCount} emails! Hostinger daily limit reached across all SMTP accounts. The remaining {$remainingCount} emails remain queued and will continue tomorrow.";
+            } elseif ($partition_mode === 'custom' && $remainingCount > 0) {
+                $this->Bulk_mail_model->update_campaign_status($campaign_id, 'partial');
+                $msg = "Custom Partition Dispatched! Successfully sent {$sentCount} email(s) now. Remaining {$remainingCount} email(s) are held in queue ready for next dispatch.";
             } else {
                 $this->Bulk_mail_model->update_campaign_status($campaign_id, 'completed');
                 $acctText = count($usedAccounts) > 1 ? " with auto-rotation across " . count($usedAccounts) . " Hostinger SMTP accounts" : "";
-                $msg = "Bulk mail campaign launched! Successfully dispatched to {$sentCount} recipient(s){$acctText}.";
+                $msg = "Bulk mail campaign launched! Successfully dispatched to {$sentCount} recipient(s){$acctText}. Next follow-up on {$next_followup_date}.";
             }
         } else {
-            $msg = "Campaign queued successfully! " . count($recipients) . " emails added to queue for background dispatch.";
+            $msg = "Campaign queued successfully! " . count($recipients) . " emails added to queue for background dispatch. Next follow-up scheduled for {$next_followup_date}.";
         }
 
         if ($this->input->is_ajax_request()) {
@@ -773,7 +887,7 @@ class Communications extends MY_Controller {
             }
 
             $anti_spam_hash = $this->Bulk_mail_model->generate_anti_spam_hash();
-            $next_followup_date = date('Y-m-d', strtotime('+3 days'));
+            $next_followup_date = !empty($item['next_followup_date']) ? $item['next_followup_date'] : date('Y-m-d', strtotime('+3 days'));
 
             $replacements = [
                 '{{customer_name}}'       => $item['recipient_name'] ?: ($custData['customer_name'] ?? ($leadData['contact_person'] ?? 'Customer')),
@@ -905,6 +1019,138 @@ class Communications extends MY_Controller {
     public function process_queue_batch_ajax() {
         $result = $this->_execute_queue_batch(1);
         $this->json_success($result);
+    }
+
+    /**
+     * AJAX: Save Customized Outreach Stages
+     * (Keeps 'outreach' fixed/locked, allows editing all others or adding new ones)
+     */
+    public function save_outreach_stages_ajax() {
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+        }
+
+        $stages = $this->input->post('stages');
+        if (!is_array($stages) || empty($stages)) {
+            $this->json_error('Invalid stages payload submitted.');
+            return;
+        }
+
+        $cleaned = [];
+        $hasOutreach = false;
+
+        foreach ($stages as $s) {
+            $id = strtolower(trim(preg_replace('/[^a-zA-Z0-9_-]/', '', $s['id'] ?? '')));
+            $name = trim($s['name'] ?? '');
+            $days = max(1, (int)($s['days'] ?? 3));
+            $locked = !empty($s['locked']);
+
+            if ($id === 'outreach') {
+                $locked = true;
+                $hasOutreach = true;
+                if (empty($name)) {
+                    $name = '🚀 Initial Outreach (First Pitch)';
+                }
+            }
+
+            if (!empty($id) && !empty($name)) {
+                $cleaned[] = [
+                    'id'     => $id,
+                    'name'   => $name,
+                    'days'   => $days,
+                    'locked' => $locked
+                ];
+            }
+        }
+
+        // Ensure Initial Outreach is always present as the first locked stage
+        if (!$hasOutreach) {
+            array_unshift($cleaned, [
+                'id'     => 'outreach',
+                'name'   => '🚀 Initial Outreach (First Pitch)',
+                'days'   => 3,
+                'locked' => true
+            ]);
+        }
+
+        $this->App_setting_model->set('outreach_stages', json_encode($cleaned));
+
+        $this->json_success([
+            'stages' => $cleaned
+        ], 'Outreach stages updated successfully!');
+    }
+
+    /**
+     * AJAX: Get Detailed Stage Analytics & Logs
+     */
+    public function get_stage_logs_ajax() {
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+        }
+
+        $filter_stage = $this->input->get('stage') ?: 'all';
+        $stages = $this->_get_outreach_stages();
+
+        // 1. Stage statistics breakdown
+        $this->db->select("campaign_type, status, COUNT(id) as count, MIN(next_followup_date) as next_due");
+        $this->db->group_by(['campaign_type', 'status']);
+        $statsRaw = $this->db->get('crm_bulk_mail_queue')->result_array();
+
+        // Aggregate by stage
+        $stageSummary = [];
+        foreach ($stages as $st) {
+            $stageSummary[$st['id']] = [
+                'id'       => $st['id'],
+                'name'     => $st['name'],
+                'days'     => $st['days'],
+                'sent'     => 0,
+                'queued'   => 0,
+                'failed'   => 0,
+                'next_due' => null
+            ];
+        }
+
+        foreach ($statsRaw as $sr) {
+            $stId = $sr['campaign_type'] ?: 'outreach';
+            if (!isset($stageSummary[$stId])) {
+                $stageSummary[$stId] = [
+                    'id'       => $stId,
+                    'name'     => ucfirst(str_replace('_', ' ', $stId)),
+                    'days'     => 3,
+                    'sent'     => 0,
+                    'queued'   => 0,
+                    'failed'   => 0,
+                    'next_due' => null
+                ];
+            }
+            if ($sr['status'] === 'sent') {
+                $stageSummary[$stId]['sent'] += (int)$sr['count'];
+            } elseif ($sr['status'] === 'queued') {
+                $stageSummary[$stId]['queued'] += (int)$sr['count'];
+            } elseif ($sr['status'] === 'failed') {
+                $stageSummary[$stId]['failed'] += (int)$sr['count'];
+            }
+            if (!empty($sr['next_due']) && (empty($stageSummary[$stId]['next_due']) || $sr['next_due'] < $stageSummary[$stId]['next_due'])) {
+                $stageSummary[$stId]['next_due'] = $sr['next_due'];
+            }
+        }
+
+        // 2. Recent dispatch logs for timeline review
+        $this->db->select('q.id, q.campaign_id, q.campaign_type, q.recipient_email, q.recipient_name, q.sender_email, q.status, q.sent_at, q.next_followup_date, q.lead_id, c.subject')
+                 ->from('crm_bulk_mail_queue q')
+                 ->join('crm_bulk_mail_campaigns c', 'c.id = q.campaign_id', 'left')
+                 ->order_by('q.id', 'DESC')
+                 ->limit(50);
+
+        if ($filter_stage !== 'all') {
+            $this->db->where('q.campaign_type', $filter_stage);
+        }
+        $logs = $this->db->get()->result_array();
+
+        $this->json_success([
+            'stages'  => array_values($stageSummary),
+            'logs'    => $logs
+        ]);
     }
 }
 

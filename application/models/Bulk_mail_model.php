@@ -511,6 +511,21 @@ class Bulk_mail_model extends CI_Model {
             $this->db->where('DATE(COALESCE(q.sent_at, q.created_at)) <=', $params['to_date']);
         }
 
+        // Filter: Follow-Up Due
+        if (!empty($params['followup_due']) && $params['followup_due'] !== 'all') {
+            $today = date('Y-m-d');
+            if ($params['followup_due'] === 'today') {
+                $this->db->where('q.next_followup_date', $today);
+            } elseif ($params['followup_due'] === 'overdue') {
+                $this->db->where('q.next_followup_date <', $today);
+                $this->db->where('q.next_followup_date IS NOT NULL', null, false);
+            } elseif ($params['followup_due'] === 'upcoming') {
+                $this->db->where('q.next_followup_date >', $today);
+            } elseif ($params['followup_due'] === 'has_followup') {
+                $this->db->where('q.next_followup_date IS NOT NULL', null, false);
+            }
+        }
+
         // Filter: Search keyword
         if (!empty($params['search'])) {
             $s = trim($params['search']);

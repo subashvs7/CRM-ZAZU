@@ -665,14 +665,73 @@ $(function () {
         renderCustomersList();
     });
 
-    // Follow-up Schedule Custom Date Toggle
-    $('#select-followup-schedule').on('change', function () {
-        if ($(this).val() === 'custom') {
-            $('#input-custom-followup-date').removeClass('hidden').focus();
+    // ── FOLLOW-UP SCHEDULE & LIVE DATE PREVIEW ──────────────────────────────
+    function formatFollowupDate(d) {
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var day = ('0' + d.getDate()).slice(-2);
+        var m = months[d.getMonth()];
+        var y = d.getFullYear();
+        return day + ' ' + m + ' ' + y;
+    }
+
+    function updateFollowupPreview() {
+        var mode = $('#select-followup-schedule').val();
+        var now = new Date();
+        var targetDate = new Date();
+
+        if (mode === 'custom') {
+            $('#wrap-custom-followup-date').removeClass('hidden');
+            $('#wrap-custom-followup-days').addClass('hidden');
+            var customVal = $('#input-custom-followup-date').val();
+            if (customVal) {
+                var parts = customVal.split('-');
+                if (parts.length === 3) {
+                    targetDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                    $('#followup-preview-badge').html('<i class="fa fa-calendar-check-o text-[10px]"></i> Due: ' + formatFollowupDate(targetDate));
+                    return;
+                }
+            }
+            $('#followup-preview-badge').text('Pick custom date');
+            return;
+        } else if (mode === 'custom_days') {
+            $('#wrap-custom-followup-days').removeClass('hidden');
+            $('#wrap-custom-followup-date').addClass('hidden');
+            var days = parseInt($('#input-custom-followup-days').val(), 10) || 1;
+            targetDate.setDate(now.getDate() + days);
+            $('#followup-preview-badge').html('<i class="fa fa-calendar-check-o text-[10px]"></i> Due: ' + formatFollowupDate(targetDate));
+            return;
         } else {
-            $('#input-custom-followup-date').addClass('hidden');
+            $('#wrap-custom-followup-date').addClass('hidden');
+            $('#wrap-custom-followup-days').addClass('hidden');
+            var dCount = parseInt(mode, 10) || 3;
+            targetDate.setDate(now.getDate() + dCount);
+            $('#followup-preview-badge').html('<i class="fa fa-calendar-check-o text-[10px]"></i> Due: ' + formatFollowupDate(targetDate));
+        }
+    }
+
+    $('#select-followup-schedule').on('change', function () {
+        updateFollowupPreview();
+    });
+
+    $('#input-custom-followup-date').on('change input', function () {
+        updateFollowupPreview();
+    });
+
+    $('#input-custom-followup-days').on('input change', function () {
+        updateFollowupPreview();
+    });
+
+    $('#select-campaign-type').on('change', function () {
+        var defDays = $(this).find(':selected').data('days');
+        if (defDays && $('#select-followup-schedule').val() !== 'custom' && $('#select-followup-schedule').val() !== 'custom_days') {
+            var exists = $('#select-followup-schedule option[value="' + defDays + '"]').length > 0;
+            if (exists) {
+                $('#select-followup-schedule').val(String(defDays)).trigger('change');
+            }
         }
     });
+
+    updateFollowupPreview();
 
 
     // ── CONTACT BOOK LOADER & RENDERER ──────────────────────────────────────
@@ -800,12 +859,16 @@ $(function () {
         if (!hasLeads && !hasCusts && !hasConts) {
             $('#badge-audience-count').text('0 Selected (Check at least 1 audience group)');
             $('#audience-preview-total').text('0 recipients');
+            $('#part-total-badge').text('0');
             $('#audience-preview-list').html('<div class="py-4 text-center text-rose-500 text-xs font-semibold">Please select at least one audience group (Leads, Customers, or Contact Book).</div>');
             return;
         }
 
         $('#badge-audience-count').text(totalCount.toLocaleString() + ' Unique Contacts Selected');
         $('#audience-preview-total').text(totalCount.toLocaleString() + ' recipients eligible');
+        $('#part-total-badge').text(totalCount.toLocaleString());
+        $('#input-partition-limit').attr('max', totalCount);
+        if (typeof updatePartitionFeedback === 'function') updatePartitionFeedback();
 
         var listHtml = '';
         if (sampleList.length > 0) {
@@ -1214,4 +1277,274 @@ $(function () {
     $('#btn-close-campaign-modal, #btn-close-campaign-modal-bottom').on('click', function () {
         $('#modal-campaign-detail').addClass('hidden');
     });
+
+    // ── PARTITION / BATCH COUNT CONTROL ─────────────────────────────────────
+    $('input[name="partition_mode"]').on('change', function () {
+        if ($(this).val() === 'custom') {
+            $('#wrap-partition-input').removeClass('hidden').addClass('flex');
+            $('#input-partition-limit').focus();
+            updatePartitionFeedback();
+        } else {
+            $('#wrap-partition-input').addClass('hidden').removeClass('flex');
+            $('#part-feedback-badge').text('Full batch will be dispatched');
+        }
+    });
+
+    $('#input-partition-limit').on('input change', function () {
+        updatePartitionFeedback();
+    });
+
+    function updatePartitionFeedback() {
+        var partMode = $('input[name="partition_mode"]:checked').val();
+        if (partMode !== 'custom') {
+            $('#part-feedback-badge').text('Full batch will be dispatched');
+            return;
+        }
+        var total = parseInt($('#part-total-badge').text().replace(/,/g, ''), 10) || 0;
+        var limit = parseInt($('#input-partition-limit').val(), 10) || 0;
+        if (limit <= 0) {
+            $('#part-feedback-badge').text('Enter partition count to send now');
+        } else if (limit >= total && total > 0) {
+            $('#part-feedback-badge').text('All ' + total + ' will be dispatched now (no remainder)');
+        } else {
+            var remain = total - limit;
+            $('#part-feedback-badge').html('<strong>' + limit + '</strong> sent now, <strong>' + remain + '</strong> held in queue');
+        }
+    }
+
+    // ── MANAGE OUTREACH STAGES MODAL ────────────────────────────────────────
+    var currentStagesCache = [];
+
+    function syncStagesFromSelect() {
+        currentStagesCache = [];
+        $('#select-campaign-type option').each(function () {
+            var id = $(this).val();
+            var name = $(this).text().trim();
+            var days = parseInt($(this).data('days'), 10) || 3;
+            var locked = (id === 'outreach');
+            currentStagesCache.push({ id: id, name: name, days: days, locked: locked });
+        });
+    }
+
+    syncStagesFromSelect();
+
+    $('#btn-manage-stages').on('click', function () {
+        syncStagesFromSelect();
+        renderStagesEditor();
+        $('#modal-manage-stages').removeClass('hidden');
+    });
+
+    $('.btn-close-stage-modal').on('click', function () {
+        $('#modal-manage-stages').addClass('hidden');
+    });
+
+    function renderStagesEditor() {
+        var html = '';
+        $.each(currentStagesCache, function (idx, stg) {
+            var isLocked = (stg.id === 'outreach');
+            html += '<div class="stage-editor-row p-3 rounded-xl border ' + (isLocked ? 'bg-gray-50 border-gray-200' : 'bg-white border-indigo-100 hover:border-indigo-300') + ' transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5" data-id="' + CRM.esc(stg.id) + '" data-locked="' + (isLocked ? '1' : '0') + '">';
+            html += '  <div class="flex items-center gap-2 flex-1">';
+            html += '    <span class="w-6 h-6 rounded-lg ' + (isLocked ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700') + ' flex items-center justify-center text-xs flex-shrink-0">';
+            html += '      <i class="fa ' + (isLocked ? 'fa-lock' : 'fa-tag') + '"></i>';
+            html += '    </span>';
+            if (isLocked) {
+                html += '    <div class="flex-1">';
+                html += '      <span class="text-xs font-bold text-gray-800 block">' + CRM.esc(stg.name) + '</span>';
+                html += '      <span class="text-[10px] text-gray-400 font-semibold uppercase">Intro Pitch (System Base - Locked)</span>';
+                html += '    </div>';
+            } else {
+                html += '    <input type="text" class="stage-name-input flex-1 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none" value="' + CRM.esc(stg.name) + '" placeholder="Stage Name e.g. 🔁 Follow-Up #1">';
+            }
+            html += '  </div>';
+
+            html += '  <div class="flex items-center justify-end gap-2 flex-shrink-0">';
+            html += '    <div class="flex items-center gap-1">';
+            html += '      <span class="text-[11px] text-gray-500 font-medium">Gap:</span>';
+            html += '      <input type="number" min="1" max="90" class="stage-days-input w-14 px-2 py-1 bg-gray-50 border border-gray-200 rounded text-xs font-mono font-bold text-gray-800 focus:bg-white focus:outline-none text-center" value="' + (parseInt(stg.days, 10) || 3) + '">';
+            html += '      <span class="text-[11px] text-gray-500">Days</span>';
+            html += '    </div>';
+
+            if (!isLocked) {
+                html += '    <button type="button" class="btn-remove-stage-row p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Delete stage">';
+                html += '      <i class="fa fa-trash-o text-sm"></i>';
+                html += '    </button>';
+            } else {
+                html += '    <span class="p-1.5 text-gray-300" title="Fixed stage"><i class="fa fa-lock text-sm"></i></span>';
+            }
+            html += '  </div>';
+            html += '</div>';
+        });
+        $('#stages-editor-list').html(html);
+    }
+
+    $('#btn-add-stage-row').on('click', function () {
+        var count = currentStagesCache.length;
+        var nextId = 'followup_' + count;
+        currentStagesCache.push({
+            id: nextId,
+            name: '⚡ Follow-Up #' + count + ' (Custom)',
+            days: 2,
+            locked: false
+        });
+        renderStagesEditor();
+    });
+
+    $(document).on('click', '.btn-remove-stage-row', function () {
+        var row = $(this).closest('.stage-editor-row');
+        var id = row.data('id');
+        currentStagesCache = $.grep(currentStagesCache, function (s) {
+            return s.id !== id || s.locked;
+        });
+        renderStagesEditor();
+    });
+
+    $('#btn-save-stages-submit').on('click', function () {
+        var updated = [];
+        $('#stages-editor-list .stage-editor-row').each(function () {
+            var row = $(this);
+            var id = row.data('id');
+            var isLocked = row.data('locked') == '1';
+            var name = isLocked ? (row.find('.text-gray-800').text().trim() || '🚀 Initial Outreach (First Pitch)') : row.find('.stage-name-input').val().trim();
+            var days = parseInt(row.find('.stage-days-input').val(), 10) || 3;
+
+            if (name) {
+                updated.push({ id: id, name: name, days: days, locked: isLocked });
+            }
+        });
+
+        if (updated.length === 0) {
+            CRM.toast('error', 'Please define at least one stage.');
+            return;
+        }
+
+        var btn = $(this);
+        btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Saving...');
+
+        var postPayload = {
+            stages: updated
+        };
+        if (typeof CI3_CSRF_NAME !== 'undefined' && typeof CI3_CSRF_HASH !== 'undefined') {
+            postPayload[CI3_CSRF_NAME] = CI3_CSRF_HASH;
+        }
+
+        $.ajax({
+            url: BASE_URL + 'communications/save_outreach_stages_ajax',
+            method: 'POST',
+            data: postPayload,
+            success: function (res) {
+                btn.prop('disabled', false).html('<i class="fa fa-check"></i> Save & Apply Changes');
+                if (res.status === 'success') {
+                    currentStagesCache = (res.data && res.data.stages) ? res.data.stages : updated;
+                    var selectHtml = '';
+                    var currentVal = $('#select-campaign-type').val();
+                    $.each(currentStagesCache, function (i, st) {
+                        var sel = (st.id === currentVal) ? 'selected' : '';
+                        selectHtml += '<option value="' + CRM.esc(st.id) + '" data-days="' + st.days + '" ' + sel + '>' + CRM.esc(st.name) + '</option>';
+                    });
+                    $('#select-campaign-type').html(selectHtml);
+                    $('#modal-manage-stages').addClass('hidden');
+                    CRM.toast('success', res.message || 'Outreach stages updated successfully!');
+                } else {
+                    CRM.toast('error', res.message || 'Failed to save stages.');
+                }
+            },
+            error: function () {
+                btn.prop('disabled', false).html('<i class="fa fa-check"></i> Save & Apply Changes');
+                CRM.toast('error', 'Server error while saving stages.');
+            }
+        });
+    });
+
+    // ── STAGE LOGS & SCHEDULE TRACKER MODAL ─────────────────────────────────
+    $('#btn-view-stage-logs, #btn-refresh-stage-logs').on('click', function () {
+        loadStageLogs($('#filter-logs-stage').val() || 'all');
+        $('#modal-stage-logs').removeClass('hidden');
+    });
+
+    $('.btn-close-logs-modal').on('click', function () {
+        $('#modal-stage-logs').addClass('hidden');
+    });
+
+    $('#filter-logs-stage').on('change', function () {
+        loadStageLogs($(this).val());
+    });
+
+    function loadStageLogs(stageFilter) {
+        $('#stage-logs-cards-grid').html('<div class="col-span-full py-4 text-center text-gray-400 text-xs"><i class="fa fa-spinner fa-spin mr-1"></i> Loading breakdown...</div>');
+        $('#stage-logs-table-body').html('<tr><td colspan="5" class="py-6 text-center text-gray-400 text-xs"><i class="fa fa-spinner fa-spin mr-1"></i> Loading logs...</td></tr>');
+
+        $.getJSON(BASE_URL + 'communications/get_stage_logs_ajax', { stage: stageFilter }, function (res) {
+            if (res.status === 'success' && res.data) {
+                var stages = res.data.stages || [];
+                var logs = res.data.logs || [];
+
+                // Render filter options if not populated
+                if ($('#filter-logs-stage option').length <= 1) {
+                    var optHtml = '<option value="all">All Stages</option>';
+                    $.each(stages, function (i, st) {
+                        optHtml += '<option value="' + CRM.esc(st.id) + '">' + CRM.esc(st.name) + '</option>';
+                    });
+                    $('#filter-logs-stage').html(optHtml);
+                    if (stageFilter) $('#filter-logs-stage').val(stageFilter);
+                }
+
+                // Render Summary Cards
+                var cardHtml = '';
+                $.each(stages, function (i, st) {
+                    cardHtml += '<div class="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-1">';
+                    cardHtml += '  <span class="text-[11px] font-bold text-gray-700 block truncate" title="' + CRM.esc(st.name) + '">' + CRM.esc(st.name) + '</span>';
+                    cardHtml += '  <div class="flex items-baseline gap-2">';
+                    cardHtml += '    <span class="text-base font-extrabold text-indigo-700 font-mono">' + (st.sent || 0) + '</span>';
+                    cardHtml += '    <span class="text-[10px] text-gray-400">sent</span>';
+                    if (st.queued > 0) {
+                        cardHtml += '    <span class="text-[10px] font-bold text-amber-600 font-mono">(' + st.queued + ' queued)</span>';
+                    }
+                    cardHtml += '  </div>';
+                    if (st.next_due) {
+                        cardHtml += '  <span class="text-[10px] text-blue-600 block"><i class="fa fa-clock-o"></i> Next due: ' + st.next_due + '</span>';
+                    } else {
+                        cardHtml += '  <span class="text-[10px] text-gray-400 block">-</span>';
+                    }
+                    cardHtml += '</div>';
+                });
+                $('#stage-logs-cards-grid').html(cardHtml || '<div class="col-span-full text-center text-gray-400 text-xs">No stages active.</div>');
+
+                // Render Table Logs
+                var tblHtml = '';
+                if (logs.length > 0) {
+                    $.each(logs, function (i, l) {
+                        var stBadge = (l.status === 'sent') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : ((l.status === 'failed') ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200');
+                        tblHtml += '<tr class="hover:bg-gray-50/80 transition-colors">';
+                        tblHtml += '  <td class="py-2.5 px-3">';
+                        tblHtml += '    <strong class="text-gray-900 block">' + CRM.esc(l.recipient_name || 'Lead') + '</strong>';
+                        tblHtml += '    <span class="text-[11px] text-gray-400 font-mono">' + CRM.esc(l.recipient_email) + '</span>';
+                        tblHtml += '  </td>';
+                        tblHtml += '  <td class="py-2.5 px-3">';
+                        tblHtml += '    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">' + CRM.esc(l.campaign_type || 'outreach') + '</span>';
+                        tblHtml += '  </td>';
+                        tblHtml += '  <td class="py-2.5 px-3 text-[11px] text-gray-600 whitespace-nowrap">' + (l.sent_at || '<span class="italic text-amber-500">In Queue</span>') + '</td>';
+                        tblHtml += '  <td class="py-2.5 px-3 text-[11px] whitespace-nowrap">';
+                        if (l.next_followup_date) {
+                            tblHtml += '    <span class="inline-flex items-center gap-1 px-2 py-0.5 font-semibold bg-blue-50 text-blue-700 border border-blue-200 rounded-lg">';
+                            tblHtml += '      <i class="fa fa-calendar-check-o text-[10px]"></i> ' + l.next_followup_date;
+                            tblHtml += '    </span>';
+                        } else {
+                            tblHtml += '    <span class="text-gray-300">-</span>';
+                        }
+                        tblHtml += '  </td>';
+                        tblHtml += '  <td class="py-2.5 px-3 text-right whitespace-nowrap">';
+                        tblHtml += '    <span class="px-2 py-0.5 text-[10px] font-bold rounded-full border uppercase ' + stBadge + '">' + CRM.esc(l.status) + '</span>';
+                        tblHtml += '  </td>';
+                        tblHtml += '</tr>';
+                    });
+                } else {
+                    tblHtml = '<tr><td colspan="5" class="py-8 text-center text-gray-400 text-xs">No activity logs recorded for this stage yet.</td></tr>';
+                }
+                $('#stage-logs-table-body').html(tblHtml);
+            } else {
+                $('#stage-logs-cards-grid').html('<div class="col-span-full py-4 text-center text-rose-500 text-xs">Failed to load stage stats.</div>');
+                $('#stage-logs-table-body').html('<tr><td colspan="5" class="py-6 text-center text-rose-500 text-xs">Error loading stage logs.</td></tr>');
+            }
+        });
+    }
 });

@@ -113,16 +113,23 @@ if (!function_exists('render_campaign_type_badge')) {
         </div>
     </div>
 
-    <!-- Navigation Tabs: Individual Delivery Logs vs Campaigns -->
-    <div class="flex items-center gap-2 border-b border-gray-200">
-        <button type="button" id="tab-btn-delivery-logs" class="history-tab-btn active px-4 py-2.5 text-xs font-bold border-b-2 border-indigo-600 text-indigo-600 flex items-center gap-2 cursor-pointer transition">
-            <i class="fa fa-envelope-open-o"></i> Individual Delivery Logs
-            <span class="px-2 py-0.5 text-[10px] font-mono bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200" id="badge-total-logs"><?= number_format($total_logs ?? 0) ?></span>
-        </button>
-        <button type="button" id="tab-btn-campaigns" class="history-tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center gap-2 cursor-pointer transition">
-            <i class="fa fa-list-alt"></i> Campaign Batches
-            <span class="px-2 py-0.5 text-[10px] font-mono bg-gray-100 text-gray-600 rounded-full"><?= count($recent_campaigns ?? []) ?></span>
-        </button>
+    <!-- Navigation Tabs & Action Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-2">
+        <div class="flex items-center gap-2">
+            <button type="button" id="tab-btn-delivery-logs" class="history-tab-btn active px-4 py-2 text-xs font-bold border-b-2 border-indigo-600 text-indigo-600 flex items-center gap-2 cursor-pointer transition">
+                <i class="fa fa-envelope-open-o"></i> Individual Delivery Logs
+                <span class="px-2 py-0.5 text-[10px] font-mono bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200" id="badge-total-logs"><?= number_format($total_logs ?? 0) ?></span>
+            </button>
+            <button type="button" id="tab-btn-campaigns" class="history-tab-btn px-4 py-2 text-xs font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center gap-2 cursor-pointer transition">
+                <i class="fa fa-list-alt"></i> Campaign Batches
+                <span class="px-2 py-0.5 text-[10px] font-mono bg-gray-100 text-gray-600 rounded-full"><?= count($recent_campaigns ?? []) ?></span>
+            </button>
+        </div>
+        <div class="flex items-center gap-2">
+            <button type="button" id="btn-export-logs" class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer">
+                <i class="fa fa-file-excel-o"></i> Export CSV / Excel
+            </button>
+        </div>
     </div>
 
     <!-- ========================================================================= -->
@@ -130,37 +137,66 @@ if (!function_exists('render_campaign_type_badge')) {
     <!-- ========================================================================= -->
     <div id="tab-content-delivery-logs" class="space-y-4">
         <!-- Filter Toolbar -->
-        <div class="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs">
-            <form id="filter-logs-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <div class="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs space-y-3">
+            <!-- Quick Date Shortcut Pills -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-gray-100 text-xs">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[11px] font-bold text-gray-500 uppercase mr-1">Quick Date:</span>
+                    <button type="button" class="btn-quick-date active px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition cursor-pointer" data-range="all">All Time</button>
+                    <button type="button" class="btn-quick-date px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition cursor-pointer" data-range="today">Today</button>
+                    <button type="button" class="btn-quick-date px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition cursor-pointer" data-range="yesterday">Yesterday</button>
+                    <button type="button" class="btn-quick-date px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition cursor-pointer" data-range="7days">Last 7 Days</button>
+                    <button type="button" class="btn-quick-date px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition cursor-pointer" data-range="month">This Month</button>
+                </div>
+                <span class="text-[11px] text-gray-400 font-mono">Syncs automatically with Export</span>
+            </div>
+
+            <form id="filter-logs-form" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2.5 items-end">
                 <!-- From Date -->
                 <div>
                     <label class="block text-[11px] font-semibold text-gray-600 mb-1">From Date</label>
-                    <input type="date" id="filter-from-date" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <input type="date" id="filter-from-date" class="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                 </div>
 
                 <!-- To Date -->
                 <div>
                     <label class="block text-[11px] font-semibold text-gray-600 mb-1">To Date</label>
-                    <input type="date" id="filter-to-date" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <input type="date" id="filter-to-date" class="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                 </div>
 
-                <!-- Campaign Purpose Filter -->
+                <!-- Campaign Purpose / Stage Filter -->
                 <div>
                     <label class="block text-[11px] font-semibold text-gray-600 mb-1">Purpose / Stage</label>
-                    <select id="filter-campaign-type" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                        <option value="all">All Purposes</option>
-                        <option value="outreach">Initial Outreach</option>
-                        <option value="followup_1">Follow-Up #1</option>
-                        <option value="followup_2">Follow-Up #2</option>
-                        <option value="retry">Retry Resend</option>
-                        <option value="announcement">Announcement</option>
+                    <select id="filter-campaign-type" class="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <option value="all">All Purposes / Stages</option>
+                        <?php if(!empty($outreach_stages)): foreach($outreach_stages as $stg): ?>
+                            <option value="<?= esc_html($stg['id']) ?>"><?= esc_html($stg['name']) ?></option>
+                        <?php endforeach; else: ?>
+                            <option value="outreach">🚀 Initial Outreach</option>
+                            <option value="followup_1">🔁 Follow-Up #1</option>
+                            <option value="followup_2">⚡ Follow-Up #2</option>
+                            <option value="retry">🛠️ Retry Resend</option>
+                            <option value="announcement">📢 Announcement</option>
+                        <?php endif; ?>
+                    </select>
+                </div>
+
+                <!-- Follow-Up Due Filter -->
+                <div>
+                    <label class="block text-[11px] font-semibold text-gray-600 mb-1">Follow-Up Due</label>
+                    <select id="filter-followup-due" class="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <option value="all">All Follow-Up Dates</option>
+                        <option value="today">📅 Due Today</option>
+                        <option value="overdue">⚠️ Overdue Follow-Ups</option>
+                        <option value="upcoming">⏳ Upcoming Follow-Ups</option>
+                        <option value="has_followup">Any Scheduled Follow-Up</option>
                     </select>
                 </div>
 
                 <!-- Sender Mailbox Filter -->
                 <div>
                     <label class="block text-[11px] font-semibold text-gray-600 mb-1">Sender Mailbox</label>
-                    <select id="filter-sender-email" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <select id="filter-sender-email" class="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                         <option value="all">All Senders (Rotated)</option>
                         <?php if(!empty($distinct_senders)): foreach($distinct_senders as $s): ?>
                         <option value="<?= esc_html($s) ?>"><?= esc_html($s) ?></option>
@@ -171,7 +207,7 @@ if (!function_exists('render_campaign_type_badge')) {
                 <!-- Status Filter -->
                 <div>
                     <label class="block text-[11px] font-semibold text-gray-600 mb-1">Delivery Status</label>
-                    <select id="filter-status" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <select id="filter-status" class="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                         <option value="all">All Statuses</option>
                         <option value="sent">Delivered (Sent)</option>
                         <option value="queued">Queued / Pending</option>
@@ -179,15 +215,15 @@ if (!function_exists('render_campaign_type_badge')) {
                     </select>
                 </div>
 
-                <!-- Search Input & Submit -->
+                <!-- Search Input & Reset Buttons -->
                 <div>
-                    <label class="block text-[11px] font-semibold text-gray-600 mb-1">Search Recipient / Ref</label>
+                    <label class="block text-[11px] font-semibold text-gray-600 mb-1">Search Lead / Ref</label>
                     <div class="flex items-center gap-1.5">
-                        <input type="text" id="filter-search" placeholder="Email, name or ZAZU-..." class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                        <button type="submit" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex-shrink-0 cursor-pointer">
+                        <input type="text" id="filter-search" placeholder="Email, name or ref..." class="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <button type="submit" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition flex-shrink-0 cursor-pointer" title="Apply Filter">
                             <i class="fa fa-filter"></i>
                         </button>
-                        <button type="button" id="btn-reset-filters" class="px-2.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition flex-shrink-0 cursor-pointer" title="Reset Filters">
+                        <button type="button" id="btn-reset-filters" class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-bold transition flex-shrink-0 cursor-pointer" title="Reset Filters">
                             <i class="fa fa-undo"></i>
                         </button>
                     </div>
@@ -482,6 +518,7 @@ $(function() {
             from_date: $('#filter-from-date').val(),
             to_date: $('#filter-to-date').val(),
             campaign_type: $('#filter-campaign-type').val(),
+            followup_due: $('#filter-followup-due').val(),
             sender_email: $('#filter-sender-email').val(),
             status: $('#filter-status').val(),
             search: $('#filter-search').val()
@@ -527,6 +564,60 @@ $(function() {
         });
     }
 
+    // Quick Date Shortcut Buttons
+    $('.btn-quick-date').on('click', function () {
+        $('.btn-quick-date').removeClass('active bg-indigo-50 text-indigo-700').addClass('bg-gray-100 text-gray-700');
+        $(this).addClass('active bg-indigo-50 text-indigo-700').removeClass('bg-gray-100 text-gray-700');
+
+        var range = $(this).data('range');
+        var now = new Date();
+        var formatDate = function (d) {
+            var month = '' + (d.getMonth() + 1),
+                day = '' + d.getDate(),
+                year = d.getFullYear();
+            if (month.length < 2) month = '0' + month;
+            if (day.length < 2) day = '0' + day;
+            return [year, month, day].join('-');
+        };
+
+        if (range === 'today') {
+            var t = formatDate(now);
+            $('#filter-from-date').val(t);
+            $('#filter-to-date').val(t);
+        } else if (range === 'yesterday') {
+            var y = new Date();
+            y.setDate(now.getDate() - 1);
+            var yStr = formatDate(y);
+            $('#filter-from-date').val(yStr);
+            $('#filter-to-date').val(yStr);
+        } else if (range === '7days') {
+            var past = new Date();
+            past.setDate(now.getDate() - 7);
+            $('#filter-from-date').val(formatDate(past));
+            $('#filter-to-date').val(formatDate(now));
+        } else if (range === 'month') {
+            var firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            $('#filter-from-date').val(formatDate(firstDay));
+            $('#filter-to-date').val(formatDate(now));
+        } else {
+            $('#filter-from-date').val('');
+            $('#filter-to-date').val('');
+        }
+        fetchDeliveryLogs();
+    });
+
+    // Auto-fetch on dropdown filter changes
+    $('#filter-campaign-type, #filter-followup-due, #filter-sender-email, #filter-status, #filter-from-date, #filter-to-date').on('change', function () {
+        fetchDeliveryLogs();
+    });
+
+    // Debounced search on typing
+    var searchTimer;
+    $('#filter-search').on('input', function () {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(fetchDeliveryLogs, 350);
+    });
+
     $('#filter-logs-form').on('submit', function(e) {
         e.preventDefault();
         fetchDeliveryLogs();
@@ -536,10 +627,29 @@ $(function() {
         $('#filter-from-date').val('');
         $('#filter-to-date').val('');
         $('#filter-campaign-type').val('all');
+        $('#filter-followup-due').val('all');
         $('#filter-sender-email').val('all');
         $('#filter-status').val('all');
         $('#filter-search').val('');
+        $('.btn-quick-date').removeClass('active bg-indigo-50 text-indigo-700').addClass('bg-gray-100 text-gray-700');
+        $('.btn-quick-date[data-range="all"]').addClass('active bg-indigo-50 text-indigo-700').removeClass('bg-gray-100 text-gray-700');
         fetchDeliveryLogs();
+    });
+
+    // ── EXPORT CSV / EXCEL HANDLER ──────────────────────────────────────────
+    $('#btn-export-logs').on('click', function(e) {
+        e.preventDefault();
+        var params = {
+            from_date: $('#filter-from-date').val(),
+            to_date: $('#filter-to-date').val(),
+            campaign_type: $('#filter-campaign-type').val(),
+            followup_due: $('#filter-followup-due').val(),
+            sender_email: $('#filter-sender-email').val(),
+            status: $('#filter-status').val(),
+            search: $('#filter-search').val()
+        };
+        var url = BASE_URL + 'communications/export_delivery_logs_csv?' + $.param(params);
+        window.location.href = url;
     });
 
     // Search campaign batch table
