@@ -178,7 +178,7 @@ class Communications extends MY_Controller {
                 $r['sender_email'] ?: ($r['sender_mailbox_name'] ?: '-'),
                 !empty($r['anti_spam_hash']) ? '#' . $r['anti_spam_hash'] : '-',
                 !empty($r['sent_at']) ? $r['sent_at'] : 'In Queue',
-                !empty($r['next_followup_date']) ? $r['next_followup_date'] : '-',
+                !empty($r['next_followup_date']) ? $r['next_followup_date'] : 'Instant',
                 strtoupper($r['status'] ?: 'QUEUED'),
                 $r['error_message'] ?: ''
             ]);

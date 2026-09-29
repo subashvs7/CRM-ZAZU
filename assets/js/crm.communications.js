@@ -1548,7 +1548,7 @@ $(function () {
                             tblHtml += '      <i class="fa fa-calendar-check-o text-[10px]"></i> ' + l.next_followup_date;
                             tblHtml += '    </span>';
                         } else {
-                            tblHtml += '    <span class="text-gray-300">-</span>';
+                            tblHtml += '    <span class="inline-flex items-center gap-1 px-2 py-0.5 font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-lg"><i class="fa fa-bolt text-[10px]"></i> Instant</span>';
                         }
                         tblHtml += '  </td>';
                         tblHtml += '  <td class="py-2.5 px-3 text-right whitespace-nowrap">';

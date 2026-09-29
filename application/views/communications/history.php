@@ -297,7 +297,9 @@ if (!function_exists('render_campaign_type_badge')) {
                                     <i class="fa fa-calendar-check-o text-[10px]"></i> <?= date('d M Y', strtotime($log['next_followup_date'])) ?>
                                 </span>
                                 <?php else: ?>
-                                <span class="text-gray-300 text-[11px]">-</span>
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-lg">
+                                    <i class="fa fa-bolt text-[10px]"></i> Instant
+                                </span>
                                 <?php endif; ?>
                             </td>
                             <td class="py-3 px-3 text-right">
@@ -545,7 +547,7 @@ $(function() {
                     var pBadge = log.product_name ? '<span class="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200 ml-1">' + $('<div>').text(log.product_name).html() + '</span>' : '';
                     var senderHtml = log.sender_email ? '<span class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-800"><i class="fa fa-envelope-o text-indigo-500"></i> ' + $('<div>').text(log.sender_email).html() + '</span>' : '<span class="text-gray-400 italic text-[11px]">Auto-assign on send</span>';
                     var hashHtml = log.anti_spam_hash ? '<span class="px-2 py-0.5 font-mono text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-300 rounded-md tracking-wider">#' + $('<div>').text(log.anti_spam_hash).html() + '</span>' : '<span class="text-gray-300 text-[10px]">-</span>';
-                    var followupHtml = log.next_followup_date ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 rounded-lg"><i class="fa fa-calendar-check-o text-[10px]"></i> ' + log.next_followup_date + '</span>' : '<span class="text-gray-300 text-[11px]">-</span>';
+                    var followupHtml = log.next_followup_date ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 rounded-lg"><i class="fa fa-calendar-check-o text-[10px]"></i> ' + log.next_followup_date + '</span>' : '<span class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-lg"><i class="fa fa-bolt text-[10px]"></i> Instant</span>';
                     var sentAtHtml = log.sent_at ? log.sent_at : '<span class="text-amber-500 italic">In Queue</span>';
 
                     html += '<tr class="hover:bg-gray-50/60 transition-colors">';
