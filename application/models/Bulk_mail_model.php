@@ -174,6 +174,7 @@ class Bulk_mail_model extends CI_Model {
 
                     $direction = (!empty($r['lead_source']) && in_array($r['lead_source'], ['walk_in', 'call', 'online'])) ? 'inbound' : 'outbound';
 
+                    $leadFirst = !empty($r['first_name']) ? trim(explode(' ', trim($r['first_name']))[0]) : trim(explode(' ', trim($name))[0]);
                     $recipients[] = [
                         'key'             => 'lead_' . $r['lead_id'],
                         'type'            => 'lead',
@@ -182,7 +183,7 @@ class Bulk_mail_model extends CI_Model {
                         'customer_id'     => null,
                         'email'           => trim($r['email']),
                         'name'            => $name,
-                        'first_name'      => $r['first_name'] ?: $name,
+                        'first_name'      => $leadFirst,
                         'last_name'       => $r['last_name'] ?? '',
                         'company'         => $r['company_name'] ?? '',
                         'phone'           => $r['phone'] ?? '',
@@ -240,6 +241,10 @@ class Bulk_mail_model extends CI_Model {
                         $reach = 'already_sent';
                     }
 
+                    $cParts = explode(' ', trim($name));
+                    $custFirst = !empty($cParts[0]) ? trim($cParts[0]) : $name;
+                    $custLast  = count($cParts) > 1 ? trim(implode(' ', array_slice($cParts, 1))) : '';
+
                     $recipients[] = [
                         'key'             => 'customer_' . $r['customer_id'],
                         'type'            => 'customer',
@@ -248,8 +253,8 @@ class Bulk_mail_model extends CI_Model {
                         'customer_id'     => (int)$r['customer_id'],
                         'email'           => trim($r['email']),
                         'name'            => $name,
-                        'first_name'      => $name,
-                        'last_name'       => '',
+                        'first_name'      => $custFirst,
+                        'last_name'       => $custLast,
                         'company'         => $r['customer_org_name'] ?? '',
                         'phone'           => $r['phone'] ?? '',
                         'product_id'      => null,
@@ -282,6 +287,10 @@ class Bulk_mail_model extends CI_Model {
                 $email = strtolower(trim($r['email']));
                 if (!isset($seenEmails[$email])) {
                     $seenEmails[$email] = true;
+                    $cbParts = explode(' ', trim($r['name']));
+                    $cbFirst = !empty($cbParts[0]) ? trim($cbParts[0]) : $r['name'];
+                    $cbLast  = count($cbParts) > 1 ? trim(implode(' ', array_slice($cbParts, 1))) : '';
+
                     $recipients[] = [
                         'key'             => 'contact_' . $r['contact_id'],
                         'type'            => 'contact_book',
@@ -291,8 +300,8 @@ class Bulk_mail_model extends CI_Model {
                         'contact_id'      => (int)$r['contact_id'],
                         'email'           => trim($r['email']),
                         'name'            => $r['name'],
-                        'first_name'      => $r['name'],
-                        'last_name'       => '',
+                        'first_name'      => $cbFirst,
+                        'last_name'       => $cbLast,
                         'company'         => $r['company_name'] ?? '',
                         'phone'           => $r['phone'] ?? '',
                         'product_id'      => null,

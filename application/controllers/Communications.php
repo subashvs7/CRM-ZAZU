@@ -393,6 +393,8 @@ class Communications extends MY_Controller {
         // Sample merge tags substitution
         $replacements = [
             '{{customer_name}}'       => 'Valued Partner',
+            '{{lead_name}}'           => 'Valued Partner',
+            '{{name}}'                => 'Valued Partner',
             '{{first_name}}'          => 'Valued',
             '{{last_name}}'           => 'Partner',
             '{{company_name}}'        => 'Acme Technologies Pvt Ltd',
@@ -667,6 +669,8 @@ class Communications extends MY_Controller {
 
                 $replacements = [
                     '{{customer_name}}'       => $item['recipient_name'] ?: 'Customer',
+                    '{{lead_name}}'           => $item['recipient_name'] ?: 'Lead',
+                    '{{name}}'                => $item['recipient_name'] ?: 'Customer',
                     '{{first_name}}'          => $r['first_name'] ?? ($item['recipient_name'] ?: 'Customer'),
                     '{{last_name}}'           => $r['last_name'] ?? '',
                     '{{company_name}}'        => $r['company'] ?? ($r['name'] ?? 'Company'),
@@ -908,13 +912,22 @@ class Communications extends MY_Controller {
             $anti_spam_hash = $this->Bulk_mail_model->generate_anti_spam_hash();
             $next_followup_date = !empty($item['next_followup_date']) ? $item['next_followup_date'] : null;
 
+            $leadFullName = '';
+            if ($leadData) {
+                $leadFullName = trim(($leadData['first_name'] ?? '') . ' ' . ($leadData['last_name'] ?? ''));
+                if (!$leadFullName) $leadFullName = $leadData['company_name'] ?? '';
+            }
+            $recipientName = $item['recipient_name'] ?: ($custData['customer_name'] ?? ($leadFullName ?: 'Customer'));
+
             $replacements = [
-                '{{customer_name}}'       => $item['recipient_name'] ?: ($custData['customer_name'] ?? ($leadData['contact_person'] ?? 'Customer')),
-                '{{first_name}}'          => $leadData['first_name'] ?? ($item['recipient_name'] ?: 'Customer'),
+                '{{customer_name}}'       => $recipientName,
+                '{{lead_name}}'           => $recipientName,
+                '{{name}}'                => $recipientName,
+                '{{first_name}}'          => $leadData['first_name'] ?? ($recipientName ?: 'Customer'),
                 '{{last_name}}'           => $leadData['last_name'] ?? '',
                 '{{company_name}}'        => $custData['customer_org_name'] ?? ($leadData['company_name'] ?? 'Company'),
                 '{{email}}'               => $item['recipient_email'],
-                '{{phone}}'               => $custData['phone'] ?? ($leadData['phone'] ?? ''),
+                '{{phone}}'               => $custData['phone'] ?? ($leadData['corporate_phone'] ?? ($leadData['company_phone'] ?? '')),
                 '{{product_name}}'        => $productName,
                 '{{product_price}}'       => $productPrice,
                 '{{login_url}}'           => base_url('auth/login'),

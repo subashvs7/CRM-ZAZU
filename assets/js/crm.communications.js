@@ -253,26 +253,97 @@ $(function () {
 
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 5. Live Email Client Preview (Mockup UI)
+    // 5. Live Email Client Preview & Audience Recipient Resolution
     // ─────────────────────────────────────────────────────────────────────────
+    var leadsData = [];
+    var customersData = [];
+    var contactsData = [];
+
+    var selectedLeads = new Set();
+    var selectedCustomers = new Set();
+    var selectedContacts = new Set();
+
+    var leadsLoaded = false;
+    var custsLoaded = false;
+    var contsLoaded = false;
+
+    var leadsReachFilter = 'all';
+    var custsReachFilter = 'all';
+
+    function getSelectedPreviewRecipient() {
+        // 1. If user checked specific lead(s), pick the first selected lead
+        if (selectedLeads && selectedLeads.size > 0 && leadsData && leadsData.length > 0) {
+            for (var i = 0; i < leadsData.length; i++) {
+                if (selectedLeads.has(leadsData[i].key)) {
+                    return leadsData[i];
+                }
+            }
+        }
+        // 2. If user checked specific customer(s)
+        if (selectedCustomers && selectedCustomers.size > 0 && customersData && customersData.length > 0) {
+            for (var j = 0; j < customersData.length; j++) {
+                if (selectedCustomers.has(customersData[j].key)) {
+                    return customersData[j];
+                }
+            }
+        }
+        // 3. If user checked specific contact(s)
+        if (selectedContacts && selectedContacts.size > 0 && contactsData && contactsData.length > 0) {
+            for (var k = 0; k < contactsData.length; k++) {
+                if (selectedContacts.has(contactsData[k].key)) {
+                    return contactsData[k];
+                }
+            }
+        }
+
+        // 4. Fallback to first available lead if 'All Leads' audience group is checked
+        if ($('#aud-chk-leads').is(':checked') && leadsData && leadsData.length > 0) {
+            return leadsData[0];
+        }
+        // 5. Fallback to first available customer if 'Customers' audience group is checked
+        if ($('#aud-chk-custs').is(':checked') && customersData && customersData.length > 0) {
+            return customersData[0];
+        }
+        // 6. Fallback to first available contact
+        if ($('#aud-chk-contacts').is(':checked') && contactsData && contactsData.length > 0) {
+            return contactsData[0];
+        }
+
+        return null;
+    }
+
     function updateLivePreview() {
         var rawSubject = $('#mail-subject').val() || '(No Subject Line)';
         var rawBody    = $('#summernote-editor').summernote('code') || '<p class="text-gray-400 italic">No content composed yet.</p>';
 
+        var rec = getSelectedPreviewRecipient();
+
+        var sampleName    = rec ? (rec.name || 'Valued Recipient') : 'Valued Recipient';
+        var sampleFirst   = rec ? (rec.first_name ? rec.first_name.trim().split(' ')[0] : (sampleName.trim().split(' ')[0] || 'Valued')) : 'Valued';
+        var sampleLast    = rec ? (rec.last_name || '') : '';
+        var sampleCompany = rec ? (rec.company || 'Enterprise Client') : 'Enterprise Client';
+        var sampleEmail   = rec ? (rec.email || 'client@example.com') : 'client@example.com';
+        var samplePhone   = rec ? (rec.phone || '') : '+91 9876543210';
+
+        var senderName    = 'Antigravity Team';
+        var senderPhone   = '+91 44 28765432';
+
         var replacements = {
-            '{{customer_name}}': 'Rajesh Kumar',
-            '{{first_name}}': 'Rajesh',
-            '{{last_name}}': 'Kumar',
-            '{{company_name}}': 'TechNova Solutions Pvt Ltd',
-            '{{email}}': 'rajesh@technova.com',
-            '{{phone}}': '+91 9876543210',
-            '{{product_name}}': currentProductMeta.name,
-            '{{product_price}}': currentProductMeta.price,
+            '{{customer_name}}': sampleName,
+            '{{lead_name}}': sampleName,
+            '{{name}}': sampleName,
+            '{{first_name}}': sampleFirst,
+            '{{last_name}}': sampleLast,
+            '{{company_name}}': sampleCompany,
+            '{{email}}': sampleEmail,
+            '{{phone}}': samplePhone,
+            '{{product_name}}': currentProductMeta.name || (rec && rec.product_name ? rec.product_name : 'CRM-ZAZU Solutions'),
+            '{{product_price}}': currentProductMeta.price || (rec && rec.product_price ? rec.product_price : '₹ 1,29,999'),
             '{{login_url}}': BASE_URL + 'auth/login',
-            '{{login_email}}': 'rajesh@technova.com',
+            '{{login_email}}': sampleEmail,
             '{{temporary_password}}': 'Zazu@' + new Date().getFullYear(),
-            '{{sender_name}}': 'Antigravity Team',
-            '{{sender_phone}}': '+91 44 28765432',
+            '{{sender_name}}': senderName,
+            '{{sender_phone}}': senderPhone,
             '{{current_date}}': new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
         };
 
@@ -283,6 +354,12 @@ $(function () {
             renderedSubject = renderedSubject.split(tag).join(val);
             renderedBody    = renderedBody.split(tag).join(val);
         });
+
+        if (rec && rec.email) {
+            $('#preview-header-to').text(sampleName + ' <' + sampleEmail + '>');
+        } else {
+            $('#preview-header-to').text('Selected Recipient <client@example.com>');
+        }
 
         $('#preview-header-subject').text(renderedSubject);
         $('#email-preview-rendered').html(renderedBody);
@@ -301,10 +378,6 @@ $(function () {
         }
     });
 
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // 6. Audience Recipient Counts & Drawer Inspection
-    // ─────────────────────────────────────────────────────────────────────────
     // ─────────────────────────────────────────────────────────────────────────
     // 6. Multi-Selection Audience Configuration & Live Counter
     // ─────────────────────────────────────────────────────────────────────────
@@ -315,21 +388,6 @@ $(function () {
         });
         return types;
     }
-
-    var leadsData = [];
-    var customersData = [];
-    var contactsData = [];
-
-    var selectedLeads = new Set();
-    var selectedCustomers = new Set();
-    var selectedContacts = new Set();
-
-    var leadsLoaded = false;
-    var custsLoaded = false;
-    var contsLoaded = false;
-
-    var leadsReachFilter = 'all';
-    var custsReachFilter = 'all';
 
     function syncAudienceCardsUI() {
         $('.audience-card').each(function () {
@@ -407,6 +465,7 @@ $(function () {
                     selectedLeads.add(r.key);
                 });
                 renderLeadsList();
+                updateLivePreview();
             } else {
                 $('#leads-checklist-container').html('<div class="p-4 text-center text-rose-500 text-xs">Failed to load leads list.</div>');
             }
@@ -549,6 +608,7 @@ $(function () {
                     selectedCustomers.add(r.key);
                 });
                 renderCustomersList();
+                updateLivePreview();
             } else {
                 $('#custs-checklist-container').html('<div class="p-4 text-center text-rose-500 text-xs">Failed to load customers list.</div>');
             }
@@ -768,6 +828,7 @@ $(function () {
                     selectedContacts.add(r.key);
                 });
                 renderContactsList();
+                updateLivePreview();
             } else {
                 $('#contacts-checklist-container').html('<div class="p-4 text-center text-rose-500 text-xs">Failed to load contacts list.</div>');
             }
@@ -916,6 +977,7 @@ $(function () {
             listHtml = '<div class="py-4 text-center text-gray-400 text-xs">No recipients selected matching criteria.</div>';
         }
         $('#audience-preview-list').html(listHtml);
+        updateLivePreview();
     }
 
     // Audience Checkbox Event Listeners
