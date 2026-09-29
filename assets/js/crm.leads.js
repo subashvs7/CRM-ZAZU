@@ -9,6 +9,7 @@ $(function() {
         window.mainTable = $('#leads-table').DataTable({
             processing: true,
             serverSide: true,
+            autoWidth: false,
             ajax: {
                 url: BASE_URL + 'leads/datatable',
                 data: function(d) {
@@ -17,8 +18,8 @@ $(function() {
                 }
             },
             columns: [
-                { data: 0, orderable: false, searchable: false },
-                { data: 1 },
+                { data: 0, orderable: false, searchable: false, width: '36px' },
+                { data: 1, width: '45px' },
                 { data: 2 },
                 { data: 3 },
                 { data: 4 },
@@ -37,6 +38,11 @@ $(function() {
                 search: "",
                 searchPlaceholder: "Search by Name, Company, Email, Phone, Owner...",
                 processing: '<div class="p-3 bg-white/95 shadow-lg border border-gray-100 rounded-2xl font-semibold text-emerald-600 flex items-center justify-center gap-2"><i class="fa fa-spinner fa-spin text-base"></i> Loading Leads...</div>'
+            },
+            drawCallback: function() {
+                if (window.mainTable) {
+                    window.mainTable.columns.adjust();
+                }
             }
         });
     }
@@ -1118,25 +1124,75 @@ $(function() {
     // =========================================================================
     // PRODUCT LISTS & SEGMENTS HUB (LIST CONCEPT)
     // =========================================================================
+    // PRODUCT DRILL-DOWN & ALL LEADS NAVIGATION CONTROLLER
+    // =========================================================================
 
-    // 1. Open Product Drill-down: Click Product List row or "Open List" button
+    // 1. Switch to All Ads Leads View
+    $(document).on('click', '#tab-nav-all-leads', function() {
+        $('#tab-nav-all-leads').removeClass('bg-white text-gray-700 hover:bg-gray-50 border border-gray-200').addClass('bg-emerald-600 text-white shadow-2xs');
+        $('#tab-nav-products').removeClass('bg-emerald-600 text-white shadow-2xs').addClass('bg-white text-gray-700 hover:bg-gray-50 border border-gray-200');
+
+        window.currentProductFilter = '';
+        $('#dt-product-filter').val('');
+        $('#active-product-title').text('All Ads Leads');
+        $('#btn-back-to-products').addClass('hidden');
+        $('#view-products-hub').addClass('hidden');
+        $('#view-leads-database').removeClass('hidden');
+
+        if (window.mainTable) {
+            window.mainTable.ajax.reload();
+        }
+        $('html, body').animate({ scrollTop: 0 }, 200);
+    });
+
+    // 2. Switch to Products View
+    $(document).on('click', '#tab-nav-products', function() {
+        $('#tab-nav-products').removeClass('bg-white text-gray-700 hover:bg-gray-50 border border-gray-200').addClass('bg-emerald-600 text-white shadow-2xs');
+        $('#tab-nav-all-leads').removeClass('bg-emerald-600 text-white shadow-2xs').addClass('bg-white text-gray-700 hover:bg-gray-50 border border-gray-200');
+
+        $('#view-leads-database').addClass('hidden');
+        $('#view-products-hub').removeClass('hidden');
+        refreshProductLists();
+        $('html, body').animate({ scrollTop: 0 }, 200);
+    });
+
+    // 3. Product Filter Dropdown on Leads Table
+    $(document).on('change', '#dt-product-filter', function() {
+        var pId = $(this).val();
+        window.currentProductFilter = pId;
+        if (pId) {
+            var selectedText = $(this).find('option:selected').text();
+            $('#active-product-title').text(selectedText.split('(')[0].trim());
+            $('#btn-back-to-products').removeClass('hidden');
+        } else {
+            $('#active-product-title').text('All Ads Leads');
+            $('#btn-back-to-products').addClass('hidden');
+        }
+        if (window.mainTable) {
+            window.mainTable.ajax.reload();
+        }
+    });
+
+    // 4. Open Product Drill-down: Click Product List row or "Open Leads" button
     $(document).on('click', '.btn-filter-leads-by-product, .product-list-card-row', function(e) {
-        // If clicking action buttons inside row, don't trigger row click
         if ($(e.target).closest('a, .btn-upload-to-product-list, .btn-delete-product-list, input').length) {
             return;
         }
 
-        var id        = $(this).data('id');
-        var name      = $(this).data('name') || 'Product List';
-        var leads     = $(this).data('leads') || 0;
-        var customers = $(this).data('customers') || 0;
+        var id    = $(this).data('id');
+        var name  = $(this).data('name') || 'Product List';
+        var leads = $(this).data('leads') || 0;
 
         window.currentProductFilter = id;
+        $('#dt-product-filter').val(id);
 
         $('#active-product-title').text(name);
-        $('#active-product-badge').text(leads + ' Leads • ' + customers + ' Customers');
+        $('#active-product-badge').text(leads + ' Leads');
+        $('#btn-back-to-products').removeClass('hidden');
 
-        // Hide Product Lists Hub, Show Leads & Customers for this Product
+        $('#tab-nav-all-leads').removeClass('bg-white text-gray-700 hover:bg-gray-50 border border-gray-200').addClass('bg-emerald-600 text-white shadow-2xs');
+        $('#tab-nav-products').removeClass('bg-emerald-600 text-white shadow-2xs').addClass('bg-white text-gray-700 hover:bg-gray-50 border border-gray-200');
+
         $('#view-products-hub').addClass('hidden');
         $('#view-leads-database').removeClass('hidden');
 
@@ -1147,16 +1203,12 @@ $(function() {
         $('html, body').animate({ scrollTop: 0 }, 200);
     });
 
-    // 2. Back to Product Lists Overview
+    // 5. Back to All Leads from Product Filter
     $(document).on('click', '#btn-back-to-products', function() {
-        window.currentProductFilter = '';
-        $('#view-leads-database').addClass('hidden');
-        $('#view-products-hub').removeClass('hidden');
-        refreshProductLists();
-        $('html, body').animate({ scrollTop: 0 }, 200);
+        $('#tab-nav-all-leads').trigger('click');
     });
 
-    // 4. Live Search among Product Lists
+    // 6. Live Search among Product Lists
     $(document).on('input', '#product-list-search-input', function() {
         var q = $(this).val().toLowerCase().trim();
         $('.product-list-card-row').each(function() {
@@ -1170,30 +1222,27 @@ $(function() {
         });
     });
 
-    // 5. Toggle Quick Filter Bar
+    // 7. Toggle Quick Filter Bar
     $(document).on('click', '#btn-toggle-list-filters', function() {
         $('#list-quick-filter-bar').toggleClass('hidden');
     });
 
-    // 6. Quick Filter Pills
+    // 8. Quick Filter Pills
     $(document).on('click', '.btn-list-filter-pill', function() {
         $('.btn-list-filter-pill').removeClass('active bg-amber-500 text-white shadow-2xs').addClass('bg-white text-gray-600 border border-gray-200');
         $(this).addClass('active bg-amber-500 text-white shadow-2xs').removeClass('bg-white text-gray-600 border border-gray-200');
         var f = $(this).data('filter');
         $('.product-list-card-row').each(function() {
             var leads = parseInt($(this).data('leads')) || 0;
-            var custs = parseInt($(this).data('customers')) || 0;
             if (f === 'all') {
                 $(this).removeClass('hidden');
-            } else if (f === 'has_customers') {
-                $(this).toggle(custs > 0);
             } else if (f === 'has_leads') {
                 $(this).toggle(leads > 0);
             }
         });
     });
 
-    // 7. Upload leads to a specific product
+    // 9. Upload leads to a specific product
     $(document).on('click', '.btn-upload-to-product-list', function(e) {
         e.stopPropagation();
         var id = $(this).data('id');
@@ -1201,7 +1250,7 @@ $(function() {
         $('#btn-open-import').trigger('click');
     });
 
-    // 8. Refresh Product Lists via AJAX
+    // 10. Refresh Product Lists via AJAX
     function refreshProductLists() {
         $.ajax({
             url: BASE_URL + 'leads/lists_ajax',
@@ -1210,10 +1259,10 @@ $(function() {
             success: function(resp) {
                 if (resp && resp.status === 'success' && resp.data) {
                     var lists = resp.data;
-                    $('#product-lists-total-badge').text(lists.length + ' Lists');
+                    $('#product-lists-total-badge').text(lists.length + ' Products');
                     var html = '';
                     if (lists.length === 0) {
-                        html = '<tr><td colspan="7" class="py-6 text-center text-gray-400">No products found in CRM database.</td></tr>';
+                        html = '<tr><td colspan="5" class="py-6 text-center text-gray-400">No products found in CRM database.</td></tr>';
                     } else {
                         lists.forEach(function(l) {
                             var escName = $('<div>').text(l.name).html();
@@ -1226,18 +1275,16 @@ $(function() {
                             var creator = $('<div>').text(l.created_by).html();
                             var modified = $('<div>').text(l.last_modified).html();
 
-                            html += '<tr class="hover:bg-amber-50/40 transition-colors product-list-card-row cursor-pointer" data-id="' + l.id + '" data-name="' + escName.toLowerCase() + '" data-leads="' + l.leads_count + '" data-customers="' + l.customers_count + '">';
+                            html += '<tr class="hover:bg-amber-50/40 transition-colors product-list-card-row cursor-pointer" data-id="' + l.id + '" data-name="' + escName.toLowerCase() + '" data-leads="' + l.leads_count + '">';
                             html += '<td class="py-3.5 px-4"><div class="flex items-center gap-2.5">';
                             html += '<div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-xs border border-emerald-200 flex-shrink-0"><i class="fa fa-cube"></i></div>';
-                            html += '<div><button type="button" class="btn-filter-leads-by-product text-left font-bold text-gray-900 hover:text-emerald-700 text-sm tracking-tight cursor-pointer uppercase" data-id="' + l.id + '" data-name="' + escName + '" data-leads="' + l.leads_count + '" data-customers="' + l.customers_count + '">' + escName + '</button>' + subtitle + '</div>';
+                            html += '<div><button type="button" class="btn-filter-leads-by-product text-left font-bold text-gray-900 hover:text-emerald-700 text-sm tracking-tight cursor-pointer uppercase" data-id="' + l.id + '" data-name="' + escName + '" data-leads="' + l.leads_count + '">' + escName + '</button>' + subtitle + '</div>';
                             html += '</div></td>';
-                            html += '<td class="py-3.5 px-4"><span class="font-mono font-bold text-gray-900 text-sm">' + l.total_records + '</span><span class="text-[11px] text-gray-400 font-medium ml-1">Records</span></td>';
-                            html += '<td class="py-3.5 px-4"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200"><i class="fa fa-users text-blue-600"></i><span>' + l.customers_count + '</span> Customers</span></td>';
-                            html += '<td class="py-3.5 px-4"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa fa-filter text-emerald-600"></i><span>' + l.leads_count + '</span> Leads</span></td>';
+                            html += '<td class="py-3.5 px-4"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa fa-filter text-emerald-600"></i><span class="font-mono font-bold text-sm">' + l.leads_count + '</span> Leads</span></td>';
                             html += '<td class="py-3.5 px-4 text-gray-600 text-xs"><i class="fa fa-user-circle-o text-gray-400 mr-1"></i> ' + creator + '</td>';
                             html += '<td class="py-3.5 px-4 text-gray-500 text-xs"><i class="fa fa-clock-o text-gray-400 mr-1"></i> ' + modified + '</td>';
                             html += '<td class="py-3.5 px-4 text-right"><div class="inline-flex items-center gap-1.5">';
-                            html += '<button type="button" class="btn-filter-leads-by-product px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors shadow-2xs flex items-center gap-1 cursor-pointer" data-id="' + l.id + '" data-name="' + escName + '" data-leads="' + l.leads_count + '" data-customers="' + l.customers_count + '"><i class="fa fa-folder-open-o"></i> Open Leads</button>';
+                            html += '<button type="button" class="btn-filter-leads-by-product px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors shadow-2xs flex items-center gap-1 cursor-pointer" data-id="' + l.id + '" data-name="' + escName + '" data-leads="' + l.leads_count + '"><i class="fa fa-folder-open-o"></i> Open Leads</button>';
                             html += '<button type="button" class="btn-upload-to-product-list p-1.5 text-gray-400 hover:text-emerald-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer" data-id="' + l.id + '" title="Upload Excel to this Product"><i class="fa fa-upload"></i></button>';
                             html += '<a href="' + BASE_URL + 'leads/export?format=xlsx&product_id=' + l.id + '" class="p-1.5 text-gray-400 hover:text-blue-700 rounded-lg hover:bg-gray-100 transition-colors" title="Export this product list"><i class="fa fa-download"></i></a>';
                             html += '</div></td></tr>';
@@ -1248,16 +1295,16 @@ $(function() {
                     // Also synchronize dropdowns
                     var currentTargetVal = $('#drawer-target-product').val();
                     var currentDtVal     = $('#dt-product-filter').val();
-                    var optsHtml = '<option value="auto">🔄 Auto-Detect from Excel / Ads Keywords</option>';
-                    var dtOptsHtml = '<option value="">All Products / Lists</option>';
+                    var optsHtml = '<option value="auto">🔄 Auto-Detect from Excel (Demo Column)</option>';
+                    var dtOptsHtml = '<option value="">All Leads</option>';
                     lists.forEach(function(l) {
                         if (!l.is_unassigned) {
                             var escN = $('<div>').text(l.name).html();
                             optsHtml += '<option value="' + l.id + '">📦 ' + escN + '</option>';
-                            dtOptsHtml += '<option value="' + l.id + '">📦 ' + escN + '</option>';
+                            dtOptsHtml += '<option value="' + l.id + '">📦 ' + escN + ' (' + l.leads_count + ' leads)</option>';
                         }
                     });
-                    dtOptsHtml += '<option value="unassigned">Unassigned Leads</option>';
+                    dtOptsHtml += '<option value="unassigned">Fresh / Unassigned Leads</option>';
 
                     $('#drawer-target-product').html(optsHtml).val(currentTargetVal || 'auto');
                     $('#dt-product-filter').html(dtOptsHtml).val(currentDtVal || '');

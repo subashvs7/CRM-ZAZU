@@ -47,10 +47,20 @@
 </div>
 
 <!-- ========================================================================= -->
+<!-- Navigation Views Tabs -->
+<div class="flex items-center gap-2 mb-4">
+    <button type="button" id="tab-nav-all-leads" class="px-4 py-2 text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center gap-2 bg-emerald-600 text-white cursor-pointer">
+        <i class="fa fa-list-ul"></i> All Ads Leads (<?= number_format($total_leads_count ?? 0) ?>)
+    </button>
+    <button type="button" id="tab-nav-products" class="px-4 py-2 text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center gap-2 bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 cursor-pointer">
+        <i class="fa fa-cubes"></i> View by Products (<?= !empty($lists_summary) ? count($lists_summary) : 0 ?>)
+    </button>
+</div>
+
 <!-- ========================================================================= -->
-<!-- 1. PRODUCT LISTS & AUDIENCES HUB (MAIN VIEW)                              -->
+<!-- 1. PRODUCT LISTS & AUDIENCES HUB (SECONDARY VIEW)                         -->
 <!-- ========================================================================= -->
-<div id="view-products-hub" class="space-y-4">
+<div id="view-products-hub" class="hidden space-y-4">
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <!-- Header Toolbar -->
         <div class="px-6 py-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gradient-to-r from-gray-50/60 via-white to-amber-50/30">
@@ -63,7 +73,7 @@
                         <h3 class="text-sm font-bold text-gray-800">Ads Leads by Product</h3>
                         <span id="product-lists-total-badge" class="px-2 py-0.5 text-[11px] font-bold bg-amber-100 text-amber-800 rounded-full font-mono"><?= !empty($lists_summary) ? count($lists_summary) : 0 ?> Products</span>
                     </div>
-                    <p class="text-xs text-gray-400 mt-0.5">Click any Product Name to open customers & leads inside that product</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Click any Product Name to filter leads inside that product</p>
                 </div>
             </div>
 
@@ -85,7 +95,6 @@
         <div id="list-quick-filter-bar" class="hidden px-6 py-2.5 bg-gray-50/70 border-b border-gray-100 flex flex-wrap items-center gap-2 text-xs">
             <span class="text-gray-400 font-semibold text-[11px] uppercase mr-1">Filter by:</span>
             <button type="button" class="btn-list-filter-pill active px-3 py-1 rounded-lg font-semibold text-xs bg-amber-500 text-white shadow-2xs cursor-pointer" data-filter="all">All Products</button>
-            <button type="button" class="btn-list-filter-pill px-3 py-1 rounded-lg font-semibold text-xs bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 cursor-pointer" data-filter="has_customers">With Customers</button>
             <button type="button" class="btn-list-filter-pill px-3 py-1 rounded-lg font-semibold text-xs bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 cursor-pointer" data-filter="has_leads">With Leads</button>
         </div>
 
@@ -95,9 +104,7 @@
                 <thead class="text-[11px] uppercase tracking-wider text-gray-500 bg-gray-50/80 border-b border-gray-100">
                     <tr>
                         <th class="py-3 px-4 font-bold text-gray-600">PRODUCT NAME</th>
-                        <th class="py-3 px-4 font-bold text-gray-600"># OF RECORDS</th>
-                        <th class="py-3 px-4 font-bold text-gray-600">CUSTOMER COUNT (INSIDE)</th>
-                        <th class="py-3 px-4 font-bold text-gray-600">LEADS COUNT (INSIDE)</th>
+                        <th class="py-3 px-4 font-bold text-gray-600"># OF LEADS</th>
                         <th class="py-3 px-4 font-bold text-gray-600">CREATED BY</th>
                         <th class="py-3 px-4 font-bold text-gray-600">LAST MODIFIED</th>
                         <th class="py-3 px-4 font-bold text-gray-600 text-right">ACTIONS</th>
@@ -110,15 +117,14 @@
                             <tr class="hover:bg-amber-50/40 transition-colors product-list-card-row cursor-pointer"
                                 data-id="<?= $l['id'] ?>"
                                 data-name="<?= htmlspecialchars($l['name'] ?? '') ?>"
-                                data-leads="<?= $l['leads_count'] ?? 0 ?>"
-                                data-customers="<?= $l['customers_count'] ?? 0 ?>">
+                                data-leads="<?= $l['leads_count'] ?? 0 ?>">
                                 <td class="py-3.5 px-4">
                                     <div class="flex items-center gap-2.5">
                                         <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-xs border border-emerald-200 flex-shrink-0">
                                             <i class="fa fa-cube"></i>
                                         </div>
                                         <div>
-                                            <button type="button" class="btn-filter-leads-by-product text-left font-bold text-gray-900 hover:text-emerald-700 text-sm tracking-tight cursor-pointer uppercase" data-id="<?= $l['id'] ?>" data-name="<?= htmlspecialchars($l['name'] ?? '') ?>" data-leads="<?= $l['leads_count'] ?? 0 ?>" data-customers="<?= $l['customers_count'] ?? 0 ?>">
+                                            <button type="button" class="btn-filter-leads-by-product text-left font-bold text-gray-900 hover:text-emerald-700 text-sm tracking-tight cursor-pointer uppercase" data-id="<?= $l['id'] ?>" data-name="<?= htmlspecialchars($l['name'] ?? '') ?>" data-leads="<?= $l['leads_count'] ?? 0 ?>">
                                                 <?= htmlspecialchars($l['name'] ?? '') ?>
                                             </button>
                                             <?php if (!empty($l['sku']) || !empty($l['category_name'])): ?>
@@ -132,19 +138,9 @@
                                     </div>
                                 </td>
                                 <td class="py-3.5 px-4">
-                                    <span class="font-mono font-bold text-gray-900 text-sm"><?= (int)($l['total_records'] ?? 0) ?></span>
-                                    <span class="text-[11px] text-gray-400 font-medium ml-1">Records</span>
-                                </td>
-                                <td class="py-3.5 px-4">
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                                        <i class="fa fa-users text-blue-600"></i>
-                                        <span><?= (int)($l['customers_count'] ?? 0) ?></span> Customers
-                                    </span>
-                                </td>
-                                <td class="py-3.5 px-4">
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                         <i class="fa fa-filter text-emerald-600"></i>
-                                        <span><?= (int)($l['leads_count'] ?? 0) ?></span> Leads
+                                        <span class="font-mono font-bold text-sm"><?= (int)($l['leads_count'] ?? 0) ?></span> Leads
                                     </span>
                                 </td>
                                 <td class="py-3.5 px-4 text-gray-600 text-xs">
@@ -155,7 +151,7 @@
                                 </td>
                                 <td class="py-3.5 px-4 text-right">
                                     <div class="inline-flex items-center gap-1.5">
-                                        <button type="button" class="btn-filter-leads-by-product px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors shadow-2xs flex items-center gap-1 cursor-pointer" data-id="<?= $l['id'] ?>" data-name="<?= htmlspecialchars($l['name'] ?? '') ?>" data-leads="<?= $l['leads_count'] ?? 0 ?>" data-customers="<?= $l['customers_count'] ?? 0 ?>">
+                                        <button type="button" class="btn-filter-leads-by-product px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors shadow-2xs flex items-center gap-1 cursor-pointer" data-id="<?= $l['id'] ?>" data-name="<?= htmlspecialchars($l['name'] ?? '') ?>" data-leads="<?= $l['leads_count'] ?? 0 ?>">
                                             <i class="fa fa-folder-open-o"></i> Open Leads
                                         </button>
                                         <button type="button" class="btn-upload-to-product-list p-1.5 text-gray-400 hover:text-emerald-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer" data-id="<?= $l['id'] ?>" title="Upload Excel to this Product">
@@ -170,7 +166,7 @@
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="7" class="py-6 text-center text-gray-400">
+                            <td colspan="5" class="py-6 text-center text-gray-400">
                                 No products found in CRM database.
                             </td>
                         </tr>
@@ -182,25 +178,41 @@
 </div>
 
 <!-- ========================================================================= -->
-<!-- 2. PRODUCT DRILL-DOWN: LEADS & CUSTOMERS INSIDE (OPENS ON CLICK)          -->
+<!-- 2. LEADS DATABASE (MAIN DEFAULT VIEW)                                     -->
 <!-- ========================================================================= -->
-<div id="view-leads-database" class="hidden space-y-4">
-    <!-- Active Product Drill-down Header Card -->
+<div id="view-leads-database" class="space-y-4">
+    <!-- Active Product / All Leads Header Card -->
     <div class="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="flex items-center gap-3">
-            <button type="button" id="btn-back-to-products" class="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-300 transition-all shadow-2xs flex items-center gap-2 cursor-pointer">
-                <i class="fa fa-arrow-left text-emerald-600"></i> Back to Product Lists
+            <button type="button" id="btn-back-to-products" class="hidden px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-300 transition-all shadow-2xs flex items-center gap-2 cursor-pointer">
+                <i class="fa fa-arrow-left text-emerald-600"></i> All Leads
             </button>
-            <div class="border-l border-gray-200 pl-3">
-                <div class="flex items-center gap-2">
-                    <span class="text-xs text-gray-400 font-semibold uppercase">Product:</span>
-                    <h2 id="active-product-title" class="text-base font-black text-gray-900 uppercase">PROMAN</h2>
-                    <span id="active-product-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">16 Leads • 1 Customer</span>
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-base flex-shrink-0 border border-emerald-200 shadow-2xs">
+                    <i class="fa fa-filter"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h2 id="active-product-title" class="text-base font-black text-gray-900 uppercase">All Ads Leads</h2>
+                        <span id="active-product-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono"><?= number_format($total_leads_count ?? 0) ?> Leads</span>
+                    </div>
+                    <p id="active-product-desc" class="text-xs text-gray-400 mt-0.5">Showing all imported prospective ads leads</p>
                 </div>
             </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
+            <!-- Filter by Product Dropdown -->
+            <div class="relative">
+                <select id="dt-product-filter" class="pl-3 pr-8 py-1.5 text-xs font-semibold bg-gray-50 hover:bg-white focus:bg-white border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
+                    <option value="">All Products (<?= number_format($total_leads_count ?? 0) ?>)</option>
+                    <?php if (!empty($lists_summary)): ?>
+                        <?php foreach ($lists_summary as $ls): ?>
+                            <option value="<?= $ls['id'] ?>"><?= htmlspecialchars($ls['name']) ?> (<?= $ls['leads_count'] ?> leads)</option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+            </div>
             <button type="button" class="btn-open-format-notes inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors border border-emerald-200 shadow-2xs cursor-pointer">
                 <i class="fa fa-dollar text-emerald-600"></i> Format Notes
             </button>
@@ -409,10 +421,10 @@
             <!-- Customer Auto-link Checkbox -->
             <div class="mt-4 p-3.5 bg-gray-50 border border-gray-200/80 rounded-xl">
                 <label class="flex items-start gap-2.5 text-xs text-gray-700 cursor-pointer">
-                    <input type="checkbox" name="auto_create_customers" id="drawer-auto-customer" value="1" checked class="mt-0.5 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
+                    <input type="checkbox" name="auto_create_customers" id="drawer-auto-customer" value="1" class="mt-0.5 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
                     <span class="leading-relaxed">
-                        <strong class="font-semibold text-gray-800">Auto-create / Link Customers</strong><br>
-                        Automatically create customer profile if Company Name is new.
+                        <strong class="font-semibold text-gray-800">Auto-create / Link Customers (Optional)</strong><br>
+                        <span class="text-gray-500 text-[11px]">Unchecked by default. Imported rows remain purely as Leads.</span>
                     </span>
                 </label>
             </div>

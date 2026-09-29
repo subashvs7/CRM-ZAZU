@@ -561,8 +561,11 @@ class Communications extends MY_Controller {
             }
         }
 
-        $followup_schedule = $this->input->post('followup_schedule') ?: '3';
-        if ($followup_schedule === 'custom') {
+        $followup_schedule = $this->input->post('followup_schedule');
+        if ($followup_schedule === 'none' || $followup_schedule === '0' || empty($followup_schedule)) {
+            $next_followup_days = 0;
+            $next_followup_date = null;
+        } elseif ($followup_schedule === 'custom') {
             $custom_date = trim($this->input->post('custom_followup_date') ?: '');
             if (!empty($custom_date) && strtotime($custom_date)) {
                 $next_followup_date = date('Y-m-d', strtotime($custom_date));
@@ -724,8 +727,9 @@ class Communications extends MY_Controller {
 
                 // If lead recipient, record follow-up activity log and update email_sent status
                 if (!empty($item['lead_id'])) {
+                    $followupNotePart = !empty($next_followup_date) ? " Next follow-up on {$next_followup_date}." : "";
                     $activityNote = $sendOk 
-                        ? "{$typeTitle} Dispatched Successfully via {$fromEmail} [Ref: #{$anti_spam_hash}]: \"{$subject}\" (Campaign #{$campaign_id}). Status: Send Success ({$nowFormatted}). Next follow-up on {$next_followup_date}."
+                        ? "{$typeTitle} Dispatched Successfully via {$fromEmail} [Ref: #{$anti_spam_hash}]: \"{$subject}\" (Campaign #{$campaign_id}). Status: Send Success ({$nowFormatted}).{$followupNotePart}"
                         : "{$typeTitle} Dispatch Failed via {$fromEmail} [Ref: #{$anti_spam_hash}]: \"{$subject}\" (Campaign #{$campaign_id}). Status: Send Failed ({$nowFormatted}).";
 
                     $this->db->insert('crm_lead_activities', [
@@ -757,10 +761,12 @@ class Communications extends MY_Controller {
             } else {
                 $this->Bulk_mail_model->update_campaign_status($campaign_id, 'completed');
                 $acctText = count($usedAccounts) > 1 ? " with auto-rotation across " . count($usedAccounts) . " Hostinger SMTP accounts" : "";
-                $msg = "Bulk mail campaign launched! Successfully dispatched to {$sentCount} recipient(s){$acctText}. Next follow-up on {$next_followup_date}.";
+                $followupMsgPart = !empty($next_followup_date) ? " Next follow-up on {$next_followup_date}." : "";
+                $msg = "Bulk mail campaign launched! Successfully dispatched to {$sentCount} recipient(s){$acctText}.{$followupMsgPart}";
             }
         } else {
-            $msg = "Campaign queued successfully! " . count($recipients) . " emails added to queue for background dispatch. Next follow-up scheduled for {$next_followup_date}.";
+            $followupMsgPart = !empty($next_followup_date) ? " Next follow-up scheduled for {$next_followup_date}." : "";
+            $msg = "Campaign queued successfully! " . count($recipients) . " emails added to queue for background dispatch.{$followupMsgPart}";
         }
 
         if ($this->input->is_ajax_request()) {
@@ -900,7 +906,7 @@ class Communications extends MY_Controller {
             }
 
             $anti_spam_hash = $this->Bulk_mail_model->generate_anti_spam_hash();
-            $next_followup_date = !empty($item['next_followup_date']) ? $item['next_followup_date'] : date('Y-m-d', strtotime('+3 days'));
+            $next_followup_date = !empty($item['next_followup_date']) ? $item['next_followup_date'] : null;
 
             $replacements = [
                 '{{customer_name}}'       => $item['recipient_name'] ?: ($custData['customer_name'] ?? ($leadData['contact_person'] ?? 'Customer')),
@@ -973,8 +979,9 @@ class Communications extends MY_Controller {
                     $typeTitle = $typeLabels[$item['campaign_type']] ?? 'Outreach';
                 }
 
+                $followupNotePart = !empty($next_followup_date) ? " Next follow-up on {$next_followup_date}." : "";
                 $activityNote = $sendOk 
-                    ? "Queued {$typeTitle} Dispatched Successfully via {$fromEmail} [Ref: #{$anti_spam_hash}]. Status: Send Success ({$nowFormatted}). Next follow-up on {$next_followup_date}."
+                    ? "Queued {$typeTitle} Dispatched Successfully via {$fromEmail} [Ref: #{$anti_spam_hash}]. Status: Send Success ({$nowFormatted}).{$followupNotePart}"
                     : "Queued {$typeTitle} Dispatch Failed via {$fromEmail} [Ref: #{$anti_spam_hash}]. Status: Send Failed ({$nowFormatted}).";
 
                 $this->db->insert('crm_lead_activities', [

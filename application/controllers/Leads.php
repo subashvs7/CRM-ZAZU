@@ -72,19 +72,21 @@ class Leads extends MY_Controller {
     }
 
     public function index() {
-        $customers     = $this->Customer_model->get_active($this->is_manager() ? [] : ['assigned_to' => $this->get_user_id()]);
-        $staff         = $this->is_manager() ? $this->User_model->get_field_staff() : [];
-        $products      = $this->Product_model->get_active_with_category();
-        $lists_summary = $this->Lead_model->get_product_lists_summary();
+        $customers         = $this->Customer_model->get_active($this->is_manager() ? [] : ['assigned_to' => $this->get_user_id()]);
+        $staff             = $this->is_manager() ? $this->User_model->get_field_staff() : [];
+        $products          = $this->Product_model->get_active_with_category();
+        $lists_summary     = $this->Lead_model->get_product_lists_summary();
+        $total_leads_count = $this->db->where('is_deleted', 0)->count_all_results('crm_leads');
 
         $this->load_view('leads/index', [
-            'page_title'    => 'Ads Leads & Lists',
-            'page_js'       => 'leads',
-            'customers'     => $customers,
-            'staff'         => $staff,
-            'products'      => $products,
-            'lists_summary' => $lists_summary,
-            'sf'            => ''
+            'page_title'        => 'Ads Leads & Lists',
+            'page_js'           => 'leads',
+            'customers'         => $customers,
+            'staff'             => $staff,
+            'products'          => $products,
+            'lists_summary'     => $lists_summary,
+            'total_leads_count' => $total_leads_count,
+            'sf'                => ''
         ]);
     }
 
@@ -196,7 +198,7 @@ class Leads extends MY_Controller {
             </div>';
 
             // Company & Industry
-            $companyName = $r['company_name'] ?: ($r['customer_name'] ?: '-');
+            $companyName = !empty($r['company_name']) ? $r['company_name'] : '-';
             $industryMeta = [];
             if (!empty($r['industry'])) $industryMeta[] = esc_html($r['industry']);
             if (!empty($r['employees_count'])) $industryMeta[] = esc_html($r['employees_count']) . ' emp';
@@ -218,7 +220,7 @@ class Leads extends MY_Controller {
             }
 
             // Phone
-            $phone = $r['corporate_phone'] ?: ($r['customer_phone'] ?: '');
+            $phone = !empty($r['corporate_phone']) ? $r['corporate_phone'] : (!empty($r['company_phone']) ? $r['company_phone'] : '');
             $phoneHtml = $phone ? '<a href="tel:'.esc_html($phone).'" class="text-xs text-gray-700 hover:text-blue-600 flex items-center gap-1 font-mono"><i class="fa fa-phone text-emerald-600 text-[10px]"></i> '.esc_html($phone).'</a>' : '<span class="text-gray-400 text-xs">-</span>';
 
             // Account Owner
@@ -743,121 +745,64 @@ class Leads extends MY_Controller {
     }
 
     /**
-     * Dynamically match spreadsheet row data (Demo column, product name, keywords, technologies, industry, company)
-     * against active system products.
-     * Special high priority is given to the 'Demo' column as requested.
+     * Match product strictly from product_demo column (or explicit product_name column).
+     * If product_demo is empty, product_id is NULL (fresh unassigned leads).
+     * No fuzzy keyword matching on company/industry/text.
      */
     private function _match_product_from_keywords($leadData, $products) {
         if (empty($products)) return null;
 
-        $demoText  = strtolower(trim($leadData['product_demo'] ?? $leadData['demo'] ?? ''));
-        $prodText  = strtolower(trim($leadData['product_name'] ?? ''));
-        $kwText    = strtolower(trim($leadData['keywords'] ?? ''));
-        $techText  = strtolower(trim($leadData['technologies'] ?? ''));
-        $indText   = strtolower(trim($leadData['industry'] ?? ''));
-        $compText  = strtolower(trim($leadData['company_name'] ?? ''));
-        $titleText = strtolower(trim($leadData['title'] ?? ''));
+        $demoText = strtolower(trim($leadData['product_demo'] ?? $leadData['demo'] ?? ''));
+        $prodText = strtolower(trim($leadData['product_name'] ?? ''));
 
-        $combinedText = trim($demoText . ' ' . $prodText . ' ' . $kwText . ' ' . $techText . ' ' . $indText . ' ' . $compText . ' ' . $titleText);
-        if ($combinedText === '') return null;
+        // If both product_demo and product_name columns are empty, product_id MUST BE NULL
+        if ($demoText === '' && $prodText === '') {
+            return null;
+        }
 
         $cleanDemo = preg_replace('/[^a-z0-9]/', '', $demoText);
         $cleanProd = preg_replace('/[^a-z0-9]/', '', $prodText);
 
-        $bestProduct = null;
+        $bestProduct  = null;
         $highestScore = 0;
 
         foreach ($products as $p) {
             $score = 0;
             $pName = strtolower(trim($p['name'] ?? ''));
             $pSku  = strtolower(trim($p['sku'] ?? ''));
-            $pCat  = strtolower(trim($p['category_name'] ?? ''));
-            $pDesc = strtolower(trim($p['description'] ?? ''));
 
             $cleanPName = preg_replace('/[^a-z0-9]/', '', $pName);
             $cleanSku   = preg_replace('/[^a-z0-9]/', '', $pSku);
 
-            // --- 1. DIRECT PRODUCT_DEMO COLUMN MATCHING (ABSOLUTE HIGHEST PRIORITY) ---
+            // Direct match from product_demo column
             if ($cleanDemo !== '') {
-                // Exact match with SKU or full Product Name
                 if ($cleanDemo === $cleanSku || $cleanDemo === $cleanPName) {
                     $score += 300;
-                }
-                // Exact / Substring match against SKU (e.g. "classwall", "promancm")
-                elseif ($cleanSku !== '' && (strpos($cleanDemo, $cleanSku) !== false || strpos($cleanSku, $cleanDemo) !== false)) {
+                } elseif ($cleanSku !== '' && (strpos($cleanDemo, $cleanSku) !== false || strpos($cleanSku, $cleanDemo) !== false)) {
                     $score += 250;
+                } elseif ($cleanPName !== '' && (strpos($cleanDemo, $cleanPName) !== false || strpos($cleanPName, $cleanDemo) !== false)) {
+                    $score += 220;
+                } elseif ($pSku !== '' && stripos($demoText, $pSku) !== false) {
+                    $score += 180;
+                } elseif ($pName !== '' && stripos($demoText, $pName) !== false) {
+                    $score += 180;
                 }
-                // Direct match against full normalized product name
-                elseif ($cleanPName !== '' && (strpos($cleanDemo, $cleanPName) !== false || strpos($cleanPName, $cleanDemo) !== false)) {
+            }
+
+            // Direct match from explicit product_name column
+            if ($cleanProd !== '') {
+                if ($cleanProd === $cleanSku || $cleanProd === $cleanPName) {
+                    $score += 300;
+                } elseif ($cleanSku !== '' && (strpos($cleanProd, $cleanSku) !== false || strpos($cleanSku, $cleanProd) !== false)) {
+                    $score += 250;
+                } elseif ($cleanPName !== '' && (strpos($cleanProd, $cleanPName) !== false || strpos($cleanPName, $cleanProd) !== false)) {
                     $score += 220;
                 }
-                // Raw text match
-                if ($pSku !== '' && stripos($demoText, $pSku) !== false) {
-                    $score += 180;
-                }
-                if ($pName !== '' && stripos($demoText, $pName) !== false) {
-                    $score += 180;
-                }
-
-                // Word-level match in demo column
-                $nameWords = preg_split('/[\s\-_,\.\(\)\/]+/', $pName, -1, PREG_SPLIT_NO_EMPTY);
-                $primaryWordMatchCount = 0;
-                foreach ($nameWords as $w) {
-                    if (strlen($w) >= 3 && !in_array($w, ['erp', 'crm', 'app', 'the', 'and', 'for', 'ltd', 'inc', 'pvt', 'hub', 'management', 'software', 'system'])) {
-                        if (stripos($demoText, $w) !== false) {
-                            $score += 60;
-                            $primaryWordMatchCount++;
-                        }
-                    }
-                }
-                if ($primaryWordMatchCount >= 2) {
-                    $score += 60;
-                }
-
-                // Check SKU parts in demo (e.g. "PROMAN-CM" -> "proman")
-                $skuWords = preg_split('/[\s\-_]+/', $pSku, -1, PREG_SPLIT_NO_EMPTY);
-                foreach ($skuWords as $sw) {
-                    if (strlen($sw) >= 3 && stripos($demoText, $sw) !== false) {
-                        $score += 70;
-                    }
-                }
             }
 
-            // --- 2. DEDICATED PRODUCT NAME COLUMN (IF PRESENT IN SHEET) ---
-            if ($cleanProd !== '') {
-                if ($cleanSku !== '' && (strpos($cleanProd, $cleanSku) !== false || strpos($cleanSku, $cleanProd) !== false)) {
-                    $score += 150;
-                }
-                if ($cleanPName !== '' && (strpos($cleanProd, $cleanPName) !== false || strpos($cleanPName, $cleanProd) !== false)) {
-                    $score += 140;
-                }
-            }
-
-            // --- 3. KEYWORDS, TECH, INDUSTRY, COMPANY & TITLE MATCHING ---
-            if ($pName !== '' && stripos($combinedText, $pName) !== false) {
-                $score += 50;
-            }
-            if ($pSku !== '' && stripos($combinedText, $pSku) !== false) {
-                $score += 45;
-            }
-
-            $nameWords = preg_split('/[\s\-_,\.\(\)\/]+/', $pName, -1, PREG_SPLIT_NO_EMPTY);
-            foreach ($nameWords as $w) {
-                if (strlen($w) > 2 && !in_array($w, ['erp', 'crm', 'app', 'the', 'and', 'for', 'ltd', 'inc', 'pvt', 'hub', 'management', 'software', 'system'])) {
-                    if (stripos($combinedText, $w) !== false) {
-                        $score += (stripos($kwText, $w) !== false ? 30 : 15);
-                    }
-                }
-            }
-
-            // Category match
-            if ($pCat !== '' && stripos($combinedText, $pCat) !== false) {
-                $score += 20;
-            }
-
-            if ($score > $highestScore && $score >= 20) {
+            if ($score > $highestScore && $score >= 180) {
                 $highestScore = $score;
-                $bestProduct = $p;
+                $bestProduct  = $p;
             }
         }
 

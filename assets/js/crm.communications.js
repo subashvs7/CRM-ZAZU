@@ -679,6 +679,20 @@ $(function () {
         var now = new Date();
         var targetDate = new Date();
 
+        if (mode === 'none' || !mode) {
+            $('#wrap-custom-followup-date').addClass('hidden');
+            $('#wrap-custom-followup-days').addClass('hidden');
+            $('#followup-preview-badge')
+                .removeClass('text-indigo-700 bg-indigo-100/90 border-indigo-200')
+                .addClass('text-gray-500 bg-gray-100 border-gray-200')
+                .html('<i class="fa fa-ban text-[10px]"></i> No Follow-Up');
+            return;
+        }
+
+        $('#followup-preview-badge')
+            .removeClass('text-gray-500 bg-gray-100 border-gray-200')
+            .addClass('text-indigo-700 bg-indigo-100/90 border-indigo-200');
+
         if (mode === 'custom') {
             $('#wrap-custom-followup-date').removeClass('hidden');
             $('#wrap-custom-followup-days').addClass('hidden');
@@ -722,8 +736,13 @@ $(function () {
     });
 
     $('#select-campaign-type').on('change', function () {
+        var currentSchedule = $('#select-followup-schedule').val();
+        // Keep 'none' untouched if user selected 'none'
+        if (currentSchedule === 'none') {
+            return;
+        }
         var defDays = $(this).find(':selected').data('days');
-        if (defDays && $('#select-followup-schedule').val() !== 'custom' && $('#select-followup-schedule').val() !== 'custom_days') {
+        if (defDays && currentSchedule !== 'custom' && currentSchedule !== 'custom_days') {
             var exists = $('#select-followup-schedule option[value="' + defDays + '"]').length > 0;
             if (exists) {
                 $('#select-followup-schedule').val(String(defDays)).trigger('change');

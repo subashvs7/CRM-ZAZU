@@ -652,15 +652,16 @@
                                         <label class="block text-xs font-bold text-gray-800 flex items-center gap-1.5">
                                             <i class="fa fa-calendar text-indigo-600"></i> Schedule Next Follow-Up
                                         </label>
-                                        <span id="followup-preview-badge" class="text-[10px] font-mono font-semibold text-indigo-700 bg-indigo-100/90 px-2 py-0.5 rounded border border-indigo-200">
-                                            Due: <?= date('d M Y', strtotime('+3 days')) ?>
+                                        <span id="followup-preview-badge" class="text-[10px] font-mono font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                                            <i class="fa fa-ban text-[10px]"></i> No Follow-Up
                                         </span>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <select name="followup_schedule" id="select-followup-schedule" class="w-full px-3 py-2 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                            <option value="none" selected>🚫 None (No Follow-Up / Instant Only)</option>
                                             <option value="1">After 1 Day (Tomorrow)</option>
                                             <option value="2">After 2 Days</option>
-                                            <option value="3" selected>After 3 Days (Standard)</option>
+                                            <option value="3">After 3 Days (Standard)</option>
                                             <option value="4">After 4 Days</option>
                                             <option value="5">After 5 Days</option>
                                             <option value="7">After 1 Week (7 Days)</option>

@@ -22,13 +22,10 @@ class Lead_model extends MY_Model {
 
     public function datatable($params, $status_filter = null, $user_id = null, $role = null) {
         $this->db->select("l.*, 
-            COALESCE(NULLIF(IF(c.customer_name != '', CONCAT(c.customer_name, ' (', c.customer_org_name, ')'), c.customer_org_name), ''), l.company_name, '') AS customer_name, 
-            c.phone AS customer_phone, 
             COALESCE(u.name, l.account_owner, '') AS assigned_name,
             p.name AS product_name,
             p.sku AS product_sku")
             ->from('crm_leads l')
-            ->join('crm_customers c', 'c.id = l.customer_id', 'left')
             ->join('crm_user u', 'u.id = l.assigned_to', 'left')
             ->join('crm_products p', 'p.id = l.product_id', 'left');
 
@@ -69,8 +66,6 @@ class Lead_model extends MY_Model {
                 ->or_like('l.industry', $search)
                 ->or_like('l.city', $search)
                 ->or_like('l.country', $search)
-                ->or_like('c.customer_name', $search)
-                ->or_like('c.customer_org_name', $search)
                 ->or_like('l.lead_status', $search)
                 ->or_like('p.name', $search)
                 ->or_like('p.sku', $search)
@@ -172,13 +167,6 @@ class Lead_model extends MY_Model {
             // Leads count for this product
             $leadsCount = $this->db->where(['product_id' => $pId, 'is_deleted' => 0])->count_all_results('crm_leads');
 
-            // Customers count linked to this product (via product_ids or via converted leads)
-            $custCount  = $this->db->query("SELECT COUNT(*) AS cnt FROM crm_customers 
-                WHERE is_deleted = 0 AND (
-                    FIND_IN_SET(?, REPLACE(COALESCE(product_ids, ''), ' ', '')) > 0 
-                    OR id IN (SELECT customer_id FROM crm_leads WHERE product_id = ? AND customer_id IS NOT NULL AND is_deleted = 0)
-                )", [$pId, $pId])->row()->cnt ?? 0;
-
             // Last activity timestamp
             $lastLead = $this->db->select('created_at, updated_at')
                 ->where(['product_id' => $pId, 'is_deleted' => 0])
@@ -193,9 +181,8 @@ class Lead_model extends MY_Model {
                 'category_name'   => $p['category_name'] ?: 'General',
                 'description'     => $p['description'] ?? '',
                 'leads_count'     => (int)$leadsCount,
-                'customers_count' => (int)$custCount,
-                'total_records'   => (int)$leadsCount + (int)$custCount,
-                'type'            => 'People',
+                'total_records'   => (int)$leadsCount,
+                'type'            => 'Leads',
                 'created_by'      => 'Super Admin',
                 'created_at'      => $p['created_at'],
                 'last_activity'   => $lastActivity,
@@ -203,7 +190,6 @@ class Lead_model extends MY_Model {
             ];
 
             $totalAllLeads += $leadsCount;
-            $totalAllCusts += $custCount;
         }
 
         // Check for unassigned leads (where product_id IS NULL or 0)
@@ -225,14 +211,13 @@ class Lead_model extends MY_Model {
 
             $lists[] = [
                 'id'              => 'unassigned',
-                'name'            => 'Unassigned Ads Leads',
-                'sku'             => 'GENERAL',
-                'category_name'   => 'Uncategorized',
-                'description'     => 'Leads imported without product association',
+                'name'            => 'Fresh / Unassigned Leads',
+                'sku'             => 'FRESH',
+                'category_name'   => 'General',
+                'description'     => 'Fresh leads imported without product association',
                 'leads_count'     => (int)$unassignedCount,
-                'customers_count' => 0,
                 'total_records'   => (int)$unassignedCount,
-                'type'            => 'People',
+                'type'            => 'Leads',
                 'created_by'      => 'System',
                 'created_at'      => $lastUnassigned ? $lastUnassigned['created_at'] : date('Y-m-d H:i:s'),
                 'last_activity'   => $lastUnassigned ? ($lastUnassigned['updated_at'] ?: $lastUnassigned['created_at']) : date('Y-m-d H:i:s'),
