@@ -444,7 +444,7 @@ class Communications extends MY_Controller {
         $this->email->clear();
         $this->email->from($fromEmail, $fromName);
         $this->email->to($testEmail);
-        $this->email->subject('[TEST PREVIEW] ' . $renderedSubject);
+        $this->email->subject($renderedSubject);
         $this->email->message($renderedBody);
 
         // In local XAMPP without live credentials, mail() returns false but renders preview
