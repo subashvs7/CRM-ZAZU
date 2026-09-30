@@ -536,11 +536,24 @@ class Communications extends MY_Controller {
         $senderPhone = $currentUser['phone'] ?? '+91 9876543210';
         $currentUserId = $this->get_user_id() ?: 1;
 
-        // Check if user chose an instant specific SMTP mailbox or auto-rotate pool
+        // Check if user chose a specific SMTP mailbox — REQUIRED, no auto-rotate allowed
         $sender_smtp_id = $this->input->post('sender_smtp_id');
         $forcedSmtp = null;
-        if (!empty($sender_smtp_id) && $sender_smtp_id !== 'auto') {
-            $forcedSmtp = $this->Smtp_account_model->get_by_id((int)$sender_smtp_id);
+        if (empty($sender_smtp_id) || $sender_smtp_id === 'auto') {
+            if ($this->input->is_ajax_request()) {
+                $this->json_error('Please select a specific sender mailbox before sending. Auto-rotate is disabled.');
+            }
+            $this->session->set_flashdata('error', 'Please select a specific sender mailbox.');
+            redirect('communications/bulk_mail');
+            return;
+        }
+        $forcedSmtp = $this->Smtp_account_model->get_by_id((int)$sender_smtp_id);
+        if (!$forcedSmtp) {
+            if ($this->input->is_ajax_request()) {
+                $this->json_error('Selected sender mailbox not found. Please select a valid mailbox.');
+            }
+            redirect('communications/bulk_mail');
+            return;
         }
 
         $targetSummary = is_array($recipient_types) ? implode(', ', $recipient_types) : $recipient_types;
@@ -627,6 +640,12 @@ class Communications extends MY_Controller {
 
                 // SENDER SELECTION: Use chosen specific mailbox OR auto-rotate fair-share pool
                 if ($forcedSmtp) {
+                    // Re-fetch from DB on every iteration so sent_today is always current
+                    $forcedSmtp = $this->Smtp_account_model->get_by_id((int)$forcedSmtp['id']);
+                    if (!$forcedSmtp) {
+                        $quotaHalted = true;
+                        break;
+                    }
                     $rem = max(0, (int)$forcedSmtp['daily_limit'] - (int)$forcedSmtp['sent_today']);
                     if ($rem <= 0) {
                         $quotaHalted = true;

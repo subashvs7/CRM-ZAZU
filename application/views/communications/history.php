@@ -739,8 +739,28 @@ $(function() {
 
     // ---------------------------------------------------------
     // 2-MINUTE PACED BACKGROUND QUEUE TIMER & AJAX HEARTBEAT
+    // Uses localStorage to persist countdown across page refreshes
     // ---------------------------------------------------------
-    var countdownSeconds = 120; // 2 minutes
+    var TIMER_KEY      = 'crm_queue_timer_start';
+    var TIMER_DURATION = 120; // seconds
+    var countdownSeconds;
+
+    function initTimer() {
+        var stored = localStorage.getItem(TIMER_KEY);
+        if (stored) {
+            var elapsed = Math.floor((Date.now() - parseInt(stored)) / 1000);
+            var remaining = TIMER_DURATION - elapsed;
+            countdownSeconds = (remaining > 0 && remaining <= TIMER_DURATION) ? remaining : TIMER_DURATION;
+        } else {
+            countdownSeconds = TIMER_DURATION;
+            localStorage.setItem(TIMER_KEY, Date.now());
+        }
+    }
+
+    function resetTimer() {
+        countdownSeconds = TIMER_DURATION;
+        localStorage.setItem(TIMER_KEY, Date.now());
+    }
 
     function updateCountdownDisplay() {
         var mins = Math.floor(countdownSeconds / 60);
@@ -752,14 +772,14 @@ $(function() {
     function triggerQueueBatch() {
         var pending = parseInt($('#queue-pending-count').text()) || 0;
         if (pending <= 0) {
-            countdownSeconds = 120;
+            resetTimer();
             updateCountdownDisplay();
             return;
         }
 
         $('#queue-countdown').text('Sending...');
         $.getJSON(BASE_URL + 'communications/process_queue_batch_ajax', function(resp) {
-            countdownSeconds = 120;
+            resetTimer();
             updateCountdownDisplay();
             if (resp.status === 'success' && resp.data) {
                 $('#queue-pending-count').text(resp.data.remaining);
@@ -770,10 +790,14 @@ $(function() {
                 }
             }
         }).fail(function() {
-            countdownSeconds = 120;
+            resetTimer();
             updateCountdownDisplay();
         });
     }
+
+    // Initialize timer from localStorage on page load
+    initTimer();
+    updateCountdownDisplay();
 
     setInterval(function() {
         var pending = parseInt($('#queue-pending-count').text()) || 0;
@@ -785,6 +809,7 @@ $(function() {
                 updateCountdownDisplay();
             }
         } else {
+            // No pending queue — keep timer display as Idle but persist start time
             $('#queue-countdown').text('Idle');
         }
     }, 1000);
@@ -792,5 +817,22 @@ $(function() {
     $('#btn-trigger-queue-now').on('click', function() {
         triggerQueueBatch();
     });
+
+    // ── AUTO LOAD STATS + LOGS ON PAGE OPEN ─────────────────────────────────
+    (function autoLoadOnOpen() {
+        // Refresh live stats from AJAX on page load
+        $.getJSON(BASE_URL + 'communications/history_ajax', function(resp) {
+            if (resp.status === 'success' && resp.data && resp.data.stats) {
+                var s = resp.data.stats;
+                $('#stat-total-sent').text(parseInt(s.sent || 0).toLocaleString());
+                $('#stat-total-queued').text(parseInt(s.queued || 0).toLocaleString());
+                $('#stat-total-failed').text(parseInt(s.failed || 0).toLocaleString());
+                $('#stat-total-campaigns').text(parseInt(s.campaigns || 0).toLocaleString());
+                $('#queue-pending-count').text(s.queued || 0);
+            }
+        });
+        // Load initial delivery logs
+        fetchDeliveryLogs();
+    })();
 });
 </script>

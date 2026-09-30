@@ -1116,6 +1116,26 @@ $(function () {
             return;
         }
 
+        // ── MAILBOX SELECTION REQUIRED ───────────────────────────────────────
+        var selectedSmtp = $('#select-sender-smtp').val();
+        if (!selectedSmtp || selectedSmtp === '' || selectedSmtp === 'auto') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Select a Sender Mailbox!',
+                html: '<p style="font-size:14px;color:#374151;">You must select a <strong>specific sender mailbox</strong> before sending.<br><br><span style="color:#6366f1;font-size:13px;">Go to the <b>Instant Sender Mailbox Switcher</b> and pick a mailbox (e.g. naveenk@yourdomain.com)</span></p>',
+                confirmButtonText: 'OK, I\'ll Select One',
+                confirmButtonColor: '#4f46e5',
+                showCancelButton: false,
+                customClass: { popup: 'rounded-2xl' }
+            });
+            // Highlight the dropdown
+            $('#select-sender-smtp').addClass('ring-2 ring-rose-400 border-rose-400');
+            setTimeout(function() {
+                $('#select-sender-smtp').removeClass('ring-2 ring-rose-400 border-rose-400');
+            }, 3000);
+            return;
+        }
+
         var $btn = $('#btn-launch-campaign');
         var origHtml = $btn.html();
         $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Dispatching Bulk Emails & Logging Activities...');

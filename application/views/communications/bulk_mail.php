@@ -449,13 +449,11 @@
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
-                                <span>Send Outbound Campaign From:</span>
-                                <span class="text-[11px] text-blue-600 font-normal">Switch sender instantly anytime</span>
+                                <span>Send Outbound Campaign From: <span class="text-rose-500">*</span></span>
+                                <span class="text-[11px] text-blue-600 font-normal">Must select a specific mailbox</span>
                             </label>
                             <select name="sender_smtp_id" id="select-sender-smtp" class="w-full px-3.5 py-2.5 bg-white border border-blue-300 rounded-xl text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-xs">
-                                <option value="auto" data-sender="Auto-Rotated Pool" data-email="Smart Fair-Share Mailbox Pool">
-                                    🔄 Auto-Rotate Pool (Smart Fair-Share Load Balancing across all 100-limit mailboxes)
-                                </option>
+                                <option value="" data-sender="" data-email="">— Select a Sender Mailbox —</option>
                                 <?php foreach (($smtp_pool['accounts'] ?? []) as $acc): 
                                     $remQuota = max(0, (int)$acc['daily_limit'] - (int)$acc['sent_today']);
                                     $isExhausted = ($acc['status'] === 'limit_reached' || $remQuota === 0 || $acc['status'] === 'disabled');
@@ -464,13 +462,13 @@
                                         data-sender="<?= esc_html($acc['sender_name'] ?: $acc['name']) ?>" 
                                         data-email="<?= esc_html($acc['sender_email']) ?>"
                                         data-remaining="<?= $remQuota ?>"
-                                        <?= $isExhausted ? 'disabled' : '' ?>>
+                                        <?= $isExhausted ? 'disabled' : ''?>>
                                     ✉️ <?= esc_html($acc['sender_name'] ?: $acc['name']) ?> &lt;<?= esc_html($acc['sender_email']) ?>&gt; &bull; <?= $remQuota ?> left today (<?= $acc['status'] ?>)
                                 </option>
                                 <?php endforeach; ?>
                             </select>
                             <div class="flex items-center justify-between mt-1 text-[11px] text-gray-500">
-                                <span><i class="fa fa-info-circle text-blue-500 mr-1"></i> Pick a specific mailbox or leave on Auto-Rotate.</span>
+                                <span><i class="fa fa-exclamation-triangle text-amber-500 mr-1"></i> You must select a sender mailbox before sending.</span>
                                 <a href="<?= base_url('communications/smtp_settings') ?>" class="text-blue-600 hover:underline font-semibold flex items-center gap-1">
                                     <i class="fa fa-sliders"></i> Open SMTP Settings
                                 </a>
