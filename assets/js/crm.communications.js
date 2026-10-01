@@ -165,6 +165,7 @@ $(function () {
 
         // Reload templates for this product
         reloadTemplateDropdown(pid, $('#filter-category').val());
+        reloadFollowupTemplateDropdown(pid);
         // Recalculate audience count
         updateAudienceCount();
         // Update preview
@@ -742,12 +743,17 @@ $(function () {
         if (mode === 'none' || !mode) {
             $('#wrap-custom-followup-date').addClass('hidden');
             $('#wrap-custom-followup-days').addClass('hidden');
+            $('#wrap-followup-template-section').addClass('hidden');
+            $('#card-followup-preview-right').addClass('hidden');
             $('#followup-preview-badge')
                 .removeClass('text-indigo-700 bg-indigo-100/90 border-indigo-200')
                 .addClass('text-gray-500 bg-gray-100 border-gray-200')
                 .html('<i class="fa fa-ban text-[10px]"></i> No Follow-Up');
             return;
         }
+
+        // Mode is active (1 day, 2 days, 3 days, custom, etc.) -> show follow-up template selector
+        $('#wrap-followup-template-section').removeClass('hidden');
 
         $('#followup-preview-badge')
             .removeClass('text-gray-500 bg-gray-100 border-gray-200')
@@ -761,26 +767,103 @@ $(function () {
                 var parts = customVal.split('-');
                 if (parts.length === 3) {
                     targetDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-                    $('#followup-preview-badge').html('<i class="fa fa-calendar-check-o text-[10px]"></i> Due: ' + formatFollowupDate(targetDate));
-                    return;
+                    var dueText = 'Due: ' + formatFollowupDate(targetDate);
+                    $('#followup-preview-badge').html('<i class="fa fa-calendar-check-o text-[10px]"></i> ' + dueText);
+                    $('#badge-followup-due-right').text(dueText);
                 }
+            } else {
+                $('#followup-preview-badge').text('Pick custom date');
+                $('#badge-followup-due-right').text('Custom Date');
             }
-            $('#followup-preview-badge').text('Pick custom date');
-            return;
         } else if (mode === 'custom_days') {
             $('#wrap-custom-followup-days').removeClass('hidden');
             $('#wrap-custom-followup-date').addClass('hidden');
             var days = parseInt($('#input-custom-followup-days').val(), 10) || 1;
             targetDate.setDate(now.getDate() + days);
-            $('#followup-preview-badge').html('<i class="fa fa-calendar-check-o text-[10px]"></i> Due: ' + formatFollowupDate(targetDate));
-            return;
+            var dueText = 'Due: ' + formatFollowupDate(targetDate);
+            $('#followup-preview-badge').html('<i class="fa fa-calendar-check-o text-[10px]"></i> ' + dueText);
+            $('#badge-followup-due-right').text(dueText);
         } else {
             $('#wrap-custom-followup-date').addClass('hidden');
             $('#wrap-custom-followup-days').addClass('hidden');
             var dCount = parseInt(mode, 10) || 3;
             targetDate.setDate(now.getDate() + dCount);
-            $('#followup-preview-badge').html('<i class="fa fa-calendar-check-o text-[10px]"></i> Due: ' + formatFollowupDate(targetDate));
+            var dueText = 'Due: ' + formatFollowupDate(targetDate);
+            $('#followup-preview-badge').html('<i class="fa fa-calendar-check-o text-[10px]"></i> ' + dueText);
+            $('#badge-followup-due-right').text(dueText);
         }
+
+        // If template already selected, refresh right preview
+        var currentTpl = $('#select-followup-template').val();
+        if (currentTpl) {
+            loadFollowupTemplateDetail(currentTpl);
+        } else {
+            // Auto-select first template with followup category if available
+            var $followupOpt = $('#select-followup-template option[data-is-followup="1"]:first');
+            if ($followupOpt.length) {
+                $('#select-followup-template').val($followupOpt.val()).trigger('change');
+            }
+        }
+    }
+
+    function loadFollowupTemplateDetail(templateId) {
+        if (!templateId) {
+            $('#followup-template-quick-info').addClass('hidden');
+            $('#card-followup-preview-right').addClass('hidden');
+            return;
+        }
+
+        $.getJSON(BASE_URL + 'communications/get_template_ajax/' + templateId, function (res) {
+            if (res.status === 'success' && res.data) {
+                var t = res.data;
+                // Update quick snippet under dropdown
+                $('#followup-info-subject').text(t.subject || '(No Subject)');
+                $('#followup-info-cat').text('[' + (t.category || 'general') + ']');
+                $('#followup-template-quick-info').removeClass('hidden');
+
+                // Update right column live preview card
+                $('#right-followup-tpl-name').text(t.name);
+                $('#right-followup-tpl-subject').text(t.subject);
+                $('#right-followup-tpl-body').html(t.body);
+                $('#btn-edit-from-preview-card').data('id', t.id);
+
+                // Show right preview card only if followup schedule is active
+                var mode = $('#select-followup-schedule').val();
+                if (mode && mode !== 'none') {
+                    $('#card-followup-preview-right').removeClass('hidden');
+                }
+            }
+        });
+    }
+
+    function reloadFollowupTemplateDropdown(productId, selectId) {
+        $.getJSON(BASE_URL + 'communications/get_templates_ajax', {
+            product_id: productId || '',
+            category: 'all'
+        }, function (res) {
+            if (res.status === 'success' && res.data) {
+                var items = res.data;
+                var currentVal = selectId || $('#select-followup-template').val();
+                var html = '<option value="">— Select Follow-Up Template —</option>';
+                var defaultFollowupId = '';
+                $.each(items, function (i, t) {
+                    var prodLabel = t.product_name ? ' (' + t.product_name + ')' : '';
+                    var isFollowup = (t.category === 'followup');
+                    if (isFollowup && !defaultFollowupId) {
+                        defaultFollowupId = t.id;
+                    }
+                    html += '<option value="' + t.id + '" data-product="' + (t.product_id || '') + '" data-cat="' + t.category + '"' + (isFollowup ? ' data-is-followup="1"' : '') + '>';
+                    html += '[' + (t.category || 'general').toUpperCase() + '] ' + CRM.esc(t.name) + prodLabel;
+                    html += '</option>';
+                });
+                $('#select-followup-template').html(html);
+                if (currentVal && $('#select-followup-template option[value="' + currentVal + '"]').length) {
+                    $('#select-followup-template').val(currentVal).trigger('change');
+                } else if (defaultFollowupId && $('#select-followup-schedule').val() !== 'none') {
+                    $('#select-followup-template').val(defaultFollowupId).trigger('change');
+                }
+            }
+        });
     }
 
     $('#select-followup-schedule').on('change', function () {
@@ -793,6 +876,162 @@ $(function () {
 
     $('#input-custom-followup-days').on('input change', function () {
         updateFollowupPreview();
+    });
+
+    $('#select-followup-template').on('change', function () {
+        var tid = $(this).val();
+        loadFollowupTemplateDetail(tid);
+    });
+
+    // Preview button: Opens full preview modal
+    $('#btn-preview-followup-template').on('click', function () {
+        var tid = $('#select-followup-template').val();
+        if (!tid) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Select Follow-Up Template',
+                    text: 'Please select a follow-up email template first to preview.'
+                });
+            } else {
+                alert('Please select a follow-up email template first to preview.');
+            }
+            return;
+        }
+
+        $.getJSON(BASE_URL + 'communications/get_template_ajax/' + tid, function (res) {
+            if (res.status === 'success' && res.data) {
+                var t = res.data;
+                $('#preview-modal-title').text(t.name);
+                $('#preview-modal-subtitle').text('Category: ' + (t.category || 'General').toUpperCase());
+                $('#preview-modal-subject').text(t.subject);
+                $('#preview-modal-category').text(t.category || 'general');
+                $('#preview-modal-body').html(t.body);
+                $('#btn-edit-from-preview-modal').data('id', t.id);
+                $('#modal-template-preview').removeClass('hidden');
+            }
+        });
+    });
+
+    // Edit button: Opens modal template editor
+    $(document).on('click', '#btn-edit-followup-template, #btn-edit-from-preview-card, #btn-edit-from-preview-modal', function () {
+        var tid = $(this).data('id') || $('#select-followup-template').val();
+        if (!tid) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Select Follow-Up Template',
+                    text: 'Please select a follow-up email template to edit.'
+                });
+            } else {
+                alert('Please select a follow-up email template to edit.');
+            }
+            return;
+        }
+
+        $('#modal-template-preview').addClass('hidden');
+
+        $.getJSON(BASE_URL + 'communications/get_template_ajax/' + tid, function (res) {
+            if (res.status === 'success' && res.data) {
+                var t = res.data;
+                $('#modal-template-title').text('Edit Follow-Up Template — ' + t.name);
+                $('#tpl-edit-id').val(t.id);
+                $('#tpl-input-name').val(t.name);
+                $('#tpl-input-category').val(t.category);
+                $('#tpl-input-product').val(t.product_id || '');
+                $('#tpl-input-subject').val(t.subject);
+                $('#modal-summernote').summernote('code', t.body);
+                $('#modal-template-editor').removeClass('hidden');
+            }
+        });
+    });
+
+    // Quick New Template button
+    $('#btn-quick-new-template').on('click', function () {
+        $('#modal-template-title').text('Create New Email Template');
+        $('#tpl-edit-id').val('');
+        $('#tpl-input-name').val('');
+        $('#tpl-input-category').val('followup');
+        $('#tpl-input-product').val($('#select-product').val() || '');
+        $('#tpl-input-subject').val('');
+        $('#modal-summernote').summernote('code', '');
+        $('#modal-template-editor').removeClass('hidden');
+    });
+
+    // Close preview modal
+    $(document).on('click', '.btn-close-preview-modal', function () {
+        $('#modal-template-preview').addClass('hidden');
+    });
+
+    // Close template editor modal
+    $(document).on('click', '#btn-close-template-modal, #btn-cancel-template-modal', function () {
+        $('#modal-template-editor').addClass('hidden');
+    });
+
+    // Insert merge tag into template editor Summernote
+    $(document).on('click', '.btn-insert-modal-tag', function () {
+        var tag = $(this).data('tag');
+        $('#modal-summernote').summernote('insertText', tag);
+    });
+
+    // Save Template Form (Works on bulk mail page without full page reload)
+    $(document).on('submit', '#form-save-template', function (e) {
+        e.preventDefault();
+        $('#modal-summernote').val($('#modal-summernote').summernote('code'));
+        var $btn = $('#btn-submit-template-save');
+        var origBtnHtml = $btn.html();
+        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Saving...');
+
+        var postData = $(this).serialize();
+        if (typeof CI3_CSRF_NAME !== 'undefined' && typeof CI3_CSRF_HASH !== 'undefined') {
+            if (postData.indexOf(encodeURIComponent(CI3_CSRF_NAME) + '=') === -1 && postData.indexOf(CI3_CSRF_NAME + '=') === -1) {
+                postData += (postData ? '&' : '') + encodeURIComponent(CI3_CSRF_NAME) + '=' + encodeURIComponent(CI3_CSRF_HASH);
+            }
+        }
+
+        $.ajax({
+            url: BASE_URL + 'communications/save_template_ajax',
+            method: 'POST',
+            data: postData,
+            dataType: 'json',
+            success: function (resp) {
+                $btn.prop('disabled', false).html(origBtnHtml);
+                if (resp.status === 'success') {
+                    if (typeof CRM !== 'undefined' && CRM.toast) {
+                        CRM.toast('success', resp.message || 'Template saved successfully!');
+                    } else if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'success', title: 'Saved!', text: resp.message || 'Template saved successfully!', timer: 1500, showConfirmButton: false });
+                    }
+                    $('#modal-template-editor').addClass('hidden');
+
+                    if ($('#form-bulk-mail').length > 0) {
+                        var savedTpl = resp.data;
+                        var savedId = savedTpl ? savedTpl.id : $('#tpl-edit-id').val();
+                        reloadFollowupTemplateDropdown($('#select-product').val(), savedId);
+                        reloadTemplateDropdown($('#select-product').val(), $('#filter-category').val());
+                        if (savedId) {
+                            loadFollowupTemplateDetail(savedId);
+                        }
+                    } else {
+                        setTimeout(function () { location.reload(); }, 600);
+                    }
+                } else {
+                    if (typeof CRM !== 'undefined' && CRM.toast) {
+                        CRM.toast('error', resp.message || 'Failed to save template.');
+                    } else {
+                        alert(resp.message || 'Failed to save template.');
+                    }
+                }
+            },
+            error: function () {
+                $btn.prop('disabled', false).html(origBtnHtml);
+                if (typeof CRM !== 'undefined' && CRM.toast) {
+                    CRM.toast('error', 'Network error saving template.');
+                } else {
+                    alert('Network error saving template.');
+                }
+            }
+        });
     });
 
     $('#select-campaign-type').on('change', function () {

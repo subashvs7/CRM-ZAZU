@@ -329,12 +329,13 @@ class Bulk_mail_model extends CI_Model {
         return $this->db->insert_id();
     }
 
-    public function add_to_queue($campaign_id, $recipients, $campaign_type = 'outreach', $next_followup_date = null) {
+    public function add_to_queue($campaign_id, $recipients, $campaign_type = 'outreach', $next_followup_date = null, $followup_template_id = null) {
         if (empty($recipients)) return false;
 
+        $hasFollowupCol = $this->db->field_exists('followup_template_id', 'crm_bulk_mail_queue');
         $batch_data = [];
         foreach ($recipients as $r) {
-            $batch_data[] = [
+            $item = [
                 'campaign_id'        => $campaign_id,
                 'campaign_type'      => $campaign_type,
                 'recipient_email'    => $r['email'],
@@ -345,6 +346,10 @@ class Bulk_mail_model extends CI_Model {
                 'status'             => 'queued',
                 'created_at'         => date('Y-m-d H:i:s')
             ];
+            if ($hasFollowupCol && $followup_template_id !== null) {
+                $item['followup_template_id'] = $followup_template_id;
+            }
+            $batch_data[] = $item;
         }
 
         // Chunk in blocks of 200 for safe SQL batch insert

@@ -577,9 +577,11 @@ class Communications extends MY_Controller {
         }
 
         $followup_schedule = $this->input->post('followup_schedule');
+        $followup_template_id = null;
         if ($followup_schedule === 'none' || $followup_schedule === '0' || empty($followup_schedule)) {
             $next_followup_days = 0;
             $next_followup_date = null;
+            $followup_template_id = null;
         } elseif ($followup_schedule === 'custom') {
             $custom_date = trim($this->input->post('custom_followup_date') ?: '');
             if (!empty($custom_date) && strtotime($custom_date)) {
@@ -592,14 +594,17 @@ class Communications extends MY_Controller {
                 $next_followup_days = 3;
                 $next_followup_date = date('Y-m-d', strtotime('+3 days'));
             }
+            $followup_template_id = (int)$this->input->post('followup_template_id') ?: null;
         } elseif ($followup_schedule === 'custom_days') {
             $custom_days = max(1, (int)$this->input->post('custom_followup_days'));
             $next_followup_days = $custom_days;
             $next_followup_date = date('Y-m-d', strtotime("+{$custom_days} days"));
+            $followup_template_id = (int)$this->input->post('followup_template_id') ?: null;
         } else {
             $days = max(1, (int)$followup_schedule);
             $next_followup_days = $days;
             $next_followup_date = date('Y-m-d', strtotime("+{$days} days"));
+            $followup_template_id = (int)$this->input->post('followup_template_id') ?: null;
         }
 
         // Custom Partition / Batch Count control
@@ -608,21 +613,25 @@ class Communications extends MY_Controller {
         $dispatch_target = ($partition_mode === 'custom' && $partition_limit > 0) ? min($partition_limit, count($recipients)) : count($recipients);
 
         $campaign_data = [
-            'subject'             => $subject,
-            'message'             => $message,
-            'recipient_type'      => $targetSummary . ($product_id ? ' (Product #' . $product_id . ')' : '') . ($forcedSmtp ? ' [Sender: ' . $forcedSmtp['sender_email'] . ']' : ''),
-            'campaign_type'       => $campaign_type,
-            'next_followup_days'  => $next_followup_days,
-            'product_id'          => $product_id,
-            'template_id'         => $template_id,
-            'total_recipients'    => count($recipients),
-            'status'              => ($dispatch_mode === 'instant') ? 'completed' : 'pending',
-            'created_at'          => date('Y-m-d H:i:s'),
-            'updated_at'          => date('Y-m-d H:i:s')
+            'subject'                => $subject,
+            'message'                => $message,
+            'recipient_type'         => $targetSummary . ($product_id ? ' (Product #' . $product_id . ')' : '') . ($forcedSmtp ? ' [Sender: ' . $forcedSmtp['sender_email'] . ']' : ''),
+            'campaign_type'          => $campaign_type,
+            'next_followup_days'     => $next_followup_days,
+            'product_id'             => $product_id,
+            'template_id'            => $template_id,
+            'forced_smtp_account_id' => $forcedSmtp ? $forcedSmtp['id'] : null,
+            'total_recipients'       => count($recipients),
+            'status'                 => ($dispatch_mode === 'instant') ? 'completed' : 'pending',
+            'created_at'             => date('Y-m-d H:i:s'),
+            'updated_at'             => date('Y-m-d H:i:s')
         ];
+        if ($this->db->field_exists('followup_template_id', 'crm_bulk_mail_campaigns')) {
+            $campaign_data['followup_template_id'] = $followup_template_id;
+        }
 
         $campaign_id = $this->Bulk_mail_model->create_campaign($campaign_data);
-        $this->Bulk_mail_model->add_to_queue($campaign_id, $recipients, $campaign_type, $next_followup_date);
+        $this->Bulk_mail_model->add_to_queue($campaign_id, $recipients, $campaign_type, $next_followup_date, $followup_template_id);
 
         $sentCount    = 0;
         $failedCount  = 0;
@@ -846,8 +855,8 @@ class Communications extends MY_Controller {
     protected function _execute_queue_batch($limit = 1) {
         $this->load->library('email');
 
-        // Fetch up to $limit pending items
-        $items = $this->db->select('q.*, c.subject, c.message, c.product_id, c.template_id, c.recipient_type')
+        // Fetch up to $limit pending items — also pull forced_smtp_account_id from campaign
+        $items = $this->db->select('q.*, c.subject, c.message, c.product_id, c.template_id, c.recipient_type, c.forced_smtp_account_id')
             ->from('crm_bulk_mail_queue q')
             ->join('crm_bulk_mail_campaigns c', 'c.id = q.campaign_id')
             ->where('q.status', 'queued')
@@ -869,18 +878,43 @@ class Communications extends MY_Controller {
         $details = [];
 
         foreach ($items as $item) {
-            // Check SMTP account auto-rotation
-            $currentSmtp = $this->Smtp_account_model->get_next_available_account();
-            $poolStatus = $this->Smtp_account_model->get_pool_status();
-
-            if ($poolStatus['total_accounts'] > 0 && !$currentSmtp) {
-                return [
-                    'status'    => 'quota_exhausted',
-                    'message'   => 'All Hostinger SMTP mailboxes have reached their daily sending limits. Queued emails will resume automatically.',
-                    'processed' => $processed,
-                    'remaining' => $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue'),
-                    'details'   => $details
-                ];
+            // SENDER SELECTION: Use campaign's forced mailbox OR auto-rotate
+            $currentSmtp = null;
+            if (!empty($item['forced_smtp_account_id'])) {
+                // Campaign was sent with a specific forced mailbox — use ONLY that
+                $currentSmtp = $this->Smtp_account_model->get_by_id((int)$item['forced_smtp_account_id']);
+                if (!$currentSmtp || $currentSmtp['status'] === 'disabled') {
+                    // Forced mailbox unavailable — skip this item gracefully
+                    $this->Bulk_mail_model->update_queue_item($item['id'], [
+                        'status'   => 'failed',
+                        'sent_at'  => date('Y-m-d H:i:s'),
+                    ]);
+                    $details[] = 'Skipped (forced mailbox unavailable): ' . $item['recipient_email'];
+                    continue;
+                }
+                $rem = max(0, (int)$currentSmtp['daily_limit'] - (int)$currentSmtp['sent_today']);
+                if ($rem <= 0) {
+                    return [
+                        'status'    => 'quota_exhausted',
+                        'message'   => 'Selected mailbox (' . $currentSmtp['sender_email'] . ') has reached its daily sending limit.',
+                        'processed' => $processed,
+                        'remaining' => $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue'),
+                        'details'   => $details
+                    ];
+                }
+            } else {
+                // No forced mailbox — auto-rotate pool
+                $currentSmtp = $this->Smtp_account_model->get_next_available_account();
+                $poolStatus  = $this->Smtp_account_model->get_pool_status();
+                if ($poolStatus['total_accounts'] > 0 && !$currentSmtp) {
+                    return [
+                        'status'    => 'quota_exhausted',
+                        'message'   => 'All Hostinger SMTP mailboxes have reached their daily sending limits. Queued emails will resume automatically.',
+                        'processed' => $processed,
+                        'remaining' => $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue'),
+                        'details'   => $details
+                    ];
+                }
             }
 
             $senderName = 'Outreach Team';

@@ -677,6 +677,43 @@
                                             <input type="date" name="custom_followup_date" id="input-custom-followup-date" min="<?= date('Y-m-d') ?>" value="<?= date('Y-m-d', strtotime('+3 days')) ?>" class="w-full px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                                         </div>
                                     </div>
+
+                                    <!-- Follow-Up Email Template Section (Hidden on none, visible on any day / custom) -->
+                                    <div id="wrap-followup-template-section" class="hidden mt-2 pt-2 border-t border-indigo-100 space-y-1.5">
+                                        <div class="flex items-center justify-between">
+                                            <label class="block text-[11px] font-bold text-gray-700 flex items-center gap-1">
+                                                <i class="fa fa-envelope-o text-indigo-600"></i> Follow-Up Email Template
+                                            </label>
+                                            <span id="followup-template-badge" class="text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+                                                Dispatched on Due Date
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5">
+                                            <div class="flex-1 min-w-0">
+                                                <select name="followup_template_id" id="select-followup-template" class="w-full px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                                    <option value="">— Select Follow-Up Template —</option>
+                                                    <?php foreach ($templates as $t): ?>
+                                                        <option value="<?= $t['id'] ?>" data-product="<?= $t['product_id'] ?>" data-cat="<?= $t['category'] ?>" <?= $t['category'] === 'followup' ? 'data-is-followup="1"' : '' ?>>
+                                                            [<?= strtoupper($t['category']) ?>] <?= esc_html($t['name']) ?> <?= $t['product_name'] ? '('.esc_html($t['product_name']).')' : '' ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <div class="flex items-center gap-1 flex-shrink-0">
+                                                <button type="button" id="btn-preview-followup-template" class="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer shadow-2xs" title="Preview Follow-Up Template">
+                                                    <i class="fa fa-eye"></i> Preview
+                                                </button>
+                                                <button type="button" id="btn-edit-followup-template" class="px-2.5 py-1.5 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-lg text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer shadow-2xs" title="Edit Follow-Up Template">
+                                                    <i class="fa fa-pencil"></i> Edit
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <!-- Follow-up snippet -->
+                                        <div id="followup-template-quick-info" class="hidden text-[11px] text-gray-600 bg-white/80 border border-indigo-100 rounded-lg px-2.5 py-1.5 flex items-center justify-between">
+                                            <span class="truncate"><i class="fa fa-file-text-o text-indigo-500 mr-1"></i> <strong id="followup-info-subject" class="text-indigo-900 font-medium"></strong></span>
+                                            <span id="followup-info-cat" class="uppercase text-[9px] font-bold text-indigo-600 ml-1.5 px-1 py-0.2 bg-indigo-50 rounded"></span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -764,6 +801,43 @@
                         <!-- Live Rendered Body Container -->
                         <div id="email-preview-container" class="email-client-mockup border border-gray-200 rounded-xl p-4 bg-gray-100/50 min-h-[460px] max-h-[640px] overflow-y-auto">
                             <div id="email-preview-rendered" class="bg-white rounded-xl shadow-xs overflow-hidden">
+                                <!-- Populated dynamically by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Follow-Up Live Preview Card on Right Panel (shown when follow-up template is selected) -->
+                    <div id="card-followup-preview-right" class="hidden bg-white rounded-2xl border border-indigo-200 shadow-sm p-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse inline-block"></span>
+                                <span class="text-xs font-bold text-gray-800">Follow-Up Email Preview</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span id="badge-followup-due-right" class="text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded">
+                                    Scheduled
+                                </span>
+                                <button type="button" id="btn-edit-from-preview-card" class="px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-[11px] font-semibold border border-gray-200 cursor-pointer" title="Edit Template">
+                                    <i class="fa fa-pencil text-[10px]"></i> Edit
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Email Header Mockup Strip for Follow-up -->
+                        <div class="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3 text-xs space-y-1.5 font-sans">
+                            <div class="flex items-center text-gray-600">
+                                <span class="w-16 font-semibold text-gray-400">Template:</span>
+                                <span class="font-bold text-indigo-800 truncate" id="right-followup-tpl-name">(None selected)</span>
+                            </div>
+                            <div class="flex items-center text-gray-600">
+                                <span class="w-16 font-semibold text-gray-400">Subject:</span>
+                                <span class="font-semibold text-gray-900 truncate" id="right-followup-tpl-subject">(No Subject)</span>
+                            </div>
+                        </div>
+
+                        <!-- Live Rendered Body Container for Follow-up -->
+                        <div class="border border-indigo-100 rounded-xl p-3 bg-white max-h-[360px] overflow-y-auto text-xs shadow-2xs">
+                            <div id="right-followup-tpl-body" class="prose prose-xs max-w-none text-gray-700">
                                 <!-- Populated dynamically by JS -->
                             </div>
                         </div>
@@ -888,6 +962,138 @@
 
         <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-end flex-shrink-0">
             <button type="button" class="btn-close-logs-modal px-4 py-1.5 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-xl text-xs font-bold">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: EMAIL TEMPLATE EDITOR                                              -->
+<!-- ========================================================================= -->
+<div id="modal-template-editor" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-8">
+        <div class="px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <i class="fa fa-pencil-square-o text-lg"></i>
+                <h3 class="text-sm font-bold" id="modal-template-title">Create New Email Template</h3>
+            </div>
+            <button type="button" id="btn-close-template-modal" class="text-white/80 hover:text-white text-lg cursor-pointer">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+
+        <form id="form-save-template" class="p-6 space-y-4">
+            <input type="hidden" name="<?= $csrf_name ?>" value="<?= $csrf_hash ?>">
+            <input type="hidden" name="id" id="tpl-edit-id" value="">
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="sm:col-span-2">
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Template Name <span class="text-rose-500">*</span></label>
+                    <input type="text" name="name" id="tpl-input-name" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none" placeholder="e.g. Follow-Up #1 Friendly Touchpoint" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Category <span class="text-rose-500">*</span></label>
+                    <select name="category" id="tpl-input-category" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none" required>
+                        <option value="followup" selected>Follow-up & Pitch</option>
+                        <option value="onboarding">Client Onboarding</option>
+                        <option value="thank_you">Thank You & Appreciation</option>
+                        <option value="login">Login Credentials & Access</option>
+                        <option value="demo">Product Demo & Walkthrough</option>
+                        <option value="proposal">Proposal & Quotation</option>
+                        <option value="general">General</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Related Product</label>
+                    <select name="product_id" id="tpl-input-product" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                        <option value="">General (All Products)</option>
+                        <?php foreach ($products as $p): ?>
+                        <option value="<?= $p['id'] ?>"><?= esc_html($p['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Default Subject Line <span class="text-rose-500">*</span></label>
+                    <input type="text" name="subject" id="tpl-input-subject" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none" placeholder="e.g. Quick follow-up regarding {{product_name}}" required>
+                </div>
+            </div>
+
+            <!-- Merge tags helper pills -->
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Insert Dynamic Merge Tags:</label>
+                <div class="flex flex-wrap gap-1.5 text-[11px]">
+                    <button type="button" class="btn-insert-modal-tag px-2 py-0.5 bg-gray-100 hover:bg-purple-100 text-gray-700 hover:text-purple-700 rounded border border-gray-200" data-tag="{{customer_name}}">+ {{customer_name}}</button>
+                    <button type="button" class="btn-insert-modal-tag px-2 py-0.5 bg-gray-100 hover:bg-purple-100 text-gray-700 hover:text-purple-700 rounded border border-gray-200" data-tag="{{lead_name}}">+ {{lead_name}}</button>
+                    <button type="button" class="btn-insert-modal-tag px-2 py-0.5 bg-gray-100 hover:bg-purple-100 text-gray-700 hover:text-purple-700 rounded border border-gray-200" data-tag="{{first_name}}">+ {{first_name}}</button>
+                    <button type="button" class="btn-insert-modal-tag px-2 py-0.5 bg-gray-100 hover:bg-purple-100 text-gray-700 hover:text-purple-700 rounded border border-gray-200" data-tag="{{company_name}}">+ {{company_name}}</button>
+                    <button type="button" class="btn-insert-modal-tag px-2 py-0.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded border border-purple-200" data-tag="{{product_name}}">+ {{product_name}}</button>
+                    <button type="button" class="btn-insert-modal-tag px-2 py-0.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded border border-purple-200" data-tag="{{product_price}}">+ {{product_price}}</button>
+                    <button type="button" class="btn-insert-modal-tag px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded border border-emerald-200" data-tag="{{sender_name}}">+ {{sender_name}}</button>
+                    <button type="button" class="btn-insert-modal-tag px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded border border-amber-200" data-tag="{{current_date}}">+ {{current_date}}</button>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Template Content (Rich Text & Image Drag & Drop) <span class="text-rose-500">*</span></label>
+                <textarea id="modal-summernote" name="body"></textarea>
+            </div>
+
+            <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                <button type="button" id="btn-cancel-template-modal" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer">
+                    Cancel
+                </button>
+                <button type="submit" id="btn-submit-template-save" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer">
+                    <i class="fa fa-check"></i> Save Template
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: EMAIL TEMPLATE PREVIEW                                             -->
+<!-- ========================================================================= -->
+<div id="modal-template-preview" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-8">
+        <div class="px-5 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <i class="fa fa-eye text-lg"></i>
+                <div>
+                    <h3 class="text-sm font-bold" id="preview-modal-title">Email Template Preview</h3>
+                    <p class="text-[11px] text-blue-100" id="preview-modal-subtitle">Follow-Up Template Preview</p>
+                </div>
+            </div>
+            <button type="button" class="btn-close-preview-modal text-white/80 hover:text-white text-lg cursor-pointer">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+
+        <div class="p-5 space-y-3">
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs space-y-1.5 font-sans">
+                <div class="flex items-center text-gray-600">
+                    <span class="w-16 font-semibold text-gray-400">Subject:</span>
+                    <span class="font-bold text-gray-900" id="preview-modal-subject"></span>
+                </div>
+                <div class="flex items-center text-gray-600">
+                    <span class="w-16 font-semibold text-gray-400">Category:</span>
+                    <span class="font-semibold text-indigo-600 uppercase text-[11px]" id="preview-modal-category"></span>
+                </div>
+            </div>
+
+            <div class="border border-gray-200 rounded-xl p-4 bg-white max-h-[400px] overflow-y-auto text-xs shadow-inner">
+                <div id="preview-modal-body" class="prose prose-xs max-w-none text-gray-800"></div>
+            </div>
+        </div>
+
+        <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+            <button type="button" id="btn-edit-from-preview-modal" class="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                <i class="fa fa-pencil"></i> Edit This Template
+            </button>
+            <button type="button" class="btn-close-preview-modal px-4 py-1.5 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-xl text-xs font-bold cursor-pointer">
                 Close
             </button>
         </div>
