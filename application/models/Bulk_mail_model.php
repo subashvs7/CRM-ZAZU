@@ -728,7 +728,7 @@ class Bulk_mail_model extends CI_Model {
 
         // Fetch up to $limit pending items — also pull forced_smtp_account_id and followup_template_id from campaign
         $extraCampSelect = $this->db->field_exists('followup_template_id', 'crm_bulk_mail_campaigns') ? ', c.followup_template_id as camp_followup_template_id' : '';
-        $items = $this->db->select('q.*, c.subject, c.message, c.product_id, c.template_id, c.recipient_type, c.forced_smtp_account_id' . $extraCampSelect)
+        $items = $this->db->select('q.*, c.subject, c.message, c.product_id, c.template_id, c.recipient_type, c.forced_smtp_account_id, c.next_followup_days' . $extraCampSelect)
             ->from('crm_bulk_mail_queue q')
             ->join('crm_bulk_mail_campaigns c', 'c.id = q.campaign_id')
             ->where('q.status', 'queued')
@@ -842,6 +842,14 @@ class Bulk_mail_model extends CI_Model {
 
             $anti_spam_hash = $this->generate_anti_spam_hash();
             $next_followup_date = !empty($item['next_followup_date']) ? $item['next_followup_date'] : null;
+
+            // When dispatching initial outreach, always compute next_followup_date from the ACTUAL sent date
+            if ($item['campaign_type'] === 'outreach') {
+                $cadenceDays = !empty($item['next_followup_days']) ? (int)$item['next_followup_days'] : 0;
+                if ($cadenceDays > 0) {
+                    $next_followup_date = date('Y-m-d', strtotime("+{$cadenceDays} days"));
+                }
+            }
 
             $leadFullName = '';
             if ($leadData) {
@@ -1035,6 +1043,7 @@ class Bulk_mail_model extends CI_Model {
     /**
      * Automatically inspect delivered outreach emails whose next_followup_date is due (<= today)
      * and enqueue Follow-Up #1 into crm_bulk_mail_queue if not already queued or sent.
+     * Enforces strict cadence from ACTUAL outreach dispatch date (sent_at), never same-day!
      */
     public function auto_queue_due_followups() {
         $today = date('Y-m-d');
@@ -1044,16 +1053,58 @@ class Bulk_mail_model extends CI_Model {
         $hasQueueFollowupCol = $this->db->field_exists('followup_template_id', 'crm_bulk_mail_queue');
         $campTplSelect       = $hasCampFollowupCol ? ', c.followup_template_id AS camp_followup_tpl_id' : '';
 
-        // Query sent outreach items whose next_followup_date has arrived (today or earlier)
-        $dueItems = $this->db->select('q.id, q.campaign_id, q.recipient_email, q.recipient_name, q.lead_id, q.customer_id, q.next_followup_date' 
+        // -------------------------------------------------------------
+        // A. SELF-HEALING: Remove prematurely queued follow-up items
+        // where outreach was sent today or where the true cadence hasn't arrived
+        // -------------------------------------------------------------
+        $prematureItems = $this->db->select('f.id AS followup_queue_id, f.campaign_id, f.recipient_email, o.sent_at AS outreach_sent_at, c.next_followup_days')
+            ->from('crm_bulk_mail_queue f')
+            ->join('crm_bulk_mail_queue o', 'o.campaign_id = f.campaign_id AND o.recipient_email = f.recipient_email AND o.campaign_type = "outreach"', 'inner')
+            ->join('crm_bulk_mail_campaigns c', 'c.id = f.campaign_id', 'left')
+            ->where('f.campaign_type', 'followup_1')
+            ->where_in('f.status', ['queued', 'paused'])
+            ->get()->result_array();
+
+        if (!empty($prematureItems)) {
+            $toDeleteIds = [];
+            $affectedCamps = [];
+            foreach ($prematureItems as $pi) {
+                $outreachSentDate = !empty($pi['outreach_sent_at']) ? date('Y-m-d', strtotime($pi['outreach_sent_at'])) : null;
+                $cadence = !empty($pi['next_followup_days']) ? (int)$pi['next_followup_days'] : 2;
+                if ($outreachSentDate) {
+                    $trueDueDate = date('Y-m-d', strtotime("+{$cadence} days", strtotime($outreachSentDate)));
+                    // If true due date is still in the future (> today), remove this premature item!
+                    if ($trueDueDate > $today) {
+                        $toDeleteIds[] = (int)$pi['followup_queue_id'];
+                        $affectedCamps[$pi['campaign_id']] = true;
+                        // Correct the outreach item's next_followup_date to the true future date
+                        $this->db->where('campaign_id', $pi['campaign_id'])
+                                 ->where('recipient_email', $pi['recipient_email'])
+                                 ->where('campaign_type', 'outreach')
+                                 ->update('crm_bulk_mail_queue', ['next_followup_date' => $trueDueDate]);
+                    }
+                }
+            }
+            if (!empty($toDeleteIds)) {
+                $this->db->where_in('id', $toDeleteIds)->delete('crm_bulk_mail_queue');
+                foreach (array_keys($affectedCamps) as $cId) {
+                    $this->check_and_update_campaign($cId);
+                }
+            }
+        }
+
+        // -------------------------------------------------------------
+        // B. ELIGIBLE CHECK: Find outreach items whose true cadence date has arrived
+        // -------------------------------------------------------------
+        $dueItems = $this->db->select('q.id, q.campaign_id, q.recipient_email, q.recipient_name, q.lead_id, q.customer_id, q.next_followup_date, q.sent_at, c.next_followup_days' 
                 . ($hasQueueFollowupCol ? ', q.followup_template_id' : '') 
                 . $campTplSelect)
             ->from('crm_bulk_mail_queue q')
             ->join('crm_bulk_mail_campaigns c', 'c.id = q.campaign_id')
             ->where('q.campaign_type', 'outreach')
             ->where('q.status', 'sent')
-            ->where('q.next_followup_date IS NOT NULL', null, false)
-            ->where('q.next_followup_date <=', $today)
+            ->where('q.sent_at IS NOT NULL', null, false)
+            ->where('DATE(q.sent_at) <', $today) // Outreach must have been sent on a PREVIOUS day, never today!
             ->where_not_in('c.status', ['cancelled', 'draft', 'paused'])
             ->get()->result_array();
 
@@ -1068,6 +1119,20 @@ class Bulk_mail_model extends CI_Model {
             $campaignId     = (int)$item['campaign_id'];
             $recipientEmail = trim($item['recipient_email']);
             if (empty($recipientEmail)) continue;
+
+            $sentDate = !empty($item['sent_at']) ? date('Y-m-d', strtotime($item['sent_at'])) : null;
+            $cadenceDays = !empty($item['next_followup_days']) ? (int)$item['next_followup_days'] : 2;
+
+            if ($sentDate) {
+                $trueDueDate = date('Y-m-d', strtotime("+{$cadenceDays} days", strtotime($sentDate)));
+                if ($trueDueDate > $today) {
+                    // Cadence not met yet! Ensure the next_followup_date is set to the true date in the future
+                    if ($item['next_followup_date'] !== $trueDueDate) {
+                        $this->db->where('id', $item['id'])->update('crm_bulk_mail_queue', ['next_followup_date' => $trueDueDate]);
+                    }
+                    continue; // Skip queueing!
+                }
+            }
 
             // Determine which template to use
             $followupTplId = 0;
