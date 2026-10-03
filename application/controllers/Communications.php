@@ -89,6 +89,9 @@ class Communications extends MY_Controller {
      * Dedicated Mail Dispatch History & Logs
      */
     public function mail_history() {
+        // Automatically check and queue any due follow-ups (next_followup_date <= today)
+        $this->Bulk_mail_model->auto_queue_due_followups();
+
         $stats = $this->Bulk_mail_model->get_stats();
         $queue_sync = $this->Bulk_mail_model->get_queue_sync_status();
         $recent_campaigns = $this->Bulk_mail_model->get_recent_campaigns(50);
@@ -1021,6 +1024,9 @@ class Communications extends MY_Controller {
      * AJAX: Get real-time synchronized background queue timing and counts from server
      */
     public function queue_sync_status_ajax() {
+        // Automatically check and queue any due follow-ups (next_followup_date <= today)
+        $this->Bulk_mail_model->auto_queue_due_followups();
+
         $sync = $this->Bulk_mail_model->get_queue_sync_status();
         $this->json_success($sync);
     }

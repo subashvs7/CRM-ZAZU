@@ -723,6 +723,9 @@ class Bulk_mail_model extends CI_Model {
             ], $sync);
         }
 
+        // Automatically check and queue any due follow-ups (next_followup_date <= today)
+        $this->auto_queue_due_followups();
+
         // Fetch up to $limit pending items — also pull forced_smtp_account_id and followup_template_id from campaign
         $extraCampSelect = $this->db->field_exists('followup_template_id', 'crm_bulk_mail_campaigns') ? ', c.followup_template_id as camp_followup_template_id' : '';
         $items = $this->db->select('q.*, c.subject, c.message, c.product_id, c.template_id, c.recipient_type, c.forced_smtp_account_id' . $extraCampSelect)
@@ -869,14 +872,20 @@ class Bulk_mail_model extends CI_Model {
             $rawSubject = $item['subject'];
             $rawMessage = $item['message'];
 
-            // If a follow-up template is attached, and this item is a follow-up (or has follow-up template ID):
+            // If a follow-up template is attached, and this item is a follow-up stage (e.g. followup_1, followup_2):
             $followupTplId = !empty($item['followup_template_id']) ? (int)$item['followup_template_id'] : (!empty($item['camp_followup_template_id']) ? (int)$item['camp_followup_template_id'] : 0);
 
-            if ($followupTplId > 0 && (strpos($item['campaign_type'] ?? '', 'followup') !== false || !empty($item['next_followup_date']))) {
+            if ($followupTplId > 0 && strpos($item['campaign_type'] ?? '', 'followup') !== false) {
                 $fTpl = $this->db->get_where('crm_notification_templates', ['id' => $followupTplId])->row_array();
-                if ($fTpl && !empty($fTpl['subject']) && !empty($fTpl['body'])) {
-                    $rawSubject = $fTpl['subject'];
-                    $rawMessage = $fTpl['body'];
+                if ($fTpl) {
+                    if (!empty($fTpl['subject'])) {
+                        $rawSubject = $fTpl['subject'];
+                    } elseif (!empty($item['subject'])) {
+                        $rawSubject = 'Following Up: ' . $item['subject'];
+                    }
+                    if (!empty($fTpl['body'])) {
+                        $rawMessage = $fTpl['body'];
+                    }
                 }
             }
 
@@ -1021,5 +1030,98 @@ class Bulk_mail_model extends CI_Model {
             'sent'               => $sentCount,
             'failed'             => $failedCount
         ];
+    }
+
+    /**
+     * Automatically inspect delivered outreach emails whose next_followup_date is due (<= today)
+     * and enqueue Follow-Up #1 into crm_bulk_mail_queue if not already queued or sent.
+     */
+    public function auto_queue_due_followups() {
+        $today = date('Y-m-d');
+
+        // Check if followup_template_id column exists
+        $hasCampFollowupCol  = $this->db->field_exists('followup_template_id', 'crm_bulk_mail_campaigns');
+        $hasQueueFollowupCol = $this->db->field_exists('followup_template_id', 'crm_bulk_mail_queue');
+        $campTplSelect       = $hasCampFollowupCol ? ', c.followup_template_id AS camp_followup_tpl_id' : '';
+
+        // Query sent outreach items whose next_followup_date has arrived (today or earlier)
+        $dueItems = $this->db->select('q.id, q.campaign_id, q.recipient_email, q.recipient_name, q.lead_id, q.customer_id, q.next_followup_date' 
+                . ($hasQueueFollowupCol ? ', q.followup_template_id' : '') 
+                . $campTplSelect)
+            ->from('crm_bulk_mail_queue q')
+            ->join('crm_bulk_mail_campaigns c', 'c.id = q.campaign_id')
+            ->where('q.campaign_type', 'outreach')
+            ->where('q.status', 'sent')
+            ->where('q.next_followup_date IS NOT NULL', null, false)
+            ->where('q.next_followup_date <=', $today)
+            ->where_not_in('c.status', ['cancelled', 'draft', 'paused'])
+            ->get()->result_array();
+
+        if (empty($dueItems)) {
+            return 0;
+        }
+
+        $newFollowupItems  = [];
+        $affectedCampaigns = [];
+
+        foreach ($dueItems as $item) {
+            $campaignId     = (int)$item['campaign_id'];
+            $recipientEmail = trim($item['recipient_email']);
+            if (empty($recipientEmail)) continue;
+
+            // Determine which template to use
+            $followupTplId = 0;
+            if ($hasQueueFollowupCol && !empty($item['followup_template_id'])) {
+                $followupTplId = (int)$item['followup_template_id'];
+            } elseif ($hasCampFollowupCol && !empty($item['camp_followup_tpl_id'])) {
+                $followupTplId = (int)$item['camp_followup_tpl_id'];
+            }
+
+            // If no follow-up template was attached to this campaign, skip until user attaches one
+            if ($followupTplId <= 0) {
+                continue;
+            }
+
+            // Check if follow-up is already queued, paused, sent, or failed for this recipient in this campaign
+            $alreadyExists = $this->db->where('campaign_id', $campaignId)
+                ->where('recipient_email', $recipientEmail)
+                ->where_in('campaign_type', ['followup_1', 'followup_2'])
+                ->count_all_results('crm_bulk_mail_queue');
+
+            if ($alreadyExists == 0) {
+                $row = [
+                    'campaign_id'        => $campaignId,
+                    'campaign_type'      => 'followup_1',
+                    'recipient_email'    => $recipientEmail,
+                    'recipient_name'     => $item['recipient_name'] ?? '',
+                    'lead_id'            => $item['lead_id'] ?? null,
+                    'customer_id'        => $item['customer_id'] ?? null,
+                    'next_followup_date' => null,
+                    'status'             => 'queued',
+                    'created_at'         => date('Y-m-d H:i:s')
+                ];
+                if ($hasQueueFollowupCol) {
+                    $row['followup_template_id'] = $followupTplId;
+                }
+                $newFollowupItems[] = $row;
+                $affectedCampaigns[$campaignId] = true;
+            }
+        }
+
+        if (!empty($newFollowupItems)) {
+            $chunks = array_chunk($newFollowupItems, 200);
+            foreach ($chunks as $chunk) {
+                $this->db->insert_batch('crm_bulk_mail_queue', $chunk);
+            }
+
+            // Update campaign statuses to 'processing'
+            foreach (array_keys($affectedCampaigns) as $cId) {
+                $this->check_and_update_campaign($cId);
+            }
+
+            return count($newFollowupItems);
+        }
+
+        return 0;
     }
 }
