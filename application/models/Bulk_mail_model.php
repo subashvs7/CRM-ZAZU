@@ -5,6 +5,35 @@ class Bulk_mail_model extends CI_Model {
 
     public function __construct() {
         parent::__construct();
+        $this->ensure_paused_status_schema();
+    }
+
+    /**
+     * Ensure status columns support 'paused' status smoothly across environments
+     */
+    public function ensure_paused_status_schema() {
+        static $checked = false;
+        if ($checked) return;
+        $checked = true;
+
+        if ($this->db->table_exists('crm_bulk_mail_queue')) {
+            $fieldData = $this->db->field_data('crm_bulk_mail_queue');
+            foreach ($fieldData as $field) {
+                if ($field->name === 'status' && strtolower($field->type) === 'enum') {
+                    $this->db->query("ALTER TABLE crm_bulk_mail_queue MODIFY COLUMN status VARCHAR(50) DEFAULT 'queued'");
+                    break;
+                }
+            }
+        }
+        if ($this->db->table_exists('crm_bulk_mail_campaigns')) {
+            $fieldData = $this->db->field_data('crm_bulk_mail_campaigns');
+            foreach ($fieldData as $field) {
+                if ($field->name === 'status' && strtolower($field->type) === 'enum') {
+                    $this->db->query("ALTER TABLE crm_bulk_mail_campaigns MODIFY COLUMN status VARCHAR(50) DEFAULT 'pending'");
+                    break;
+                }
+            }
+        }
     }
 
     /**
@@ -32,6 +61,13 @@ class Bulk_mail_model extends CI_Model {
         $this->db->order_by('t.product_id', 'DESC'); // Product-specific templates first
         $this->db->order_by('t.id', 'ASC');
         return $this->db->get()->result_array();
+    }
+
+    /**
+     * Alias for get_templates_by_product
+     */
+    public function get_templates($product_id = null, $category = null) {
+        return $this->get_templates_by_product($product_id, $category);
     }
 
     /**
@@ -361,47 +397,114 @@ class Bulk_mail_model extends CI_Model {
     }
 
     /**
-     * Get aggregate statistics across campaigns
+     * Get aggregate statistics across campaigns with date filtering
      */
-    public function get_stats() {
+    public function get_stats($date_filter = 'all', $from_date = null, $to_date = null) {
         $stats = [
             'total'     => 0,
             'sent'      => 0,
             'queued'    => 0,
+            'paused'    => 0,
             'failed'    => 0,
             'campaigns' => 0
         ];
 
+        // 1. Queue statuses
         $this->db->select('status, count(id) as count');
         $this->db->from('crm_bulk_mail_queue');
+        $this->_apply_stats_date_filter($this->db, $date_filter, $from_date, $to_date, 'queue');
         $this->db->group_by('status');
         $query = $this->db->get();
 
         foreach ($query->result() as $row) {
             if ($row->status == 'sent')   $stats['sent']   = (int)$row->count;
             if ($row->status == 'queued') $stats['queued'] = (int)$row->count;
+            if ($row->status == 'paused') $stats['paused'] = (int)$row->count;
             if ($row->status == 'failed') $stats['failed'] = (int)$row->count;
         }
-        $stats['total'] = $stats['sent'] + $stats['queued'] + $stats['failed'];
+        $stats['total'] = $stats['sent'] + $stats['queued'] + $stats['paused'] + $stats['failed'];
 
-        $stats['campaigns'] = (int)$this->db->count_all('crm_bulk_mail_campaigns');
+        // 2. Total campaigns
+        $this->db->from('crm_bulk_mail_campaigns');
+        $this->_apply_stats_date_filter($this->db, $date_filter, $from_date, $to_date, 'campaign');
+        $stats['campaigns'] = (int)$this->db->count_all_results();
+
         return $stats;
     }
 
     /**
-     * Get list of recent campaigns with rich metadata
+     * Helper to apply date filtering for stats and campaigns
      */
-    public function get_recent_campaigns($limit = 10) {
-        $this->db->select('c.*, p.name AS product_name, t.name AS template_name,
+    protected function _apply_stats_date_filter(&$db, $filter, $from_date = null, $to_date = null, $type = 'queue') {
+        $today = date('Y-m-d');
+        if ($type === 'queue') {
+            $dateCol = 'COALESCE(sent_at, created_at)';
+        } elseif ($type === 'campaign_table') {
+            $dateCol = 'c.created_at';
+        } else {
+            $dateCol = 'created_at';
+        }
+
+        switch ($filter) {
+            case 'today':
+                $db->where("DATE({$dateCol}) =", $today);
+                break;
+            case 'yesterday':
+                $yesterday = date('Y-m-d', strtotime('-1 day'));
+                $db->where("DATE({$dateCol}) =", $yesterday);
+                break;
+            case 'this_week':
+                $startOfWeek = date('Y-m-d', strtotime('monday this week'));
+                $db->where("DATE({$dateCol}) >=", $startOfWeek);
+                break;
+            case 'this_month':
+                $startOfMonth = date('Y-m-01');
+                $db->where("DATE({$dateCol}) >=", $startOfMonth);
+                break;
+            case 'custom':
+                if (!empty($from_date)) {
+                    $db->where("DATE({$dateCol}) >=", $from_date);
+                }
+                if (!empty($to_date)) {
+                    $db->where("DATE({$dateCol}) <=", $to_date);
+                }
+                break;
+            case 'all':
+            default:
+                // No date restriction
+                break;
+        }
+    }
+
+    /**
+     * Get list of recent campaigns with rich metadata, next follow-up dates, and optional date filter
+     */
+    public function get_recent_campaigns($limit = 50, $date_filter = 'all', $from_date = null, $to_date = null) {
+        $hasFollowupCol = $this->db->field_exists('followup_template_id', 'crm_bulk_mail_campaigns');
+        $ftSelect = $hasFollowupCol ? ', ft.name AS followup_template_name' : '';
+
+        $this->db->select('c.*, p.name AS product_name, t.name AS template_name' . $ftSelect . ',
             COUNT(q.id) AS queue_total,
             SUM(CASE WHEN q.status = "sent" THEN 1 ELSE 0 END) AS count_sent,
             SUM(CASE WHEN q.status = "failed" THEN 1 ELSE 0 END) AS count_failed,
-            SUM(CASE WHEN q.status = "queued" THEN 1 ELSE 0 END) AS count_queued')
+            SUM(CASE WHEN q.status = "queued" THEN 1 ELSE 0 END) AS count_queued,
+            SUM(CASE WHEN q.status = "paused" THEN 1 ELSE 0 END) AS count_paused,
+            MIN(CASE WHEN q.next_followup_date IS NOT NULL THEN q.next_followup_date END) AS next_followup_date')
             ->from('crm_bulk_mail_campaigns c')
             ->join('crm_products p', 'p.id = c.product_id', 'left')
-            ->join('crm_notification_templates t', 't.id = c.template_id', 'left')
-            ->join('crm_bulk_mail_queue q', 'q.campaign_id = c.id', 'left')
-            ->group_by('c.id')
+            ->join('crm_notification_templates t', 't.id = c.template_id', 'left');
+
+        if ($hasFollowupCol) {
+            $this->db->join('crm_notification_templates ft', 'ft.id = c.followup_template_id', 'left');
+        }
+
+        $this->db->join('crm_bulk_mail_queue q', 'q.campaign_id = c.id', 'left');
+
+        if (!empty($date_filter) && $date_filter !== 'all') {
+            $this->_apply_stats_date_filter($this->db, $date_filter, $from_date, $to_date, 'campaign_table');
+        }
+
+        $this->db->group_by('c.id')
             ->order_by('c.created_at', 'DESC');
 
         if ($limit > 0) $this->db->limit($limit);
@@ -412,12 +515,19 @@ class Bulk_mail_model extends CI_Model {
      * Get detailed campaign information and recipient queue
      */
     public function get_campaign_detail($campaign_id) {
-        $campaign = $this->db->select('c.*, p.name AS product_name, t.name AS template_name')
+        $hasFollowupCol = $this->db->field_exists('followup_template_id', 'crm_bulk_mail_campaigns');
+        $ftSelect = $hasFollowupCol ? ', ft.name AS followup_template_name' : '';
+
+        $this->db->select('c.*, p.name AS product_name, t.name AS template_name' . $ftSelect)
             ->from('crm_bulk_mail_campaigns c')
             ->join('crm_products p', 'p.id = c.product_id', 'left')
-            ->join('crm_notification_templates t', 't.id = c.template_id', 'left')
-            ->where('c.id', (int)$campaign_id)
-            ->get()->row_array();
+            ->join('crm_notification_templates t', 't.id = c.template_id', 'left');
+
+        if ($hasFollowupCol) {
+            $this->db->join('crm_notification_templates ft', 'ft.id = c.followup_template_id', 'left');
+        }
+
+        $campaign = $this->db->where('c.id', (int)$campaign_id)->get()->row_array();
 
         if (!$campaign) return null;
 
@@ -456,12 +566,13 @@ class Bulk_mail_model extends CI_Model {
     }
 
     public function check_and_update_campaign($campaign_id) {
-        $this->db->where('campaign_id', $campaign_id);
-        $this->db->where('status', 'queued');
-        $count = $this->db->count_all_results('crm_bulk_mail_queue');
+        $queuedCount = $this->db->where(['campaign_id' => (int)$campaign_id, 'status' => 'queued'])->count_all_results('crm_bulk_mail_queue');
+        $pausedCount = $this->db->where(['campaign_id' => (int)$campaign_id, 'status' => 'paused'])->count_all_results('crm_bulk_mail_queue');
 
-        if ($count == 0) {
+        if ($queuedCount == 0 && $pausedCount == 0) {
             $this->update_campaign_status($campaign_id, 'completed');
+        } elseif ($queuedCount == 0 && $pausedCount > 0) {
+            $this->update_campaign_status($campaign_id, 'paused');
         } else {
             $this->update_campaign_status($campaign_id, 'processing');
         }
@@ -496,11 +607,18 @@ class Bulk_mail_model extends CI_Model {
      * Get detailed delivery logs with filters for History page
      */
     public function get_delivery_logs($params = [], $limit = 50, $offset = 0) {
-        $this->db->select('q.*, c.subject AS campaign_subject, c.recipient_type, COALESCE(q.campaign_type, c.campaign_type) AS campaign_type, p.name AS product_name, p.sku AS product_sku, sa.name AS sender_mailbox_name')
+        $hasFollowupCol = $this->db->field_exists('followup_template_id', 'crm_bulk_mail_campaigns');
+        $ftSelect = $hasFollowupCol ? ', c.followup_template_id, ft.name AS followup_template_name' : '';
+
+        $this->db->select('q.*, c.subject AS campaign_subject, c.recipient_type, COALESCE(q.campaign_type, c.campaign_type) AS campaign_type, p.name AS product_name, p.sku AS product_sku, sa.name AS sender_mailbox_name' . $ftSelect)
             ->from('crm_bulk_mail_queue q')
             ->join('crm_bulk_mail_campaigns c', 'c.id = q.campaign_id', 'left')
             ->join('crm_products p', 'p.id = c.product_id', 'left')
             ->join('crm_smtp_accounts sa', 'sa.id = q.smtp_account_id', 'left');
+
+        if ($hasFollowupCol) {
+            $this->db->join('crm_notification_templates ft', 'ft.id = c.followup_template_id', 'left');
+        }
 
         // Filter: Status
         if (!empty($params['status']) && $params['status'] !== 'all') {

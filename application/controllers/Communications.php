@@ -93,6 +93,8 @@ class Communications extends MY_Controller {
         $recent_campaigns = $this->Bulk_mail_model->get_recent_campaigns(50);
         $distinct_senders = $this->Bulk_mail_model->get_distinct_senders();
         $initial_logs = $this->Bulk_mail_model->get_delivery_logs([], 50, 0);
+        $templates = $this->Bulk_mail_model->get_templates_by_product();
+        $is_queue_paused = (int)$this->App_setting_model->get_by_key('queue_is_paused') === 1;
         $this->load_view('communications/history', [
             'page_title'       => 'Mail Dispatch History & Delivery Logs',
             'stats'            => $stats,
@@ -100,28 +102,138 @@ class Communications extends MY_Controller {
             'distinct_senders' => $distinct_senders,
             'delivery_logs'    => $initial_logs['rows'],
             'total_logs'       => $initial_logs['total'],
+            'templates'        => $templates,
             'outreach_stages'  => $this->_get_outreach_stages(),
+            'is_queue_paused'  => $is_queue_paused,
             'page_js'          => 'communications'
         ]);
+    }
+
+    /**
+     * AJAX: Assign or Update Follow-Up Template for an existing Campaign
+     */
+    public function update_campaign_followup_template_ajax() {
+        $campaign_id          = (int)$this->input->post('campaign_id');
+        $followup_template_id = (int)$this->input->post('followup_template_id') ?: null;
+        $queue_followup_now   = (int)$this->input->post('queue_followup_now');
+
+        if (!$campaign_id) {
+            $this->json_error('Invalid Campaign ID.');
+            return;
+        }
+
+        // 1. Update campaign table
+        if ($this->db->field_exists('followup_template_id', 'crm_bulk_mail_campaigns')) {
+            $this->db->where('id', $campaign_id)->update('crm_bulk_mail_campaigns', [
+                'followup_template_id' => $followup_template_id,
+                'updated_at'           => date('Y-m-d H:i:s')
+            ]);
+        }
+
+        // 2. Update existing queue rows with new follow-up template ID
+        if ($this->db->field_exists('followup_template_id', 'crm_bulk_mail_queue')) {
+            $this->db->where('campaign_id', $campaign_id)->update('crm_bulk_mail_queue', [
+                'followup_template_id' => $followup_template_id
+            ]);
+        }
+
+        $queuedNewCount = 0;
+
+        // 3. If user opted to queue follow-ups now, find delivered recipients who haven't had a follow-up queued yet
+        if ($queue_followup_now && $followup_template_id) {
+            $delivered = $this->db->select('recipient_email, recipient_name, lead_id, customer_id')
+                ->from('crm_bulk_mail_queue')
+                ->where('campaign_id', $campaign_id)
+                ->where('status', 'sent')
+                ->where('campaign_type', 'outreach')
+                ->get()->result_array();
+
+            if (!empty($delivered)) {
+                $hasFollowupCol = $this->db->field_exists('followup_template_id', 'crm_bulk_mail_queue');
+                $newItems = [];
+                foreach ($delivered as $d) {
+                    $exists = $this->db->where('campaign_id', $campaign_id)
+                        ->where('recipient_email', $d['recipient_email'])
+                        ->where_in('campaign_type', ['followup_1', 'followup_2'])
+                        ->count_all_results('crm_bulk_mail_queue');
+
+                    if ($exists == 0) {
+                        $row = [
+                            'campaign_id'        => $campaign_id,
+                            'campaign_type'      => 'followup_1',
+                            'recipient_email'    => $d['recipient_email'],
+                            'recipient_name'     => $d['recipient_name'] ?? '',
+                            'lead_id'            => $d['lead_id'] ?? null,
+                            'customer_id'        => $d['customer_id'] ?? null,
+                            'next_followup_date' => null,
+                            'status'             => 'queued',
+                            'created_at'         => date('Y-m-d H:i:s')
+                        ];
+                        if ($hasFollowupCol) {
+                            $row['followup_template_id'] = $followup_template_id;
+                        }
+                        $newItems[] = $row;
+                    }
+                }
+
+                if (!empty($newItems)) {
+                    $totalEligible   = count($newItems);
+                    $partition_mode  = $this->input->post('followup_partition_mode') ?: 'all';
+                    $partition_limit = (int)$this->input->post('followup_partition_limit');
+                    $remainingHeld   = 0;
+
+                    if ($partition_mode === 'custom' && $partition_limit > 0 && $totalEligible > $partition_limit) {
+                        $newItems      = array_slice($newItems, 0, $partition_limit);
+                        $remainingHeld = $totalEligible - count($newItems);
+                    }
+
+                    $this->db->insert_batch('crm_bulk_mail_queue', $newItems);
+                    $queuedNewCount = count($newItems);
+                    $this->Bulk_mail_model->check_and_update_campaign($campaign_id);
+                }
+            }
+        }
+
+        $tpl = $followup_template_id ? $this->Bulk_mail_model->get_template_by_id($followup_template_id) : null;
+        $tplName = $tpl ? $tpl['name'] : 'None';
+
+        $msg = 'Follow-up template successfully saved for Campaign #' . $campaign_id . '.';
+        if ($queuedNewCount > 0) {
+            $msg .= " {$queuedNewCount} follow-up email(s) added to background queue!";
+            if (!empty($remainingHeld) && $remainingHeld > 0) {
+                $msg .= " ({$remainingHeld} held pending for future batch).";
+            }
+        }
+
+        $this->json_success([
+            'campaign_id'          => $campaign_id,
+            'followup_template_id' => $followup_template_id,
+            'template_name'        => $tplName,
+            'queued_count'         => $queuedNewCount
+        ], $msg);
     }
 
     /**
      * AJAX: Filter and search delivery logs
      */
     public function delivery_logs_ajax() {
-        $params = [
-            'from_date'     => $this->input->get('from_date'),
-            'to_date'       => $this->input->get('to_date'),
-            'sender_email'  => $this->input->get('sender_email'),
-            'status'        => $this->input->get('status'),
-            'campaign_type' => $this->input->get('campaign_type'),
-            'followup_due'  => $this->input->get('followup_due'),
-            'search'        => $this->input->get('search')
-        ];
-        $limit  = (int)($this->input->get('limit') ?: 50);
-        $offset = (int)($this->input->get('offset') ?: 0);
-        $logs   = $this->Bulk_mail_model->get_delivery_logs($params, $limit, $offset);
-        $this->json_success($logs);
+        try {
+            $params = [
+                'from_date'     => $this->input->get('from_date'),
+                'to_date'       => $this->input->get('to_date'),
+                'sender_email'  => $this->input->get('sender_email'),
+                'status'        => $this->input->get('status'),
+                'campaign_type' => $this->input->get('campaign_type'),
+                'followup_due'  => $this->input->get('followup_due'),
+                'search'        => $this->input->get('search')
+            ];
+            $limit  = (int)($this->input->get('limit') ?: 50);
+            $offset = (int)($this->input->get('offset') ?: 0);
+            $logs   = $this->Bulk_mail_model->get_delivery_logs($params, $limit, $offset);
+            $this->json_success($logs);
+        } catch (Exception $e) {
+            $this->json_error($e->getMessage());
+        }
     }
 
     /**
@@ -829,16 +941,28 @@ class Communications extends MY_Controller {
         $this->json_success($detail);
     }
 
+
     /**
-     * AJAX: Live refresh stats and campaign history
+     * AJAX: Live refresh stats and campaign history with date filtering
      */
     public function history_ajax() {
-        $stats     = $this->Bulk_mail_model->get_stats();
-        $campaigns = $this->Bulk_mail_model->get_recent_campaigns(15);
-        $this->json_success([
-            'stats'     => $stats,
-            'campaigns' => $campaigns
-        ]);
+        try {
+            $date_filter = $this->input->get('date_filter') ?: 'all';
+            $from_date   = $this->input->get('from_date');
+            $to_date     = $this->input->get('to_date');
+
+            $stats       = $this->Bulk_mail_model->get_stats($date_filter, $from_date, $to_date);
+            $campaigns   = $this->Bulk_mail_model->get_recent_campaigns(50, $date_filter, $from_date, $to_date);
+            $isPaused    = (int)$this->App_setting_model->get_by_key('queue_is_paused') === 1;
+
+            $this->json_success([
+                'stats'           => $stats,
+                'campaigns'       => $campaigns,
+                'is_queue_paused' => $isPaused
+            ]);
+        } catch (Exception $e) {
+            $this->json_error($e->getMessage());
+        }
     }
 
     /**
@@ -855,8 +979,24 @@ class Communications extends MY_Controller {
     protected function _execute_queue_batch($limit = 1) {
         $this->load->library('email');
 
-        // Fetch up to $limit pending items — also pull forced_smtp_account_id from campaign
-        $items = $this->db->select('q.*, c.subject, c.message, c.product_id, c.template_id, c.recipient_type, c.forced_smtp_account_id')
+        // Global Queue Pause Gate
+        $isQueuePaused = (int)$this->App_setting_model->get_by_key('queue_is_paused');
+        if ($isQueuePaused === 1) {
+            $queuedCount = $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue');
+            $pausedCount = $this->db->where('status', 'paused')->count_all_results('crm_bulk_mail_queue');
+            return [
+                'status'    => 'paused',
+                'message'   => 'Anti-ban queue is currently paused. Dispatches are temporarily halted.',
+                'processed' => 0,
+                'remaining' => $queuedCount,
+                'paused'    => $pausedCount,
+                'is_paused' => true
+            ];
+        }
+
+        // Fetch up to $limit pending items — also pull forced_smtp_account_id and followup_template_id from campaign
+        $extraCampSelect = $this->db->field_exists('followup_template_id', 'crm_bulk_mail_campaigns') ? ', c.followup_template_id as camp_followup_template_id' : '';
+        $items = $this->db->select('q.*, c.subject, c.message, c.product_id, c.template_id, c.recipient_type, c.forced_smtp_account_id' . $extraCampSelect)
             ->from('crm_bulk_mail_queue q')
             ->join('crm_bulk_mail_campaigns c', 'c.id = q.campaign_id')
             ->where('q.status', 'queued')
@@ -991,8 +1131,22 @@ class Communications extends MY_Controller {
                 '{{current_date}}'        => date('d M Y')
             ];
 
-            $personalizedSubject = str_replace(array_keys($replacements), array_values($replacements), $item['subject']);
-            $personalizedMessage = str_replace(array_keys($replacements), array_values($replacements), $item['message']);
+            $rawSubject = $item['subject'];
+            $rawMessage = $item['message'];
+
+            // If a follow-up template is attached, and this item is a follow-up (or has follow-up template ID):
+            $followupTplId = !empty($item['followup_template_id']) ? (int)$item['followup_template_id'] : (!empty($item['camp_followup_template_id']) ? (int)$item['camp_followup_template_id'] : 0);
+
+            if ($followupTplId > 0 && (strpos($item['campaign_type'] ?? '', 'followup') !== false || !empty($item['next_followup_date']))) {
+                $fTpl = $this->db->get_where('crm_notification_templates', ['id' => $followupTplId])->row_array();
+                if ($fTpl && !empty($fTpl['subject']) && !empty($fTpl['body'])) {
+                    $rawSubject = $fTpl['subject'];
+                    $rawMessage = $fTpl['body'];
+                }
+            }
+
+            $personalizedSubject = str_replace(array_keys($replacements), array_values($replacements), $rawSubject);
+            $personalizedMessage = str_replace(array_keys($replacements), array_values($replacements), $rawMessage);
 
             // Anti-Spam fingerprint injection (invisible HTML footer with unique hash and timestamp)
             $antiSpamFootnote = '<div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;">Ref: #' . $anti_spam_hash . '-' . time() . '</div>';
@@ -1117,6 +1271,139 @@ class Communications extends MY_Controller {
     public function process_queue_batch_ajax() {
         $result = $this->_execute_queue_batch(1);
         $this->json_success($result);
+    }
+
+    /**
+     * AJAX: Toggle Global Background Queue Play / Pause
+     */
+    public function toggle_global_queue_ajax() {
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+        }
+
+        $action = $this->input->post('action'); // 'pause', 'resume', or 'toggle'
+        $current = (int)$this->App_setting_model->get_by_key('queue_is_paused');
+
+        if ($action === 'pause') {
+            $new = 1;
+        } elseif ($action === 'resume') {
+            $new = 0;
+        } else {
+            $new = ($current === 1) ? 0 : 1;
+        }
+
+        $this->App_setting_model->set('queue_is_paused', (string)$new);
+        $queuedCount = $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue');
+        $pausedCount = $this->db->where('status', 'paused')->count_all_results('crm_bulk_mail_queue');
+
+        $this->json_success([
+            'is_paused'    => $new === 1,
+            'queued_count' => $queuedCount,
+            'paused_count' => $pausedCount
+        ], $new === 1 ? 'Background queue paused. Automatic cron and browser timer dispatches are stopped.' : 'Background queue resumed. Dispatches will process normally.');
+    }
+
+    /**
+     * AJAX: Pause or Resume Specific Campaign Queue with Custom Partition Support
+     */
+    public function toggle_campaign_queue_pause_ajax() {
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+        }
+
+        $campaign_id     = (int)$this->input->post('campaign_id');
+        $action          = strtolower(trim($this->input->post('action'))); // 'pause' or 'resume'
+        $partition_mode  = strtolower(trim($this->input->post('partition_mode') ?: 'all')); // 'all' or 'custom'
+        $partition_limit = (int)$this->input->post('partition_limit');
+
+        if (!$campaign_id) {
+            $this->json_error('Invalid Campaign ID.');
+            return;
+        }
+
+        $campaign = $this->db->where('id', $campaign_id)->get('crm_bulk_mail_campaigns')->row_array();
+        if (!$campaign) {
+            $this->json_error('Campaign not found.');
+            return;
+        }
+
+        if ($action === 'pause') {
+            $queuedCount = $this->db->where(['campaign_id' => $campaign_id, 'status' => 'queued'])->count_all_results('crm_bulk_mail_queue');
+            if ($queuedCount === 0) {
+                $this->json_error('No queued emails found to pause for this campaign.');
+                return;
+            }
+
+            $pauseLimit = $queuedCount;
+            if ($partition_mode === 'custom' && $partition_limit > 0) {
+                $pauseLimit = min($partition_limit, $queuedCount);
+            }
+
+            // Update queue items
+            if ($pauseLimit >= $queuedCount) {
+                $this->db->where(['campaign_id' => $campaign_id, 'status' => 'queued'])
+                    ->update('crm_bulk_mail_queue', ['status' => 'paused']);
+            } else {
+                $this->db->query("UPDATE crm_bulk_mail_queue SET status = 'paused' WHERE campaign_id = ? AND status = 'queued' ORDER BY id ASC LIMIT ?", [$campaign_id, $pauseLimit]);
+            }
+
+            $this->Bulk_mail_model->check_and_update_campaign($campaign_id);
+
+            $newQueued = $this->db->where(['campaign_id' => $campaign_id, 'status' => 'queued'])->count_all_results('crm_bulk_mail_queue');
+            $newPaused = $this->db->where(['campaign_id' => $campaign_id, 'status' => 'paused'])->count_all_results('crm_bulk_mail_queue');
+
+            $msg = ($pauseLimit >= $queuedCount)
+                ? "Campaign #{$campaign_id} paused completely ({$pauseLimit} emails paused)."
+                : "Partition applied: Paused {$pauseLimit} emails for Campaign #{$campaign_id}. {$newQueued} emails remain active in processing queue.";
+
+            $this->json_success([
+                'campaign_id' => $campaign_id,
+                'action'      => 'pause',
+                'paused_now'  => $pauseLimit,
+                'count_queued'=> $newQueued,
+                'count_paused'=> $newPaused
+            ], $msg);
+
+        } elseif ($action === 'resume') {
+            $pausedCount = $this->db->where(['campaign_id' => $campaign_id, 'status' => 'paused'])->count_all_results('crm_bulk_mail_queue');
+            if ($pausedCount === 0) {
+                $this->json_error('No paused emails found to resume for this campaign.');
+                return;
+            }
+
+            $resumeLimit = $pausedCount;
+            if ($partition_mode === 'custom' && $partition_limit > 0) {
+                $resumeLimit = min($partition_limit, $pausedCount);
+            }
+
+            // Update queue items
+            if ($resumeLimit >= $pausedCount) {
+                $this->db->where(['campaign_id' => $campaign_id, 'status' => 'paused'])
+                    ->update('crm_bulk_mail_queue', ['status' => 'queued']);
+            } else {
+                $this->db->query("UPDATE crm_bulk_mail_queue SET status = 'queued' WHERE campaign_id = ? AND status = 'paused' ORDER BY id ASC LIMIT ?", [$campaign_id, $resumeLimit]);
+            }
+
+            $this->Bulk_mail_model->check_and_update_campaign($campaign_id);
+
+            $newQueued = $this->db->where(['campaign_id' => $campaign_id, 'status' => 'queued'])->count_all_results('crm_bulk_mail_queue');
+            $newPaused = $this->db->where(['campaign_id' => $campaign_id, 'status' => 'paused'])->count_all_results('crm_bulk_mail_queue');
+
+            $msg = ($resumeLimit >= $pausedCount)
+                ? "Resumed all {$resumeLimit} paused emails for Campaign #{$campaign_id} into active queue."
+                : "Partition applied: Resumed {$resumeLimit} emails for Campaign #{$campaign_id} into active queue. {$newPaused} emails remain paused.";
+
+            $this->json_success([
+                'campaign_id' => $campaign_id,
+                'action'      => 'resume',
+                'resumed_now' => $resumeLimit,
+                'count_queued'=> $newQueued,
+                'count_paused'=> $newPaused
+            ], $msg);
+
+        } else {
+            $this->json_error('Invalid action specified.');
+        }
     }
 
     /**
