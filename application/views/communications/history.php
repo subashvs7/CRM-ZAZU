@@ -692,15 +692,38 @@ if (!function_exists('render_campaign_type_badge')) {
                 </select>
             </div>
 
-            <!-- Follow-up Cadence (Days after outreach) -->
-            <div>
-                <label class="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
-                    <span>Follow-Up Cadence:</span>
-                    <span class="text-[11px] text-gray-500 font-normal">Paced after outreach dispatch</span>
+            <!-- Follow-up Schedule & Custom Date Picker -->
+            <div class="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2.5">
+                <label class="block text-xs font-bold text-gray-700 flex items-center justify-between">
+                    <span><i class="fa fa-calendar-check-o text-indigo-600"></i> Next Follow-Up Schedule & Date:</span>
+                    <span class="text-[10px] text-gray-400 font-normal">Pick specific date or set days</span>
                 </label>
-                <div class="flex items-center gap-2">
-                    <input type="number" name="next_followup_days" id="assign-next-followup-days" min="1" max="60" value="2" class="w-20 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                    <span class="text-xs text-gray-600 font-medium">days after outreach is sent</span>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <!-- Specific Target Date Picker -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-gray-600 mb-1">Specific Follow-Up Date:</label>
+                        <input type="date" name="custom_followup_date" id="assign-custom-followup-date" min="<?= date('Y-m-d') ?>" class="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+
+                    <!-- Cadence in Days -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-gray-600 mb-1">Or Cadence (Days After):</label>
+                        <div class="flex items-center gap-1.5">
+                            <input type="number" name="next_followup_days" id="assign-next-followup-days" min="1" max="60" value="2" class="w-16 px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <span class="text-[11px] text-gray-500 font-medium">days</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Presets -->
+                <div class="flex items-center gap-1.5 flex-wrap pt-1">
+                    <span class="text-[10px] text-gray-400 font-semibold uppercase">Quick Set:</span>
+                    <button type="button" class="btn-quick-set-cadence px-2 py-0.5 text-[10px] font-semibold bg-white border border-gray-200 rounded-md hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-colors cursor-pointer" data-days="1">+1 Day</button>
+                    <button type="button" class="btn-quick-set-cadence px-2 py-0.5 text-[10px] font-semibold bg-white border border-gray-200 rounded-md hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-colors cursor-pointer" data-days="2">+2 Days</button>
+                    <button type="button" class="btn-quick-set-cadence px-2 py-0.5 text-[10px] font-semibold bg-white border border-gray-200 rounded-md hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-colors cursor-pointer" data-days="3">+3 Days</button>
+                    <button type="button" class="btn-quick-set-cadence px-2 py-0.5 text-[10px] font-semibold bg-white border border-gray-200 rounded-md hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-colors cursor-pointer" data-days="5">+5 Days</button>
+                    <button type="button" class="btn-quick-set-cadence px-2 py-0.5 text-[10px] font-semibold bg-white border border-gray-200 rounded-md hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-colors cursor-pointer" data-days="7">+7 Days</button>
                 </div>
             </div>
 
@@ -1318,6 +1341,10 @@ $(function() {
                 if (c.next_followup_days) {
                     $('#assign-next-followup-days').val(c.next_followup_days);
                 }
+                var initDays = parseInt($('#assign-next-followup-days').val()) || 2;
+                var initTarget = new Date();
+                initTarget.setDate(initTarget.getDate() + initDays);
+                $('#assign-custom-followup-date').val(initTarget.toISOString().slice(0, 10));
                 var qItems = c.items || [];
                 var deliveredOutreach = 0;
                 var alreadyFollowup = 0;
@@ -1346,6 +1373,36 @@ $(function() {
         });
 
         $('#modal-assign-followup-template').removeClass('hidden');
+    });
+
+    // Sync: when custom date picker changes, update cadence days
+    $('#assign-custom-followup-date').on('change', function() {
+        var selected = $(this).val();
+        if (selected) {
+            var selDate = new Date(selected + 'T00:00:00');
+            var now = new Date();
+            now.setHours(0,0,0,0);
+            var diff = Math.max(1, Math.round((selDate - now) / 86400000));
+            $('#assign-next-followup-days').val(diff);
+        }
+    });
+
+    // Sync: when cadence days changes, update custom date picker
+    $('#assign-next-followup-days').on('input change', function() {
+        var days = parseInt($(this).val()) || 1;
+        var targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + days);
+        $('#assign-custom-followup-date').val(targetDate.toISOString().slice(0, 10));
+    });
+
+    // Quick presets (+1d, +2d, +3d, +5d, +7d)
+    $(document).on('click', '.btn-quick-set-cadence', function(e) {
+        e.preventDefault();
+        var days = parseInt($(this).data('days')) || 2;
+        $('#assign-next-followup-days').val(days);
+        var targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + days);
+        $('#assign-custom-followup-date').val(targetDate.toISOString().slice(0, 10));
     });
 
     $(document).on('click', '.btn-close-assign-modal', function() {

@@ -132,8 +132,16 @@ class Communications extends MY_Controller {
         if ($this->db->field_exists('followup_template_id', 'crm_bulk_mail_campaigns')) {
             $campUpdates['followup_template_id'] = $followup_template_id;
         }
-        $next_followup_days = $this->input->post('next_followup_days');
-        if ($next_followup_days !== null && $next_followup_days !== '') {
+        $custom_followup_date = trim($this->input->post('custom_followup_date') ?: '');
+        $next_followup_days   = $this->input->post('next_followup_days');
+        $targetFollowupDate   = null;
+
+        if (!empty($custom_followup_date) && strtotime($custom_followup_date)) {
+            $targetFollowupDate = date('Y-m-d', strtotime($custom_followup_date));
+            $today = date('Y-m-d');
+            $diffDays = (int)round((strtotime($targetFollowupDate) - strtotime($today)) / 86400);
+            $campUpdates['next_followup_days'] = max(1, $diffDays);
+        } elseif ($next_followup_days !== null && $next_followup_days !== '') {
             $campUpdates['next_followup_days'] = max(1, (int)$next_followup_days);
         }
         $this->db->where('id', $campaign_id)->update('crm_bulk_mail_campaigns', $campUpdates);
@@ -145,7 +153,7 @@ class Communications extends MY_Controller {
             ]);
         }
 
-        // Recalculate outreach next_followup_date based on sent_at and updated cadence
+        // Recalculate outreach next_followup_date based on custom date or sent_at and updated cadence
         $cadenceDays = isset($campUpdates['next_followup_days']) ? (int)$campUpdates['next_followup_days'] : 2;
         $outreachSent = $this->db->select('id, sent_at')->from('crm_bulk_mail_queue')
             ->where('campaign_id', $campaign_id)
@@ -153,10 +161,14 @@ class Communications extends MY_Controller {
             ->where('status', 'sent')
             ->get()->result_array();
         foreach ($outreachSent as $oi) {
-            if (!empty($oi['sent_at'])) {
+            if ($targetFollowupDate) {
+                $newTarget = $targetFollowupDate;
+            } elseif (!empty($oi['sent_at'])) {
                 $newTarget = date('Y-m-d', strtotime("+{$cadenceDays} days", strtotime($oi['sent_at'])));
-                $this->db->where('id', $oi['id'])->update('crm_bulk_mail_queue', ['next_followup_date' => $newTarget]);
+            } else {
+                $newTarget = date('Y-m-d', strtotime("+{$cadenceDays} days"));
             }
+            $this->db->where('id', $oi['id'])->update('crm_bulk_mail_queue', ['next_followup_date' => $newTarget]);
         }
 
         $queuedNewCount = 0;

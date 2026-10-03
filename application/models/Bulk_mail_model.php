@@ -588,9 +588,16 @@ class Bulk_mail_model extends CI_Model {
             return;
         }
 
-        // DYNAMIC AUTO-SWITCH: Target date is ALWAYS baseDate + cadence days!
-        // If sent today (2026-10-03) with 2 days cadence: 2026-10-03 + 2 days = 2026-10-05!
-        $targetDate = date('Y-m-d', strtotime("+{$cadence} days", strtotime($baseDate)));
+        // DYNAMIC AUTO-SWITCH:
+        // Priority 1: If an explicit custom follow-up date was saved in the queue that is >= baseDate:
+        $explicitFollowupDate = !empty($camp['raw_next_followup_date']) ? $camp['raw_next_followup_date'] : null;
+        if ($explicitFollowupDate && $explicitFollowupDate > $baseDate) {
+            $targetDate = $explicitFollowupDate;
+        } else {
+            // Priority 2: Automatically calculate baseDate + cadence days!
+            $targetDate = date('Y-m-d', strtotime("+{$cadence} days", strtotime($baseDate)));
+        }
+
         $camp['computed_followup_date'] = $targetDate;
         $fDateFmt = date('d M Y', strtotime($targetDate));
 
