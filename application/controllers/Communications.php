@@ -128,18 +128,35 @@ class Communications extends MY_Controller {
         }
 
         // 1. Update campaign table
+        $campUpdates = ['updated_at' => date('Y-m-d H:i:s')];
         if ($this->db->field_exists('followup_template_id', 'crm_bulk_mail_campaigns')) {
-            $this->db->where('id', $campaign_id)->update('crm_bulk_mail_campaigns', [
-                'followup_template_id' => $followup_template_id,
-                'updated_at'           => date('Y-m-d H:i:s')
-            ]);
+            $campUpdates['followup_template_id'] = $followup_template_id;
         }
+        $next_followup_days = $this->input->post('next_followup_days');
+        if ($next_followup_days !== null && $next_followup_days !== '') {
+            $campUpdates['next_followup_days'] = max(1, (int)$next_followup_days);
+        }
+        $this->db->where('id', $campaign_id)->update('crm_bulk_mail_campaigns', $campUpdates);
 
-        // 2. Update existing queue rows with new follow-up template ID
+        // 2. Update existing queue rows with new follow-up template ID and recomputed next_followup_date
         if ($this->db->field_exists('followup_template_id', 'crm_bulk_mail_queue')) {
             $this->db->where('campaign_id', $campaign_id)->update('crm_bulk_mail_queue', [
                 'followup_template_id' => $followup_template_id
             ]);
+        }
+
+        // Recalculate outreach next_followup_date based on sent_at and updated cadence
+        $cadenceDays = isset($campUpdates['next_followup_days']) ? (int)$campUpdates['next_followup_days'] : 2;
+        $outreachSent = $this->db->select('id, sent_at')->from('crm_bulk_mail_queue')
+            ->where('campaign_id', $campaign_id)
+            ->where('campaign_type', 'outreach')
+            ->where('status', 'sent')
+            ->get()->result_array();
+        foreach ($outreachSent as $oi) {
+            if (!empty($oi['sent_at'])) {
+                $newTarget = date('Y-m-d', strtotime("+{$cadenceDays} days", strtotime($oi['sent_at'])));
+                $this->db->where('id', $oi['id'])->update('crm_bulk_mail_queue', ['next_followup_date' => $newTarget]);
+            }
         }
 
         $queuedNewCount = 0;

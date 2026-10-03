@@ -489,7 +489,10 @@ class Bulk_mail_model extends CI_Model {
             SUM(CASE WHEN q.status = "failed" THEN 1 ELSE 0 END) AS count_failed,
             SUM(CASE WHEN q.status = "queued" THEN 1 ELSE 0 END) AS count_queued,
             SUM(CASE WHEN q.status = "paused" THEN 1 ELSE 0 END) AS count_paused,
-            MIN(CASE WHEN q.next_followup_date IS NOT NULL THEN q.next_followup_date END) AS next_followup_date')
+            MAX(CASE WHEN q.status = "sent" THEN q.sent_at END) AS last_sent_at,
+            MAX(CASE WHEN q.campaign_type = "outreach" AND q.status = "sent" THEN q.sent_at END) AS outreach_sent_at,
+            SUM(CASE WHEN q.campaign_type IN ("followup_1", "followup_2") AND q.status = "sent" THEN 1 ELSE 0 END) AS followup_sent_count,
+            MIN(CASE WHEN q.next_followup_date IS NOT NULL THEN q.next_followup_date END) AS raw_next_followup_date')
             ->from('crm_bulk_mail_campaigns c')
             ->join('crm_products p', 'p.id = c.product_id', 'left')
             ->join('crm_notification_templates t', 't.id = c.template_id', 'left');
@@ -508,7 +511,100 @@ class Bulk_mail_model extends CI_Model {
             ->order_by('c.created_at', 'DESC');
 
         if ($limit > 0) $this->db->limit($limit);
-        return $this->db->get()->result_array();
+        $campaigns = $this->db->get()->result_array();
+
+        // Compute dynamic follow-up schedule & badges in BACKEND from real dispatch timestamp
+        foreach ($campaigns as &$camp) {
+            $this->_enrich_campaign_followup_metadata($camp);
+        }
+
+        return $campaigns;
+    }
+
+    /**
+     * Compute dynamic, backend-calculated follow-up dates & badges for campaigns.
+     * Auto-switches based on actual dispatch date (sent_at), never static!
+     */
+    protected function _enrich_campaign_followup_metadata(&$camp) {
+        $today = date('Y-m-d');
+        $cadence = isset($camp['next_followup_days']) && $camp['next_followup_days'] !== '' && $camp['next_followup_days'] !== null ? (int)$camp['next_followup_days'] : 2;
+        $hasFollowupTemplate = !empty($camp['followup_template_id']);
+
+        // Format Sent / Dispatched display date
+        $actualSentAt = !empty($camp['last_sent_at']) ? $camp['last_sent_at'] : null;
+        if ($actualSentAt) {
+            $camp['display_sent_at'] = date('d M Y, h:i A', strtotime($actualSentAt));
+        } elseif (!empty($camp['created_at'])) {
+            $camp['display_sent_at'] = date('d M Y, h:i A', strtotime($camp['created_at']));
+        } else {
+            $camp['display_sent_at'] = '-';
+        }
+
+        // 1. If campaign purpose is Announcement, Retry, or no follow-up configured:
+        if (in_array($camp['campaign_type'] ?? '', ['announcement', 'retry'])) {
+            $camp['computed_followup_date']   = null;
+            $camp['computed_followup_status'] = 'none';
+            $camp['computed_followup_badge']  = '<span class="text-[10px] text-gray-400 block font-normal">— No Follow-Up</span>';
+            return;
+        }
+
+        // 2. If this campaign is already Follow-Up #1 (as seen in campaigns #17, #18, #19):
+        if (($camp['campaign_type'] ?? '') === 'followup_1' || ($camp['campaign_type'] ?? '') === 'followup_2') {
+            $camp['computed_followup_date']   = null;
+            $camp['computed_followup_status'] = 'completed';
+            $camp['computed_followup_badge']  = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa fa-check text-[9px]"></i> Follow-Up Sent</span>';
+            return;
+        }
+
+        // 3. If Follow-Up #1 was already sent for this campaign:
+        if (!empty($camp['followup_sent_count']) && (int)$camp['followup_sent_count'] > 0 && (int)($camp['count_queued'] ?? 0) === 0) {
+            $camp['computed_followup_date']   = null;
+            $camp['computed_followup_status'] = 'completed';
+            $camp['computed_followup_badge']  = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa fa-check text-[9px]"></i> Follow-Up Sent</span>';
+            return;
+        }
+
+        // 4. If no follow-up template assigned:
+        if (!$hasFollowupTemplate && empty($camp['next_followup_days'])) {
+            $camp['computed_followup_date']   = null;
+            $camp['computed_followup_status'] = 'none';
+            $camp['computed_followup_badge']  = '<span class="text-[10px] text-gray-400 block font-normal">— No Follow-Up</span>';
+            return;
+        }
+
+        // 5. Determine base dispatch date for follow-up calculation:
+        $baseDate = null;
+        if (!empty($camp['outreach_sent_at'])) {
+            $baseDate = date('Y-m-d', strtotime($camp['outreach_sent_at']));
+        } elseif (!empty($camp['last_sent_at'])) {
+            $baseDate = date('Y-m-d', strtotime($camp['last_sent_at']));
+        }
+
+        // If not dispatched yet (still pending in queue):
+        if (!$baseDate) {
+            $camp['computed_followup_date']   = null;
+            $camp['computed_followup_status'] = 'pending_send';
+            $camp['computed_followup_badge']  = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-50 text-slate-600 border border-slate-200" title="Will schedule after dispatch"><i class="fa fa-hourglass-half text-[9px]"></i> +' . $cadence . 'd after send</span>';
+            return;
+        }
+
+        // DYNAMIC AUTO-SWITCH: Target date is ALWAYS baseDate + cadence days!
+        // If sent today (2026-10-03) with 2 days cadence: 2026-10-03 + 2 days = 2026-10-05!
+        $targetDate = date('Y-m-d', strtotime("+{$cadence} days", strtotime($baseDate)));
+        $camp['computed_followup_date'] = $targetDate;
+        $fDateFmt = date('d M Y', strtotime($targetDate));
+
+        if ($targetDate === $today) {
+            $camp['computed_followup_status'] = 'today';
+            $camp['computed_followup_badge']  = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300 animate-pulse" title="Follow-up due Today"><i class="fa fa-clock-o text-[9px]"></i> Next: Today (' . $fDateFmt . ')</span>';
+        } elseif ($targetDate < $today) {
+            $camp['computed_followup_status'] = 'overdue';
+            $camp['computed_followup_badge']  = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-300" title="Follow-up date passed"><i class="fa fa-exclamation-circle text-[9px]"></i> Next: ' . $fDateFmt . ' (Past)</span>';
+        } else {
+            // Future date! e.g. 05 Oct 2026
+            $camp['computed_followup_status'] = 'upcoming';
+            $camp['computed_followup_badge']  = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200" title="Scheduled Follow-up Date"><i class="fa fa-calendar-check-o text-[9px]"></i> Next: ' . $fDateFmt . '</span>';
+        }
     }
 
     /**

@@ -485,38 +485,11 @@ if (!function_exists('render_campaign_type_badge')) {
                             <div class="space-y-1">
                                 <div class="text-[11px] text-gray-700 font-medium flex items-center gap-1.5" title="Sent / Created Date">
                                     <i class="fa fa-paper-plane-o text-gray-400 text-[10px]"></i>
-                                    <span><?= date('d M Y, h:i A', strtotime($camp['created_at'])) ?></span>
+                                    <span><?= !empty($camp['display_sent_at']) ? $camp['display_sent_at'] : date('d M Y, h:i A', strtotime($camp['created_at'])) ?></span>
                                 </div>
-                                <?php 
-                                    $fDate = !empty($camp['next_followup_date']) ? $camp['next_followup_date'] : null;
-                                    if (!$fDate && !empty($camp['next_followup_days']) && !empty($camp['created_at'])) {
-                                        $fDate = date('Y-m-d', strtotime("+{$camp['next_followup_days']} days", strtotime($camp['created_at'])));
-                                    }
-                                ?>
-                                <?php if(!empty($fDate)): 
-                                    $today = date('Y-m-d');
-                                    $fDateFmt = date('d M Y', strtotime($fDate));
-                                    $isToday = ($fDate === $today);
-                                    $isOverdue = ($fDate < $today);
-                                ?>
-                                    <div class="flex items-center gap-1">
-                                        <?php if($isToday): ?>
-                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300 animate-pulse" title="Follow-up due Today">
-                                                <i class="fa fa-clock-o text-[9px]"></i> Next: Today (<?= $fDateFmt ?>)
-                                            </span>
-                                        <?php elseif($isOverdue): ?>
-                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-300" title="Follow-up date passed">
-                                                <i class="fa fa-exclamation-circle text-[9px]"></i> Next: <?= $fDateFmt ?> (Past)
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200" title="Scheduled Follow-up Date">
-                                                <i class="fa fa-calendar-check-o text-[9px]"></i> Next: <?= $fDateFmt ?>
-                                            </span>
-                                        <?php endif; ?>
-                                    </div>
-                                <?php else: ?>
-                                    <span class="text-[10px] text-gray-400 block font-normal">— No Follow-Up</span>
-                                <?php endif; ?>
+                                <div class="flex items-center gap-1">
+                                    <?= !empty($camp['computed_followup_badge']) ? $camp['computed_followup_badge'] : '<span class="text-[10px] text-gray-400 block font-normal">— No Follow-Up</span>' ?>
+                                </div>
                             </div>
                         </td>
                         <td class="py-3 px-3 text-center whitespace-nowrap">
@@ -719,6 +692,18 @@ if (!function_exists('render_campaign_type_badge')) {
                 </select>
             </div>
 
+            <!-- Follow-up Cadence (Days after outreach) -->
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
+                    <span>Follow-Up Cadence:</span>
+                    <span class="text-[11px] text-gray-500 font-normal">Paced after outreach dispatch</span>
+                </label>
+                <div class="flex items-center gap-2">
+                    <input type="number" name="next_followup_days" id="assign-next-followup-days" min="1" max="60" value="2" class="w-20 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <span class="text-xs text-gray-600 font-medium">days after outreach is sent</span>
+                </div>
+            </div>
+
             <!-- Preview Snippet -->
             <div id="assign-preview-snippet" class="hidden p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl text-xs space-y-1">
                 <span class="text-[10px] uppercase font-bold text-indigo-700 block">Template Subject:</span>
@@ -729,17 +714,17 @@ if (!function_exists('render_campaign_type_badge')) {
             <!-- Queue Option for Background Queue -->
             <div class="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2">
                 <label class="flex items-start gap-2.5 cursor-pointer text-xs font-semibold text-blue-950">
-                    <input type="checkbox" name="queue_followup_now" id="assign-checkbox-queue-now" value="1" checked class="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500">
+                    <input type="checkbox" name="queue_followup_now" id="assign-checkbox-queue-now" value="1" class="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500">
                     <div>
-                        <span>Add follow-up emails to background queue now</span>
+                        <span>Add follow-up emails to background queue now (Manual Override)</span>
                         <p class="text-[11px] font-normal text-blue-700 mt-0.5 leading-snug">
-                            Queues follow-up emails for delivered outreach recipients. The 1-minute paced anti-ban queue will smoothly send them in the background.
+                            Leave unchecked to let the system automatically queue follow-ups when their scheduled cadence date arrives.
                         </p>
                     </div>
                 </label>
 
                 <!-- Follow-up Partition Control -->
-                <div id="assign-partition-section" class="pt-3 border-t border-blue-200/80 space-y-2.5">
+                <div id="assign-partition-section" class="hidden pt-3 border-t border-blue-200/80 space-y-2.5">
                     <div class="flex items-center justify-between">
                         <span class="font-bold text-blue-950 uppercase text-[10px] tracking-wider flex items-center gap-1.5">
                             <i class="fa fa-pie-chart text-indigo-600"></i> Follow-Up Batch Partition:
@@ -912,7 +897,7 @@ $(function() {
 
             // Purpose
             var purposeHtml = renderTypeBadge(camp.campaign_type || 'outreach');
-            if (camp.next_followup_days) {
+            if (camp.next_followup_days && parseInt(camp.next_followup_days) > 0 && (camp.campaign_type || 'outreach') === 'outreach') {
                 purposeHtml += '<span class="block text-[10px] text-gray-400 mt-0.5 font-sans">+' + parseInt(camp.next_followup_days) + 'd cadence</span>';
             }
 
@@ -926,28 +911,9 @@ $(function() {
                 }
             }
 
-            // Dates (Created Date + Follow-Up Date)
-            var createdDateStr = camp.created_at ? new Date(camp.created_at.replace(/-/g, '/')).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '-';
-            
-            var fDate = camp.next_followup_date || '';
-            if (!fDate && camp.next_followup_days && camp.created_at) {
-                var cDateObj = new Date(camp.created_at.replace(/-/g, '/'));
-                cDateObj.setDate(cDateObj.getDate() + parseInt(camp.next_followup_days));
-                fDate = cDateObj.toISOString().slice(0, 10);
-            }
-
-            var fBadgeHtml = '<span class="text-[10px] text-gray-400 block font-normal">— No Follow-Up</span>';
-            if (fDate) {
-                var fDateObj = new Date(fDate + 'T00:00:00');
-                var fDateFmt = fDateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-                if (fDate === today) {
-                    fBadgeHtml = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300 animate-pulse" title="Follow-up due Today"><i class="fa fa-clock-o text-[9px]"></i> Next: Today (' + fDateFmt + ')</span>';
-                } else if (fDate < today) {
-                    fBadgeHtml = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-300" title="Follow-up date passed"><i class="fa fa-exclamation-circle text-[9px]"></i> Next: ' + fDateFmt + ' (Past)</span>';
-                } else {
-                    fBadgeHtml = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200"><i class="fa fa-calendar-check-o text-[9px]"></i> Next: ' + fDateFmt + '</span>';
-                }
-            }
+            // Dates (Sent / Created Date + Follow-Up Badge directly from backend dynamic calculation)
+            var createdDateStr = camp.display_sent_at || (camp.created_at ? new Date(camp.created_at.replace(/-/g, '/')).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '-');
+            var fBadgeHtml = camp.computed_followup_badge || '<span class="text-[10px] text-gray-400 block font-normal">— No Follow-Up</span>';
 
             var editBtnClass = camp.followup_template_name ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-300';
             var editBtnText = camp.followup_template_name ? 'Edit Template' : 'Set Template';
@@ -1342,13 +1308,16 @@ $(function() {
         // Reset partition controls
         $('input[name="followup_partition_mode"][value="all"]').prop('checked', true);
         $('#assign-custom-batch-input-wrap').addClass('hidden');
-        $('#assign-checkbox-queue-now').prop('checked', true);
-        $('#assign-partition-section').removeClass('hidden');
+        $('#assign-checkbox-queue-now').prop('checked', false);
+        $('#assign-partition-section').addClass('hidden');
 
         // Fetch eligible delivered count for this campaign
         $.getJSON(BASE_URL + 'communications/campaign_detail_ajax/' + campId, function(res) {
             if (res.status === 'success' && res.data) {
                 var c = res.data;
+                if (c.next_followup_days) {
+                    $('#assign-next-followup-days').val(c.next_followup_days);
+                }
                 var qItems = c.items || [];
                 var deliveredOutreach = 0;
                 var alreadyFollowup = 0;
