@@ -694,14 +694,15 @@ class Bulk_mail_model extends CI_Model {
         if ($isQueuePaused === 1) {
             $queuedCount = $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue');
             $pausedCount = $this->db->where('status', 'paused')->count_all_results('crm_bulk_mail_queue');
-            return [
+            $sync = $this->get_queue_sync_status();
+            return array_merge([
                 'status'    => 'paused',
                 'message'   => 'Anti-ban queue is currently paused globally. Dispatches are temporarily halted.',
                 'processed' => 0,
                 'remaining' => $queuedCount,
                 'paused'    => $pausedCount,
                 'is_paused' => true
-            ];
+            ], $sync);
         }
 
         // Fetch up to $limit pending items — also pull forced_smtp_account_id and followup_template_id from campaign
@@ -717,7 +718,8 @@ class Bulk_mail_model extends CI_Model {
         if (empty($items)) {
             $queuedCount = $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue');
             $pausedCount = $this->db->where('status', 'paused')->count_all_results('crm_bulk_mail_queue');
-            return [
+            $sync = $this->get_queue_sync_status();
+            return array_merge([
                 'status'    => 'idle',
                 'message'   => $pausedCount > 0 
                     ? "Queue has 0 active items, but {$pausedCount} email(s) are PAUSED in campaign(s). Click 'Resume' on the campaign to dispatch them."
@@ -725,7 +727,7 @@ class Bulk_mail_model extends CI_Model {
                 'processed' => 0,
                 'remaining' => $queuedCount,
                 'paused'    => $pausedCount
-            ];
+            ], $sync);
         }
 
         $processed = 0;
@@ -949,12 +951,54 @@ class Bulk_mail_model extends CI_Model {
 
         $remaining = $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue');
 
-        return [
+        if ($processed > 0) {
+            $this->App_setting_model->set('queue_last_dispatched_at', (string)time());
+        }
+
+        $sync = $this->get_queue_sync_status();
+
+        return array_merge([
             'status'    => 'success',
             'message'   => "Successfully dispatched {$processed} queued email(s).",
             'processed' => $processed,
             'remaining' => $remaining,
             'details'   => $details
+        ], $sync);
+    }
+
+    /**
+     * Get real-time queue timing & counts synced with the server background clock
+     */
+    public function get_queue_sync_status() {
+        $this->load->model('App_setting_model');
+        $now = time();
+        $interval = 60; // 1-minute cycle
+
+        $lastDispatched = (int)$this->App_setting_model->get_by_key('queue_last_dispatched_at');
+        if ($lastDispatched <= 0) {
+            $lastDispatched = $now;
+        }
+
+        $elapsed = $now - $lastDispatched;
+        // Remaining seconds until next server cron dispatch cycle (60s cycle)
+        $secondsRemaining = ($elapsed >= $interval) ? 0 : ($interval - $elapsed);
+
+        $isPaused = (int)$this->App_setting_model->get_by_key('queue_is_paused') === 1;
+        $queuedCount = $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue');
+        $pausedCount = $this->db->where('status', 'paused')->count_all_results('crm_bulk_mail_queue');
+        $sentCount   = $this->db->where('status', 'sent')->count_all_results('crm_bulk_mail_queue');
+        $failedCount = $this->db->where('status', 'failed')->count_all_results('crm_bulk_mail_queue');
+
+        return [
+            'server_time'        => $now,
+            'last_dispatched_at' => $lastDispatched,
+            'interval_seconds'   => $interval,
+            'seconds_remaining'  => $secondsRemaining,
+            'is_paused'          => $isPaused,
+            'queued'             => $queuedCount,
+            'paused'             => $pausedCount,
+            'sent'               => $sentCount,
+            'failed'             => $failedCount
         ];
     }
 }

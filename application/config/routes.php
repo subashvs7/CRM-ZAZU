@@ -248,6 +248,7 @@ $route['communications/delivery_logs_ajax']          = 'Communications/delivery_
 $route['communications/export_delivery_logs_csv']      = 'Communications/export_delivery_logs_csv';
 $route['communications/process_queue_cron']           = 'Communications/process_queue_cron';
 $route['communications/process_queue_batch_ajax']     = 'Communications/process_queue_batch_ajax';
+$route['communications/queue_sync_status_ajax']        = 'Communications/queue_sync_status_ajax';
 $route['communications/save_outreach_stages_ajax']     = 'Communications/save_outreach_stages_ajax';
 $route['communications/get_stage_logs_ajax']           = 'Communications/get_stage_logs_ajax';
 $route['communications/update_campaign_followup_template_ajax'] = 'Communications/update_campaign_followup_template_ajax';

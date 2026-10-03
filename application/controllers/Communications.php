@@ -1015,6 +1015,14 @@ class Communications extends MY_Controller {
     }
 
     /**
+     * AJAX: Get real-time synchronized background queue timing and counts from server
+     */
+    public function queue_sync_status_ajax() {
+        $sync = $this->Bulk_mail_model->get_queue_sync_status();
+        $this->json_success($sync);
+    }
+
+    /**
      * AJAX: Toggle Global Background Queue Play / Pause
      */
     public function toggle_global_queue_ajax() {

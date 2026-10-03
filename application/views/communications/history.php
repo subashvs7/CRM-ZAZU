@@ -1591,12 +1591,12 @@ $(function() {
     });
 
     // ---------------------------------------------------------
-    // 1-MINUTE PACED BACKGROUND QUEUE TIMER & GLOBAL PAUSE LOGIC
+    // 1-MINUTE REAL-TIME SERVER-SYNCED QUEUE HEARTBEAT & COUNTDOWN
     // ---------------------------------------------------------
-    var TIMER_KEY      = 'crm_queue_timer_start_1m';
     var TIMER_DURATION = 60; // seconds
-    var countdownSeconds;
+    var countdownSeconds = 60;
     var isGlobalQueuePaused = <?= !empty($is_queue_paused) ? 'true' : 'false' ?>;
+    var isSyncingState = false;
 
     function setGlobalQueuePauseState(paused) {
         isGlobalQueuePaused = !!paused;
@@ -1629,6 +1629,7 @@ $(function() {
                 setGlobalQueuePauseState(resp.data.is_paused);
                 CRM.toast('success', resp.message);
                 loadStats(currentStatsFilter, statsFromDate, statsToDate);
+                syncQueueStateWithServer();
             } else {
                 CRM.toast('error', resp.message || 'Failed to update queue state.');
             }
@@ -1638,32 +1639,66 @@ $(function() {
         });
     });
 
-    function initTimer() {
-        var stored = localStorage.getItem(TIMER_KEY);
-        if (stored) {
-            var elapsed = Math.floor((Date.now() - parseInt(stored)) / 1000);
-            var remaining = TIMER_DURATION - elapsed;
-            countdownSeconds = (remaining > 0 && remaining <= TIMER_DURATION) ? remaining : TIMER_DURATION;
-        } else {
-            countdownSeconds = TIMER_DURATION;
-            localStorage.setItem(TIMER_KEY, Date.now());
-        }
-    }
-
-    function resetTimer() {
-        countdownSeconds = TIMER_DURATION;
-        localStorage.setItem(TIMER_KEY, Date.now());
-    }
-
     function updateCountdownDisplay() {
         if (isGlobalQueuePaused) {
             $('#queue-countdown').text('Paused ⏸️');
+            return;
+        }
+        var pending = parseInt($('#queue-pending-count').text()) || 0;
+        if (pending <= 0) {
+            $('#queue-countdown').text('Idle');
             return;
         }
         var mins = Math.floor(countdownSeconds / 60);
         var secs = countdownSeconds % 60;
         var display = (mins < 10 ? '0' : '') + mins + ':' + (secs < 10 ? '0' : '') + secs;
         $('#queue-countdown').text(display);
+    }
+
+    // Sync state and exact remaining countdown directly with server background clock
+    function syncQueueStateWithServer(callback) {
+        if (isSyncingState) return;
+        isSyncingState = true;
+
+        $.getJSON(BASE_URL + 'communications/queue_sync_status_ajax', function(resp) {
+            isSyncingState = false;
+            if (resp.status === 'success' && resp.data) {
+                var d = resp.data;
+                // Update queue pending count
+                $('#queue-pending-count').text(d.queued);
+
+                // Update paused badge
+                if (d.paused > 0) {
+                    $('#stat-total-paused-badge').removeClass('hidden');
+                    $('#stat-total-paused').text(d.paused);
+                } else {
+                    $('#stat-total-paused-badge').addClass('hidden');
+                }
+
+                // If background cron sent emails, sync delivered count and refresh logs
+                var currentSent = parseInt($('#stat-total-sent').text().replace(/,/g, '')) || 0;
+                if (d.sent > currentSent) {
+                    $('#stat-total-sent').text(d.sent.toLocaleString());
+                    fetchDeliveryLogs();
+                }
+
+                // Sync pause state if changed from server
+                if (!!d.is_paused !== isGlobalQueuePaused) {
+                    setGlobalQueuePauseState(d.is_paused);
+                }
+
+                // Sync seconds remaining with real server clock
+                if (!isGlobalQueuePaused && d.queued > 0) {
+                    var sRem = parseInt(d.seconds_remaining);
+                    countdownSeconds = (isNaN(sRem) || sRem < 0) ? TIMER_DURATION : sRem;
+                }
+
+                updateCountdownDisplay();
+                if (typeof callback === 'function') callback(d);
+            }
+        }).fail(function() {
+            isSyncingState = false;
+        });
     }
 
     function triggerQueueBatch() {
@@ -1673,38 +1708,37 @@ $(function() {
         }
         var pending = parseInt($('#queue-pending-count').text()) || 0;
         if (pending <= 0) {
-            resetTimer();
-            updateCountdownDisplay();
+            syncQueueStateWithServer();
             return;
         }
 
         $('#queue-countdown').text('Sending...');
         $.getJSON(BASE_URL + 'communications/process_queue_batch_ajax', function(resp) {
-            resetTimer();
-            updateCountdownDisplay();
             if (resp.status === 'success' && resp.data) {
-                if (resp.data.is_paused) {
+                var d = resp.data;
+                if (d.is_paused) {
                     setGlobalQueuePauseState(true);
-                    CRM.toast('warning', resp.data.message);
+                    CRM.toast('warning', resp.message);
                     return;
                 }
-                $('#queue-pending-count').text(resp.data.remaining);
-                if (resp.data.processed > 0) {
+                var sRem = parseInt(d.seconds_remaining);
+                countdownSeconds = (isNaN(sRem) || sRem <= 0) ? TIMER_DURATION : sRem;
+                $('#queue-pending-count').text(d.remaining);
+                if (d.processed > 0) {
                     var sentVal = parseInt($('#stat-total-sent').text().replace(/,/g, '')) || 0;
-                    $('#stat-total-sent').text((sentVal + resp.data.processed).toLocaleString());
+                    $('#stat-total-sent').text((sentVal + d.processed).toLocaleString());
                     fetchDeliveryLogs();
                 }
+                updateCountdownDisplay();
+            } else {
+                syncQueueStateWithServer();
             }
         }).fail(function() {
-            resetTimer();
-            updateCountdownDisplay();
+            syncQueueStateWithServer();
         });
     }
 
-    // Initialize timer from localStorage on page load
-    initTimer();
-    updateCountdownDisplay();
-
+    // 1. Tick countdown every second
     setInterval(function() {
         if (isGlobalQueuePaused) {
             $('#queue-countdown').text('Paused ⏸️');
@@ -1722,6 +1756,14 @@ $(function() {
             $('#queue-countdown').text('Idle');
         }
     }, 1000);
+
+    // 2. Background sync every 10 seconds to read real background cron dispatches
+    setInterval(function() {
+        syncQueueStateWithServer();
+    }, 10000);
+
+    // 3. Immediately sync on opening page
+    syncQueueStateWithServer();
 
     $('#btn-trigger-queue-now').on('click', function() {
         triggerQueueBatch();
