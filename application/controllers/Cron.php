@@ -15,8 +15,8 @@ class Cron extends CI_Controller {
      * 2. Hostinger / cPanel Wget / Curl / Web Cron:
      *    curl -s "https://crm.zazutech.in/cron/process_queue"
      */
-    public function process_queue($limit = 1) {
-        // Allow limit override via CLI param or GET parameter (default 1 email for safe anti-ban pacing)
+    public function process_queue($limit = 2) {
+        // Allow limit override via CLI param or GET parameter (default 2 emails per minute)
         $paramLimit = $this->input->get('limit') ? (int)$this->input->get('limit') : (int)$limit;
         if ($paramLimit < 1) $paramLimit = 1;
         if ($paramLimit > 10) $paramLimit = 10;

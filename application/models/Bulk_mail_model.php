@@ -684,7 +684,7 @@ class Bulk_mail_model extends CI_Model {
      * Centralized Background Queue Processor (Supports Web AJAX, CLI, and Server Cron)
      * Handles Hostinger SMTP pool rotation, daily quotas, personalization tokens, anti-spam hash, lead activities, and campaign completion.
      */
-    public function execute_queue_batch($limit = 1) {
+    public function execute_queue_batch($limit = 2) {
         $this->load->model(['Smtp_account_model', 'App_setting_model']);
         $this->load->library('email');
         $this->load->helper(['crm', 'url']);

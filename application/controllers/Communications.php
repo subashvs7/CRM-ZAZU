@@ -974,9 +974,9 @@ class Communications extends MY_Controller {
     }
 
     /**
-     * Internal / Centralized queue dispatcher proxy (1 item default for 1-minute safe anti-ban pacing)
+     * Internal / Centralized queue dispatcher proxy (default: 2 emails per minute)
      */
-    public function _execute_queue_batch($limit = 1) {
+    public function _execute_queue_batch($limit = 2) {
         return $this->Bulk_mail_model->execute_queue_batch($limit);
     }
 
@@ -986,7 +986,7 @@ class Communications extends MY_Controller {
      * Hostinger cPanel Web Cron: wget -q -O /dev/null "https://crm.zazutech.in/communications/process_queue_cron"
      */
     public function process_queue_cron() {
-        $limit = (int)($this->input->get('limit') ?: 1); // 1 email per 1 min = safe pacing
+        $limit = (int)($this->input->get('limit') ?: 2); // 2 emails per 1 min = balanced safe pacing
         if ($limit < 1) $limit = 1;
         if ($limit > 10) $limit = 10;
 
@@ -1010,7 +1010,7 @@ class Communications extends MY_Controller {
      * AJAX Heartbeat: Trigger next item in background queue from CRM browser session
      */
     public function process_queue_batch_ajax() {
-        $result = $this->_execute_queue_batch(1);
+        $result = $this->_execute_queue_batch(2);
         $this->json_success($result);
     }
 
