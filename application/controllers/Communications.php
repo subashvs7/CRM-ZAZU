@@ -90,6 +90,7 @@ class Communications extends MY_Controller {
      */
     public function mail_history() {
         $stats = $this->Bulk_mail_model->get_stats();
+        $queue_sync = $this->Bulk_mail_model->get_queue_sync_status();
         $recent_campaigns = $this->Bulk_mail_model->get_recent_campaigns(50);
         $distinct_senders = $this->Bulk_mail_model->get_distinct_senders();
         $initial_logs = $this->Bulk_mail_model->get_delivery_logs([], 50, 0);
@@ -98,6 +99,7 @@ class Communications extends MY_Controller {
         $this->load_view('communications/history', [
             'page_title'       => 'Mail Dispatch History & Delivery Logs',
             'stats'            => $stats,
+            'queue_sync'       => $queue_sync,
             'recent_campaigns' => $recent_campaigns,
             'distinct_senders' => $distinct_senders,
             'delivery_logs'    => $initial_logs['rows'],

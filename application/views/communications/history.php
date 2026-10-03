@@ -63,8 +63,14 @@ if (!function_exists('render_campaign_type_badge')) {
                         <?php endif; ?>
                     </span>
                 </div>
+                <?php
+                    $initSeconds = (int)($queue_sync['seconds_remaining'] ?? 60);
+                    $initMins = floor($initSeconds / 60);
+                    $initSecs = $initSeconds % 60;
+                    $initDisplay = sprintf('%02d:%02d', $initMins, $initSecs);
+                ?>
                 <p class="text-[11px] text-gray-300 mt-0.5">
-                    Next safe email dispatch in: <span id="queue-countdown" class="font-mono font-bold text-amber-300"><?= !empty($is_queue_paused) ? 'Paused ⏸️' : '01:00' ?></span>
+                    Next safe email dispatch in: <span id="queue-countdown" class="font-mono font-bold text-amber-300"><?= !empty($is_queue_paused) ? 'Paused ⏸️' : $initDisplay ?></span>
                     <span class="text-gray-400 mx-1.5">•</span>
                     <span id="queue-pending-count" class="font-mono text-indigo-200 font-bold"><?= (int)($stats['queued'] ?? 0) ?></span> email(s) currently in queue.
                 </p>
@@ -1594,7 +1600,7 @@ $(function() {
     // 1-MINUTE REAL-TIME SERVER-SYNCED QUEUE HEARTBEAT & COUNTDOWN
     // ---------------------------------------------------------
     var TIMER_DURATION = 60; // seconds
-    var countdownSeconds = 60;
+    var countdownSeconds = <?= (int)($queue_sync['seconds_remaining'] ?? 60) ?>;
     var isGlobalQueuePaused = <?= !empty($is_queue_paused) ? 'true' : 'false' ?>;
     var isSyncingState = false;
 
@@ -1664,8 +1670,10 @@ $(function() {
             isSyncingState = false;
             if (resp.status === 'success' && resp.data) {
                 var d = resp.data;
-                // Update queue pending count
+                // Update queue pending count in top banner and main stat card
                 $('#queue-pending-count').text(d.queued);
+                $('#stat-total-queued').text(d.queued.toLocaleString());
+                $('#stat-total-failed').text(d.failed.toLocaleString());
 
                 // Update paused badge
                 if (d.paused > 0) {
@@ -1677,7 +1685,7 @@ $(function() {
 
                 // If background cron sent emails, sync delivered count and refresh logs
                 var currentSent = parseInt($('#stat-total-sent').text().replace(/,/g, '')) || 0;
-                if (d.sent > currentSent) {
+                if (d.sent !== currentSent) {
                     $('#stat-total-sent').text(d.sent.toLocaleString());
                     fetchDeliveryLogs();
                 }
@@ -1690,7 +1698,9 @@ $(function() {
                 // Sync seconds remaining with real server clock
                 if (!isGlobalQueuePaused && d.queued > 0) {
                     var sRem = parseInt(d.seconds_remaining);
-                    countdownSeconds = (isNaN(sRem) || sRem < 0) ? TIMER_DURATION : sRem;
+                    if (!isNaN(sRem) && sRem > 0) {
+                        countdownSeconds = sRem;
+                    }
                 }
 
                 updateCountdownDisplay();
@@ -1722,8 +1732,9 @@ $(function() {
                     return;
                 }
                 var sRem = parseInt(d.seconds_remaining);
-                countdownSeconds = (isNaN(sRem) || sRem <= 0) ? TIMER_DURATION : sRem;
+                countdownSeconds = (!isNaN(sRem) && sRem > 0) ? sRem : TIMER_DURATION;
                 $('#queue-pending-count').text(d.remaining);
+                $('#stat-total-queued').text(d.remaining.toLocaleString());
                 if (d.processed > 0) {
                     var sentVal = parseInt($('#stat-total-sent').text().replace(/,/g, '')) || 0;
                     $('#stat-total-sent').text((sentVal + d.processed).toLocaleString());

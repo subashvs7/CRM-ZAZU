@@ -974,14 +974,17 @@ class Bulk_mail_model extends CI_Model {
         $now = time();
         $interval = 60; // 1-minute cycle
 
+        // Cron runs every minute at :00 seconds, so seconds remaining in the current minute is exact:
+        $currentSecond = (int)date('s', $now);
+        $secondsRemaining = (60 - $currentSecond) % 60;
+        if ($secondsRemaining === 0) {
+            $secondsRemaining = 60;
+        }
+
         $lastDispatched = (int)$this->App_setting_model->get_by_key('queue_last_dispatched_at');
         if ($lastDispatched <= 0) {
             $lastDispatched = $now;
         }
-
-        $elapsed = $now - $lastDispatched;
-        // Remaining seconds until next server cron dispatch cycle (60s cycle)
-        $secondsRemaining = ($elapsed >= $interval) ? 0 : ($interval - $elapsed);
 
         $isPaused = (int)$this->App_setting_model->get_by_key('queue_is_paused') === 1;
         $queuedCount = $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue');
