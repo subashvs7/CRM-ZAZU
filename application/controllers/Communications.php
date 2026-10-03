@@ -978,8 +978,8 @@ class Communications extends MY_Controller {
     /**
      * Internal / Centralized queue dispatcher proxy (default: 2 emails per minute)
      */
-    public function _execute_queue_batch($limit = 2) {
-        return $this->Bulk_mail_model->execute_queue_batch($limit);
+    public function _execute_queue_batch($limit = 2, $force = false) {
+        return $this->Bulk_mail_model->execute_queue_batch($limit, $force);
     }
 
     /**
@@ -992,7 +992,7 @@ class Communications extends MY_Controller {
         if ($limit < 1) $limit = 1;
         if ($limit > 10) $limit = 10;
 
-        $result = $this->Bulk_mail_model->execute_queue_batch($limit);
+        $result = $this->Bulk_mail_model->execute_queue_batch($limit, false);
 
         if (is_cli()) {
             echo "[" . date('Y-m-d H:i:s') . "] Status: " . $result['status'] 
@@ -1012,7 +1012,8 @@ class Communications extends MY_Controller {
      * AJAX Heartbeat: Trigger next item in background queue from CRM browser session
      */
     public function process_queue_batch_ajax() {
-        $result = $this->_execute_queue_batch(2);
+        $force = (int)$this->input->get('force') === 1;
+        $result = $this->_execute_queue_batch(2, $force);
         $this->json_success($result);
     }
 

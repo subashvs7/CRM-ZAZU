@@ -1601,6 +1601,9 @@ $(function() {
     // ---------------------------------------------------------
     var TIMER_DURATION = 60; // seconds
     var countdownSeconds = <?= (int)($queue_sync['seconds_remaining'] ?? 60) ?>;
+    if (countdownSeconds <= 0) {
+        countdownSeconds = TIMER_DURATION;
+    }
     var isGlobalQueuePaused = <?= !empty($is_queue_paused) ? 'true' : 'false' ?>;
     var isSyncingState = false;
 
@@ -1711,7 +1714,7 @@ $(function() {
         });
     }
 
-    function triggerQueueBatch() {
+    function triggerQueueBatch(isForced) {
         if (isGlobalQueuePaused) {
             CRM.toast('warning', 'Background queue is paused. Resume queue to dispatch emails.');
             return;
@@ -1723,7 +1726,8 @@ $(function() {
         }
 
         $('#queue-countdown').text('Sending...');
-        $.getJSON(BASE_URL + 'communications/process_queue_batch_ajax', function(resp) {
+        var url = BASE_URL + 'communications/process_queue_batch_ajax' + (isForced ? '?force=1' : '');
+        $.getJSON(url, function(resp) {
             if (resp.status === 'success' && resp.data) {
                 var d = resp.data;
                 if (d.is_paused) {
@@ -1759,7 +1763,8 @@ $(function() {
         if (pending > 0) {
             countdownSeconds--;
             if (countdownSeconds <= 0) {
-                triggerQueueBatch();
+                countdownSeconds = TIMER_DURATION; // Immediately reset to avoid rapid multi-firing
+                triggerQueueBatch(false);
             } else {
                 updateCountdownDisplay();
             }
@@ -1777,7 +1782,7 @@ $(function() {
     syncQueueStateWithServer();
 
     $('#btn-trigger-queue-now').on('click', function() {
-        triggerQueueBatch();
+        triggerQueueBatch(true);
     });
 
     // ── AUTO LOAD STATS + LOGS ON PAGE OPEN ─────────────────────────────────

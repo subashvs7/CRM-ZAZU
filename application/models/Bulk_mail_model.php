@@ -684,7 +684,7 @@ class Bulk_mail_model extends CI_Model {
      * Centralized Background Queue Processor (Supports Web AJAX, CLI, and Server Cron)
      * Handles Hostinger SMTP pool rotation, daily quotas, personalization tokens, anti-spam hash, lead activities, and campaign completion.
      */
-    public function execute_queue_batch($limit = 2) {
+    public function execute_queue_batch($limit = 2, $force = false) {
         $this->load->model(['Smtp_account_model', 'App_setting_model']);
         $this->load->library('email');
         $this->load->helper(['crm', 'url']);
@@ -702,6 +702,24 @@ class Bulk_mail_model extends CI_Model {
                 'remaining' => $queuedCount,
                 'paused'    => $pausedCount,
                 'is_paused' => true
+            ], $sync);
+        }
+
+        // Throttle Guard: If a batch was already processed less than 45 seconds ago, do not re-dispatch on reload/refresh unless forced
+        $now = time();
+        $lastDispatched = (int)$this->App_setting_model->get_by_key('queue_last_dispatched_at');
+        $elapsed = $now - $lastDispatched;
+
+        if (!$force && $lastDispatched > 0 && $elapsed < 45) {
+            $queuedCount = $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue');
+            $pausedCount = $this->db->where('status', 'paused')->count_all_results('crm_bulk_mail_queue');
+            $sync = $this->get_queue_sync_status();
+            return array_merge([
+                'status'    => 'throttled',
+                'message'   => 'Interval pacing active. Next safe email dispatch is scheduled.',
+                'processed' => 0,
+                'remaining' => $queuedCount,
+                'paused'    => $pausedCount
             ], $sync);
         }
 
