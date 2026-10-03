@@ -974,289 +974,30 @@ class Communications extends MY_Controller {
     }
 
     /**
-     * Internal: Process background queue items (1 item default for 2-minute safe anti-ban pacing)
+     * Internal / Centralized queue dispatcher proxy (1 item default for 1-minute safe anti-ban pacing)
      */
-    protected function _execute_queue_batch($limit = 1) {
-        $this->load->library('email');
-
-        // Global Queue Pause Gate
-        $isQueuePaused = (int)$this->App_setting_model->get_by_key('queue_is_paused');
-        if ($isQueuePaused === 1) {
-            $queuedCount = $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue');
-            $pausedCount = $this->db->where('status', 'paused')->count_all_results('crm_bulk_mail_queue');
-            return [
-                'status'    => 'paused',
-                'message'   => 'Anti-ban queue is currently paused. Dispatches are temporarily halted.',
-                'processed' => 0,
-                'remaining' => $queuedCount,
-                'paused'    => $pausedCount,
-                'is_paused' => true
-            ];
-        }
-
-        // Fetch up to $limit pending items — also pull forced_smtp_account_id and followup_template_id from campaign
-        $extraCampSelect = $this->db->field_exists('followup_template_id', 'crm_bulk_mail_campaigns') ? ', c.followup_template_id as camp_followup_template_id' : '';
-        $items = $this->db->select('q.*, c.subject, c.message, c.product_id, c.template_id, c.recipient_type, c.forced_smtp_account_id' . $extraCampSelect)
-            ->from('crm_bulk_mail_queue q')
-            ->join('crm_bulk_mail_campaigns c', 'c.id = q.campaign_id')
-            ->where('q.status', 'queued')
-            ->order_by('q.id', 'ASC')
-            ->limit($limit)
-            ->get()->result_array();
-
-        if (empty($items)) {
-            $queuedCount = $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue');
-            return [
-                'status'    => 'idle',
-                'message'   => 'Queue is empty. No pending emails to dispatch.',
-                'processed' => 0,
-                'remaining' => $queuedCount
-            ];
-        }
-
-        $processed = 0;
-        $details = [];
-
-        foreach ($items as $item) {
-            // SENDER SELECTION: Use campaign's forced mailbox OR auto-rotate
-            $currentSmtp = null;
-            if (!empty($item['forced_smtp_account_id'])) {
-                // Campaign was sent with a specific forced mailbox — use ONLY that
-                $currentSmtp = $this->Smtp_account_model->get_by_id((int)$item['forced_smtp_account_id']);
-                if (!$currentSmtp || $currentSmtp['status'] === 'disabled') {
-                    // Forced mailbox unavailable — skip this item gracefully
-                    $this->Bulk_mail_model->update_queue_item($item['id'], [
-                        'status'   => 'failed',
-                        'sent_at'  => date('Y-m-d H:i:s'),
-                    ]);
-                    $details[] = 'Skipped (forced mailbox unavailable): ' . $item['recipient_email'];
-                    continue;
-                }
-                $rem = max(0, (int)$currentSmtp['daily_limit'] - (int)$currentSmtp['sent_today']);
-                if ($rem <= 0) {
-                    return [
-                        'status'    => 'quota_exhausted',
-                        'message'   => 'Selected mailbox (' . $currentSmtp['sender_email'] . ') has reached its daily sending limit.',
-                        'processed' => $processed,
-                        'remaining' => $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue'),
-                        'details'   => $details
-                    ];
-                }
-            } else {
-                // No forced mailbox — auto-rotate pool
-                $currentSmtp = $this->Smtp_account_model->get_next_available_account();
-                $poolStatus  = $this->Smtp_account_model->get_pool_status();
-                if ($poolStatus['total_accounts'] > 0 && !$currentSmtp) {
-                    return [
-                        'status'    => 'quota_exhausted',
-                        'message'   => 'All Hostinger SMTP mailboxes have reached their daily sending limits. Queued emails will resume automatically.',
-                        'processed' => $processed,
-                        'remaining' => $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue'),
-                        'details'   => $details
-                    ];
-                }
-            }
-
-            $senderName = 'Outreach Team';
-            $fromEmail  = 'outreach@crm-zazu.local';
-            $fromName   = $senderName . ' via ZAZU CRM';
-
-            if ($currentSmtp) {
-                $smtpConfig = [
-                    'protocol'    => 'smtp',
-                    'smtp_host'   => $currentSmtp['smtp_host'] ?: 'smtp.hostinger.com',
-                    'smtp_port'   => (int)($currentSmtp['smtp_port'] ?: 465),
-                    'smtp_user'   => $currentSmtp['smtp_user'],
-                    'smtp_pass'   => $currentSmtp['smtp_pass'],
-                    'smtp_crypto' => strtolower($currentSmtp['smtp_crypto'] ?: 'ssl'),
-                    'mailtype'    => 'html',
-                    'charset'     => 'utf-8',
-                    'newline'     => "\r\n",
-                    'crlf'        => "\r\n"
-                ];
-                $this->email->initialize($smtpConfig);
-                $fromEmail = $currentSmtp['sender_email'];
-                $fromName  = $currentSmtp['sender_name'] ?: $senderName;
-            }
-
-            // Product info if attached
-            $productName  = 'Our Solution';
-            $productPrice = '';
-            if (!empty($item['product_id'])) {
-                $prod = $this->db->get_where('crm_products', ['id' => (int)$item['product_id']])->row_array();
-                if ($prod) {
-                    $productName  = $prod['name'];
-                    $productPrice = format_inr($prod['price']);
-                }
-            }
-
-            // Lead info
-            $leadData = null;
-            if (!empty($item['lead_id'])) {
-                $leadData = $this->db->get_where('crm_leads', ['id' => (int)$item['lead_id']])->row_array();
-            }
-
-            // Customer info
-            $custData = null;
-            if (!empty($item['customer_id'])) {
-                $custData = $this->db->get_where('crm_customers', ['id' => (int)$item['customer_id']])->row_array();
-            }
-
-            $anti_spam_hash = $this->Bulk_mail_model->generate_anti_spam_hash();
-            $next_followup_date = !empty($item['next_followup_date']) ? $item['next_followup_date'] : null;
-
-            $leadFullName = '';
-            if ($leadData) {
-                $leadFullName = trim(($leadData['first_name'] ?? '') . ' ' . ($leadData['last_name'] ?? ''));
-                if (!$leadFullName) $leadFullName = $leadData['company_name'] ?? '';
-            }
-            $recipientName = $item['recipient_name'] ?: ($custData['customer_name'] ?? ($leadFullName ?: 'Customer'));
-
-            $replacements = [
-                '{{customer_name}}'       => $recipientName,
-                '{{lead_name}}'           => $recipientName,
-                '{{name}}'                => $recipientName,
-                '{{first_name}}'          => $leadData['first_name'] ?? ($recipientName ?: 'Customer'),
-                '{{last_name}}'           => $leadData['last_name'] ?? '',
-                '{{company_name}}'        => $custData['customer_org_name'] ?? ($leadData['company_name'] ?? 'Company'),
-                '{{email}}'               => $item['recipient_email'],
-                '{{phone}}'               => $custData['phone'] ?? ($leadData['corporate_phone'] ?? ($leadData['company_phone'] ?? '')),
-                '{{product_name}}'        => $productName,
-                '{{product_price}}'       => $productPrice,
-                '{{login_url}}'           => base_url('auth/login'),
-                '{{login_email}}'         => $item['recipient_email'],
-                '{{temporary_password}}'  => 'Zazu@' . rand(1000, 9999),
-                '{{sender_name}}'         => $fromName,
-                '{{sender_phone}}'        => '',
-                '{{current_date}}'        => date('d M Y')
-            ];
-
-            $rawSubject = $item['subject'];
-            $rawMessage = $item['message'];
-
-            // If a follow-up template is attached, and this item is a follow-up (or has follow-up template ID):
-            $followupTplId = !empty($item['followup_template_id']) ? (int)$item['followup_template_id'] : (!empty($item['camp_followup_template_id']) ? (int)$item['camp_followup_template_id'] : 0);
-
-            if ($followupTplId > 0 && (strpos($item['campaign_type'] ?? '', 'followup') !== false || !empty($item['next_followup_date']))) {
-                $fTpl = $this->db->get_where('crm_notification_templates', ['id' => $followupTplId])->row_array();
-                if ($fTpl && !empty($fTpl['subject']) && !empty($fTpl['body'])) {
-                    $rawSubject = $fTpl['subject'];
-                    $rawMessage = $fTpl['body'];
-                }
-            }
-
-            $personalizedSubject = str_replace(array_keys($replacements), array_values($replacements), $rawSubject);
-            $personalizedMessage = str_replace(array_keys($replacements), array_values($replacements), $rawMessage);
-
-            // Anti-Spam fingerprint injection (invisible HTML footer with unique hash and timestamp)
-            $antiSpamFootnote = '<div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;">Ref: #' . $anti_spam_hash . '-' . time() . '</div>';
-            $personalizedMessage .= "\n" . $antiSpamFootnote;
-
-            $this->email->clear();
-            $this->email->from($fromEmail, $fromName);
-            $this->email->to($item['recipient_email']);
-            $this->email->subject($personalizedSubject);
-            $this->email->message($personalizedMessage);
-
-            $sendOk = @$this->email->send();
-            $nowFormatted = date('d M Y, h:i A');
-
-            if ($sendOk) {
-                $statusText = 'Send Success - ' . $nowFormatted;
-                $queueStatus = 'sent';
-                if ($currentSmtp) {
-                    $this->Smtp_account_model->increment_sent_count($currentSmtp['id']);
-                }
-            } else {
-                $statusText = 'Send Failed - ' . $nowFormatted;
-                $queueStatus = 'failed';
-            }
-
-            // Update queue item with sender, anti-spam hash, and follow-up date
-            $this->Bulk_mail_model->update_queue_item($item['id'], [
-                'sender_email'       => $fromEmail,
-                'smtp_account_id'   => $currentSmtp ? $currentSmtp['id'] : null,
-                'anti_spam_hash'     => $anti_spam_hash,
-                'status'             => $queueStatus,
-                'sent_at'            => date('Y-m-d H:i:s'),
-                'next_followup_date' => $next_followup_date
-            ]);
-
-            // Update campaign status
-            $this->Bulk_mail_model->check_and_update_campaign($item['campaign_id']);
-
-            // Lead activity logging
-            if (!empty($item['lead_id'])) {
-                $typeTitle = 'Outreach';
-                if (!empty($item['campaign_type'])) {
-                    $typeLabels = [
-                        'outreach'     => 'Initial Outreach',
-                        'followup_1'   => 'Follow-Up #1',
-                        'followup_2'   => 'Follow-Up #2',
-                        'retry'        => 'Retry Resend',
-                        'announcement' => 'Announcement'
-                    ];
-                    $typeTitle = $typeLabels[$item['campaign_type']] ?? 'Outreach';
-                }
-
-                $followupNotePart = !empty($next_followup_date) ? " Next follow-up on {$next_followup_date}." : "";
-                $activityNote = $sendOk 
-                    ? "Queued {$typeTitle} Dispatched Successfully via {$fromEmail} [Ref: #{$anti_spam_hash}]. Status: Send Success ({$nowFormatted}).{$followupNotePart}"
-                    : "Queued {$typeTitle} Dispatch Failed via {$fromEmail} [Ref: #{$anti_spam_hash}]. Status: Send Failed ({$nowFormatted}).";
-
-                $this->db->insert('crm_lead_activities', [
-                    'lead_id'       => (int)$item['lead_id'],
-                    'user_id'       => 1, // System / Cron
-                    'activity_type' => 'email',
-                    'notes'         => $activityNote,
-                    'occurred_at'   => date('Y-m-d H:i:s'),
-                    'status'        => 'active',
-                    'is_deleted'    => 0,
-                    'created_at'    => date('Y-m-d H:i:s'),
-                    'updated_at'    => date('Y-m-d H:i:s')
-                ]);
-
-                $this->db->where('id', (int)$item['lead_id'])->update('crm_leads', [
-                    'email_sent' => $statusText,
-                    'updated_at' => date('Y-m-d H:i:s')
-                ]);
-            }
-
-            $processed++;
-            $details[] = [
-                'queue_id'        => $item['id'],
-                'recipient_email' => $item['recipient_email'],
-                'sender_email'    => $fromEmail,
-                'anti_spam_hash'  => $anti_spam_hash,
-                'sent_at'         => date('Y-m-d H:i:s')
-            ];
-        }
-
-        $remaining = $this->db->where('status', 'queued')->count_all_results('crm_bulk_mail_queue');
-
-        return [
-            'status'    => 'success',
-            'message'   => "Successfully dispatched {$processed} queued email(s).",
-            'processed' => $processed,
-            'remaining' => $remaining,
-            'details'   => $details
-        ];
+    public function _execute_queue_batch($limit = 1) {
+        return $this->Bulk_mail_model->execute_queue_batch($limit);
     }
 
     /**
      * Cron Job / CLI Trigger for Background Queue Dispatch
      * CLI: php index.php communications process_queue_cron
-     * Hostinger cPanel Web Cron: wget -q -O /dev/null "https://crm.zazutech.in/communications/process_queue_cron?key=zazu_cron_secret"
+     * Hostinger cPanel Web Cron: wget -q -O /dev/null "https://crm.zazutech.in/communications/process_queue_cron"
      */
     public function process_queue_cron() {
-        $limit = (int)($this->input->get('limit') ?: 1); // 1 email per 2 mins = safe pacing
+        $limit = (int)($this->input->get('limit') ?: 1); // 1 email per 1 min = safe pacing
         if ($limit < 1) $limit = 1;
         if ($limit > 10) $limit = 10;
 
-        $result = $this->_execute_queue_batch($limit);
+        $result = $this->Bulk_mail_model->execute_queue_batch($limit);
 
         if (is_cli()) {
-            echo "[" . date('Y-m-d H:i:s') . "] Processed: " . $result['processed'] . " | Remaining: " . $result['remaining'] . " | Status: " . $result['status'] . PHP_EOL;
+            echo "[" . date('Y-m-d H:i:s') . "] Status: " . $result['status'] 
+               . " | Processed: " . $result['processed'] 
+               . " | Remaining Queued: " . ($result['remaining'] ?? 0) 
+               . (isset($result['paused']) ? " | Paused: " . $result['paused'] : "")
+               . " | Message: " . $result['message'] . PHP_EOL;
             return;
         }
 

@@ -59,12 +59,12 @@ if (!function_exists('render_campaign_type_badge')) {
                         <?php if(!empty($is_queue_paused)): ?>
                             <i class="fa fa-pause"></i> Queue Paused
                         <?php else: ?>
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> 2-Min Paced Interval
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> 1-Min Paced Interval
                         <?php endif; ?>
                     </span>
                 </div>
                 <p class="text-[11px] text-gray-300 mt-0.5">
-                    Next safe email dispatch in: <span id="queue-countdown" class="font-mono font-bold text-amber-300"><?= !empty($is_queue_paused) ? 'Paused ⏸️' : '02:00' ?></span>
+                    Next safe email dispatch in: <span id="queue-countdown" class="font-mono font-bold text-amber-300"><?= !empty($is_queue_paused) ? 'Paused ⏸️' : '01:00' ?></span>
                     <span class="text-gray-400 mx-1.5">•</span>
                     <span id="queue-pending-count" class="font-mono text-indigo-200 font-bold"><?= (int)($stats['queued'] ?? 0) ?></span> email(s) currently in queue.
                 </p>
@@ -727,7 +727,7 @@ if (!function_exists('render_campaign_type_badge')) {
                     <div>
                         <span>Add follow-up emails to background queue now</span>
                         <p class="text-[11px] font-normal text-blue-700 mt-0.5 leading-snug">
-                            Queues follow-up emails for delivered outreach recipients. The 2-minute paced anti-ban queue will smoothly send them in the background.
+                            Queues follow-up emails for delivered outreach recipients. The 1-minute paced anti-ban queue will smoothly send them in the background.
                         </p>
                     </div>
                 </label>
@@ -1591,10 +1591,10 @@ $(function() {
     });
 
     // ---------------------------------------------------------
-    // 2-MINUTE PACED BACKGROUND QUEUE TIMER & GLOBAL PAUSE LOGIC
+    // 1-MINUTE PACED BACKGROUND QUEUE TIMER & GLOBAL PAUSE LOGIC
     // ---------------------------------------------------------
-    var TIMER_KEY      = 'crm_queue_timer_start';
-    var TIMER_DURATION = 120; // seconds
+    var TIMER_KEY      = 'crm_queue_timer_start_1m';
+    var TIMER_DURATION = 60; // seconds
     var countdownSeconds;
     var isGlobalQueuePaused = <?= !empty($is_queue_paused) ? 'true' : 'false' ?>;
 
@@ -1613,7 +1613,7 @@ $(function() {
             $btn.removeClass('bg-emerald-600 hover:bg-emerald-500').addClass('bg-amber-600 hover:bg-amber-500');
             $btn.html('<i class="fa fa-pause"></i> <span>Pause Queue</span>');
             $pill.removeClass('bg-amber-500/20 text-amber-300 border-amber-500/30').addClass('bg-emerald-500/20 text-emerald-300 border-emerald-500/30');
-            $pill.html('<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> 2-Min Paced Interval');
+            $pill.html('<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> 1-Min Paced Interval');
             updateCountdownDisplay();
         }
     }

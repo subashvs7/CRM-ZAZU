@@ -255,3 +255,5 @@ $route['communications/toggle_global_queue_ajax']         = 'Communications/togg
 $route['communications/toggle_campaign_queue_pause_ajax'] = 'Communications/toggle_campaign_queue_pause_ajax';
 $route['mail_templates']                              = 'Communications/mail_templates';
 $route['mail_history']                                = 'Communications/mail_history';
+$route['cron/process_queue']                           = 'Cron/process_queue';
+$route['cron']                                         = 'Cron/process_queue';
